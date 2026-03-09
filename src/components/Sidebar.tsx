@@ -10,12 +10,14 @@ import {
   Settings,
   HelpCircle,
   ChevronDown,
-  Database
+  Database,
+  Github
 } from "lucide-react";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", to: "/" },
   { icon: Database, label: "Databases", to: "/databases" },
+  { icon: Github, label: "GitHub", to: "/github" },
   { icon: Search, label: "Exposure Analysis", to: "/exposure" },
   { icon: Route, label: "Attack Paths", to: "/attack-paths" },
   { icon: PenTool, label: "Scenario Designer", to: "/scenarios" },
