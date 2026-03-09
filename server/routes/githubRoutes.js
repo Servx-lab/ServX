@@ -85,4 +85,31 @@ router.get('/repos/:repoName/stack', async (req, res) => {
   }
 });
 
+// GET /api/github/repos/:repoName/commits
+router.get('/repos/:repoName/commits', async (req, res) => {
+  const { repoName } = req.params;
+  try {
+    const { data: user } = await octokit.rest.users.getAuthenticated();
+    const owner = user.login;
+
+    const { data: commits } = await octokit.rest.repos.listCommits({
+      owner,
+      repo: repoName,
+      per_page: 30,
+    });
+
+    const formattedCommits = commits.map(commit => ({
+      message: commit.commit.message,
+      author: commit.commit.author.name,
+      date: commit.commit.author.date,
+      sha: commit.sha,
+    }));
+
+    res.json(formattedCommits);
+  } catch (error) {
+    console.error('Error fetching commits:', error);
+    res.status(500).json({ error: 'Failed to fetch commits' });
+  }
+});
+
 module.exports = router;
