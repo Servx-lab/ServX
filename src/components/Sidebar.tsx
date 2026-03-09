@@ -13,7 +13,8 @@ import {
   Database,
   Github,
   Server as ServerIcon,
-  Stethoscope
+  Stethoscope,
+  Activity
 } from "lucide-react";
 import {
   Collapsible,
@@ -24,6 +25,7 @@ import {
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", to: "/" },
   { icon: Stethoscope, label: "Auto-Medic Pipeline", to: "/auto-medic" },
+  { icon: Activity, label: "Global Operations", to: "/operations" },
   { icon: Database, label: "Databases", to: "/databases" },
   { icon: ServerIcon, label: "Hosting & Servers", to: "/hosting/render" },
   { icon: Github, label: "GitHub", to: "/github" },
