@@ -5,6 +5,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const User = require('./models/User');
 const UserConnection = require('./models/UserConnection');
+const githubRoutes = require('./routes/githubRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -29,6 +30,9 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+
+// Routes
+app.use('/api/github', githubRoutes);
 
 // Database Connection
 const connectDB = async () => {
