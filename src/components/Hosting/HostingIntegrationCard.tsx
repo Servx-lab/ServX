@@ -5,16 +5,45 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 interface HostingIntegrationCardProps {
-  provider?: 'Render' | 'Vercel' | 'AWS' | 'Railway' | 'DigitalOcean';
+  provider?: 'Render' | 'Vercel' | 'AWS' | 'Railway' | 'DigitalOcean' | 'Fly.io';
   onConnect?: (apiKey: string) => Promise<void>;
 }
 
+// --- Logo Components ---
 const RenderLogo = () => (
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 mb-4">
     <path d="M19.3333 13.3333H4.66667V20H19.3333V13.3333Z" fill="white" fillOpacity="0.9"/>
     <path d="M19.3333 4H4.66667V10.6667H19.3333V4Z" fill="white" fillOpacity="0.5"/>
   </svg>
 );
+
+const VercelLogo = () => (
+  <svg viewBox="0 0 1155 1000" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 mb-4 fill-white flex-shrink-0">
+    <path d="M577.344 0L1154.69 1000H0L577.344 0Z" />
+  </svg>
+);
+
+const DigitalOceanLogo = () => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 mb-4 text-blue-500 flex-shrink-0">
+    <path d="M12 12H16V16H12V12Z" fill="currentColor"/>
+    <path fillRule="evenodd" clipRule="evenodd" d="M4 4H10V10H4V4ZM14 4H20V10H14V4ZM4 14H10V20H4V14Z" fill="currentColor"/>
+  </svg>
+);
+
+const RailwayLogo = () => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 mb-4 text-purple-400 flex-shrink-0">
+    <rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
+    <path d="M8 8L16 16M16 8L8 16" stroke="currentColor" strokeWidth="2"/>
+  </svg>
+);
+
+const FlyLogo = () => (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 mb-4 text-indigo-400 flex-shrink-0">
+       <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor" fillOpacity="0.5"/>
+       <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+       <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
 
 const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({ 
   provider = 'Render',
@@ -23,14 +52,43 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
   const [apiKey, setApiKey] = useState('');
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
 
-  const handleConnect = async () => {
+  // Determine if the provider uses OAuth flow
+  const isOAuthProvider = ['Vercel', 'DigitalOcean', 'Railway'].includes(provider);
+
+  const getLogo = () => {
+    switch (provider) {
+        case 'Render': return <RenderLogo />;
+        case 'Vercel': return <VercelLogo />;
+        case 'DigitalOcean': return <DigitalOceanLogo />;
+        case 'Railway': return <RailwayLogo />;
+        case 'Fly.io': return <FlyLogo />;
+        default: return <Server className="w-12 h-12 mb-4 text-white/50" />;
+    }
+  };
+
+  const getDescription = () => {
+    if (isOAuthProvider) {
+        return `Connect securely via OAuth 2.0 to sync ${provider} services and deployments.`;
+    }
+    return `To fetch live CPU and Memory metrics, generate a Personal API Key in your ${provider} Account Settings.`;
+  };
+
+  const handleOAuthLogin = () => {
+    setStatus('connecting');
+    // Simulate redirect for demo
+    setTimeout(() => {
+        window.location.href = `/api/oauth/${provider.toLowerCase()}`;
+    }, 800);
+  };
+
+  const handleManualConnect = async () => {
     if (!apiKey) return;
     setStatus('connecting');
     
     // Simulate API call delay
     setTimeout(() => {
         // In a real app, you'd validate the key here
-        if (apiKey.startsWith('rnd_')) {
+        if (apiKey.length > 5) {
             setStatus('connected');
         } else {
             setStatus('error');
@@ -48,29 +106,33 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
       <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-blue-500/20 blur-3xl" />
       
       <div className="relative z-10 flex flex-col items-center text-center">
-        {provider === 'Render' ? <RenderLogo /> : <Server className="w-12 h-12 mb-4 text-white/50" />}
+        {getLogo()}
         
         <h3 className="mb-2 text-xl font-semibold tracking-tight text-white">
           Connect {provider} Account
         </h3>
         
         <p className="mb-6 max-w-sm text-sm text-white/60">
-          To fetch live CPU and Memory metrics, generate a Personal API Key in your {provider} Account Settings.
+          {getDescription()}
         </p>
 
         <div className="w-full max-w-sm space-y-4">
-          <div className="relative">
-            <Input 
-              type="password" 
-              placeholder="rnd_XXXXXXXXXXXXXXXXXXXX" 
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-blue-500/50 focus:ring-blue-500/20"
-            />
-          </div>
+          
+          {/* Render Input Field Only for Non-OAuth Providers */}
+          {!isOAuthProvider && (
+              <div className="relative">
+                <Input 
+                  type="password" 
+                  placeholder={`${provider} API Key`}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-blue-500/50 focus:ring-blue-500/20"
+                />
+              </div>
+          )}
 
           <Button 
-            onClick={handleConnect}
+            onClick={isOAuthProvider ? handleOAuthLogin : handleManualConnect}
             disabled={status === 'connecting' || status === 'connected'}
             className={`w-full relative overflow-hidden transition-all duration-300 ${
                 status === 'connected' 
@@ -79,7 +141,12 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
             }`}
           >
             {status === 'connecting' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {status === 'connected' ? 'Connected Successfully' : 'Connect API Key'}
+            {status === 'connected' 
+                ? 'Connected Successfully' 
+                : isOAuthProvider 
+                    ? `Sign in with ${provider}` 
+                    : 'Connect API Key'
+            }
           </Button>
 
           <div className="flex justify-center pt-2">

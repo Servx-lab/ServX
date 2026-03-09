@@ -1,4 +1,5 @@
 import React from 'react';
+import { useParams } from 'react-router-dom';
 import Sidebar from "@/components/Sidebar";
 import HostingSidebar from "@/components/Hosting/HostingSidebar";
 import HostingIntegrationCard from "@/components/Hosting/HostingIntegrationCard";
@@ -6,12 +7,27 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const HostingRender = () => {
     const isMobile = useIsMobile();
+    const { providerId } = useParams();
+
+    const getProviderName = (id: string | undefined): 'Render' | 'Vercel' | 'AWS' | 'Railway' | 'DigitalOcean' | 'Fly.io' => {
+        switch (id?.toLowerCase()) {
+            case 'vercel': return 'Vercel';
+            case 'aws': return 'AWS';
+            case 'railway': return 'Railway';
+            case 'digitalocean': return 'DigitalOcean';
+            case 'fly': return 'Fly.io';
+            case 'render': 
+            default: return 'Render';
+        }
+    };
+
+    const providerName = getProviderName(providerId);
 
     const handleConnect = async (apiKey: string) => {
-        console.log(`Connecting to Render with API key: ${apiKey}`);
+        console.log(`Connecting to ${providerName} with API key: ${apiKey}`);
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 2000));
-        alert("Connected successfully!");
+        alert(`Connected successfully to ${providerName}!`);
     };
 
     return (
@@ -35,7 +51,7 @@ const HostingRender = () => {
                             </header>
 
                             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                                <HostingIntegrationCard provider="Render" onConnect={handleConnect} />
+                                <HostingIntegrationCard provider={providerName} onConnect={handleConnect} />
                                 {/* Placeholder for other providers */}
                             </div>
                         </div>

@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Databases from "./pages/Databases";
 import GitHub from "./pages/GitHub";
 import HostingRender from "./pages/HostingRender";
+import InfrastructureConnections from "./pages/InfrastructureConnections";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,7 +22,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/databases" element={<Databases />} />
           <Route path="/github" element={<GitHub />} />
-          <Route path="/hosting/render" element={<HostingRender />} />
+          <Route path="/hosting/:providerId" element={<HostingRender />} />
+          <Route path="/settings/connections" element={<InfrastructureConnections />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
