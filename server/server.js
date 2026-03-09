@@ -8,6 +8,7 @@ const User = require('./models/User');
 const UserConnection = require('./models/UserConnection');
 const authRoutes = require('./routes/authRoutes');
 const githubRoutes = require('./routes/githubRoutes');
+const autoMedicMiddleware = require('./middleware/autoMedicMiddleware');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -112,10 +113,14 @@ app.get('/api/databases/mongodb/users', async (req, res) => {
     const users = await User.find({}).sort({ createdAt: -1 });
     res.json(users);
   } catch (error) {
-    console.error('Error fetching users:', error);
-    res.status(500).json({ message: 'Server Error' });
+    // Pass error to Auto-Medic Middleware
+    next(error);
   }
 });
+
+// --- Auto-Medic Middleware ---
+// Must be last middleware after routes
+app.use(autoMedicMiddleware);
 
 // Start Server
 connectDB().then(() => {
