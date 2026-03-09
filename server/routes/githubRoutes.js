@@ -38,4 +38,51 @@ router.get('/repos', async (req, res) => {
   }
 });
 
+// GET /api/github/repos/:repoName/stack
+router.get('/repos/:repoName/stack', async (req, res) => {
+  const { repoName } = req.params;
+  try {
+    const { data: user } = await octokit.rest.users.getAuthenticated();
+    const owner = user.login;
+
+    try {
+      const { data: content } = await octokit.rest.repos.getContent({
+        owner,
+        repo: repoName,
+        path: 'package.json',
+      });
+
+      const decodedContent = Buffer.from(content.content, 'base64').toString('utf-8');
+      const packageJson = JSON.parse(decodedContent);
+      const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
+
+      const stack = [];
+      const mapping = {
+        'react': 'React',
+        'vue': 'Vue',
+        'angular': 'Angular',
+        'express': 'Express.js',
+        'next': 'Next.js',
+        'mongoose': 'MongoDB',
+        'pg': 'PostgreSQL',
+        'mysql': 'MySQL',
+        'tailwindcss': 'Tailwind CSS',
+        'typescript': 'TypeScript'
+      };
+
+      Object.keys(dependencies).forEach(dep => {
+        if (mapping[dep]) stack.push(mapping[dep]);
+      });
+
+      res.json({ stack: [...new Set(stack)] });
+    } catch (fileError) {
+      // package.json may not exist, return empty
+      res.json({ stack: [] });
+    }
+  } catch (error) {
+    console.error('Error fetching stack:', error);
+    res.status(500).json({ error: 'Failed to analyze stack' });
+  }
+});
+
 module.exports = router;
