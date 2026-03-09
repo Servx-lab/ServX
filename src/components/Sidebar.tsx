@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/collapsible";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", to: "/" },
+  { icon: LayoutDashboard, label: "Dashboard", to: "/dashboard" },
   { icon: Stethoscope, label: "Auto-Medic Pipeline", to: "/auto-medic" },
   { icon: Activity, label: "Global Operations", to: "/operations" },
   { icon: Database, label: "Databases", to: "/databases" },
