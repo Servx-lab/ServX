@@ -48,7 +48,29 @@ const GitHubDashboard = () => {
         </div>
       </div>
       
-      {/* Rest will be added... */}
+      {/* Repository Grid */}
+      <h2 className="text-sm font-bold mb-4 uppercase tracking-widest text-muted-foreground flex items-center justify-between">
+        Repositories <span className="opacity-50">{repos.length}</span>
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
+        {repos.map((repo) => (
+          <div 
+            key={repo.id}
+            onClick={() => setSelectedRepo(repo.name)}
+            className={`border bg-card p-4 h-48 flex flex-col justify-between cursor-pointer transition-none hover:border-primary group relative ${selectedRepo === repo.name ? 'border-primary ring-1 ring-primary' : 'border-border'}`}
+          >
+            <div>
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-bold text-primary truncate max-w-[80%]">{repo.name}</h3>
+                <span className="text-[10px] opacity-50">{new Date(repo.updated_at).toLocaleDateString()}</span>
+              </div>
+              <p className="opacity-70 line-clamp-2 text-[11px] leading-relaxed h-8 mb-4">
+                {repo.description || "No description provided."}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
