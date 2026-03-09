@@ -1,4 +1,4 @@
-export type DatabaseType = 'Firebase' | 'MongoDB' | 'Supabase' | 'MySQL' | 'AWS' | 'Oracle' | 'Google Sheets';
+export type DatabaseType = 'Firebase' | 'MongoDB' | 'Supabase' | 'MySQL' | 'PostgreSQL' | 'AWS' | 'Oracle' | 'Google Sheets';
 
 export interface UniversalRecord {
   id: string;

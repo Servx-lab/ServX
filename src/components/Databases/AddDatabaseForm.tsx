@@ -11,7 +11,6 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-// ... existing handleSubmit logic ...
     setStatus(null);
 
     try {

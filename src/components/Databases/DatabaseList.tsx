@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Search, Filter, Eye, Plus } from 'lucide-react';
+import { Search, Filter, Eye, Plus, Database } from 'lucide-react';
 import { QuickViewDrawer } from './QuickViewDrawer';
 import { FileUpload } from './FileUpload';
 import AddDatabaseForm from './AddDatabaseForm';
@@ -99,6 +99,7 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       { id: 'MongoDB', label: 'MongoDB' },
       { id: 'Supabase', label: 'Supabase' },
       { id: 'MySQL', label: 'MySQL' },
+      { id: 'PostgreSQL', label: 'PostgreSQL' },
       { id: 'AWS', label: 'AWS' },
       { id: 'Oracle', label: 'Oracle' },
       { id: 'Google Sheets', label: 'Google Sheets' },
