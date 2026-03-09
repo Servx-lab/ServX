@@ -68,6 +68,19 @@ const GitHubDashboard = () => {
                 {repo.description || "No description provided."}
               </p>
             </div>
+            {/* Tech Stack Badges */}
+            <div className="flex flex-wrap gap-1 content-end h-12 overflow-hidden">
+                {repo.language && (
+                <span className="px-1.5 py-0.5 border border-primary/20 text-[9px] bg-primary/5 text-primary rounded-none uppercase tracking-wide">
+                    {repo.language}
+                </span>
+                )}
+                {repo.stack?.slice(0, 3).map((item) => (
+                <span key={item} className="px-1.5 py-0.5 border border-secondary text-[9px] bg-secondary/10 text-secondary-foreground rounded-none uppercase tracking-wide opacity-80">
+                    {item}
+                </span>
+                ))}
+            </div>
           </div>
         ))}
       </div>
