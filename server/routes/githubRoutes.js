@@ -1,114 +1,136 @@
 const express = require('express');
-const { Octokit } = require('@octokit/rest');
 const axios = require('axios');
-require('dotenv').config();
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
 const router = express.Router();
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+
+// Middleware to authenticate user and get GitHub token from DB
+const authenticate = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, process.env.ENCRYPTION_KEY || 'secret');
+    const user = await User.findById(decoded.userId).select('+githubAccessToken');
+    
+    if (!user || !user.githubAccessToken) {
+      return res.status(401).json({ error: 'User not found or not connected to GitHub' });
+    }
+    
+    req.githubToken = user.githubAccessToken;
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: 'Invalid or expired token' });
+  }
+};
 
 // GET /api/github/repos
-router.get('/repos', async (req, res) => {
+// Fetches all repositories for the authenticated user
+router.get('/repos', authenticate, async (req, res) => {
   try {
-    const { data: repos } = await octokit.rest.repos.listForAuthenticatedUser({
-      per_page: 100, // Fetch up to 100 repositories
-      sort: 'updated',
-      direction: 'desc',
+    const response = await axios.get('https://api.github.com/user/repos', {
+      headers: {
+        Authorization: `Bearer ${req.githubToken}`,
+        Accept: 'application/vnd.github.v3+json',
+      },
+      params: {
+        sort: 'updated',
+        per_page: 100,
+      },
     });
 
-    const detailedRepos = await Promise.all(
-      repos.map(async (repo) => {
-        try {
-          // Fetch languages for each repo
-          const { data: languages } = await octokit.rest.repos.listLanguages({
-            owner: repo.owner.login,
-            repo: repo.name,
-          });
-          return { ...repo, languages };
-        } catch (langError) {
-          console.error(`Error fetching languages for ${repo.name}:`, langError.message);
-          return { ...repo, languages: {} };
-        }
-      })
-    );
+    const repos = response.data.map(repo => ({
+      id: repo.id,
+      name: repo.name,
+      full_name: repo.full_name, // e.g., 'owner/repo'
+      description: repo.description,
+      html_url: repo.html_url,
+      language: repo.language,
+      stargazers_count: repo.stargazers_count,
+      updated_at: repo.updated_at,
+      owner: {
+        login: repo.owner.login,
+        avatar_url: repo.owner.avatar_url,
+      }
+    }));
 
-    res.json(detailedRepos);
+    res.json(repos);
   } catch (error) {
-    console.error('Error fetching repositories:', error);
+    console.error('GitHub Repos Error:', error.response?.data || error.message);
     res.status(500).json({ error: 'Failed to fetch repositories' });
   }
 });
 
-// GET /api/github/repos/:repoName/stack
-router.get('/repos/:repoName/stack', async (req, res) => {
-  const { repoName } = req.params;
+// GET /api/github/repos/:owner/:repo/details
+// Fetches comprehensive details: repo info, last 50 commits, contributors
+router.get('/repos/:owner/:repo/details', authenticate, async (req, res) => {
+  const { owner, repo } = req.params;
+  const repoFullName = `${owner}/${repo}`;
+
   try {
-    const { data: user } = await octokit.rest.users.getAuthenticated();
-    const owner = user.login;
-
-    try {
-      const { data: content } = await octokit.rest.repos.getContent({
-        owner,
-        repo: repoName,
-        path: 'package.json',
-      });
-
-      const decodedContent = Buffer.from(content.content, 'base64').toString('utf-8');
-      const packageJson = JSON.parse(decodedContent);
-      const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
-
-      const stack = [];
-      const mapping = {
-        'react': 'React',
-        'vue': 'Vue',
-        'angular': 'Angular',
-        'express': 'Express.js',
-        'next': 'Next.js',
-        'mongoose': 'MongoDB',
-        'pg': 'PostgreSQL',
-        'mysql': 'MySQL',
-        'tailwindcss': 'Tailwind CSS',
-        'typescript': 'TypeScript'
-      };
-
-      Object.keys(dependencies).forEach(dep => {
-        if (mapping[dep]) stack.push(mapping[dep]);
-      });
-
-      res.json({ stack: [...new Set(stack)] });
-    } catch (fileError) {
-      // package.json may not exist, return empty
-      res.json({ stack: [] });
-    }
-  } catch (error) {
-    console.error('Error fetching stack:', error);
-    res.status(500).json({ error: 'Failed to analyze stack' });
-  }
-});
-
-// GET /api/github/repos/:repoName/commits
-router.get('/repos/:repoName/commits', async (req, res) => {
-  const { repoName } = req.params;
-  try {
-    const { data: user } = await octokit.rest.users.getAuthenticated();
-    const owner = user.login;
-
-    const { data: commits } = await octokit.rest.repos.listCommits({
-      owner,
-      repo: repoName,
-      per_page: 30,
+    // 1. Fetch Repository Details
+    const repoDetailsPromise = axios.get(`https://api.github.com/repos/${repoFullName}`, {
+      headers: { Authorization: `Bearer ${req.githubToken}` },
     });
 
-    const formattedCommits = commits.map(commit => ({
+    // 2. Fetch Last 50 Commits
+    const commitsPromise = axios.get(`https://api.github.com/repos/${repoFullName}/commits`, {
+      headers: { Authorization: `Bearer ${req.githubToken}` },
+      params: { per_page: 50 },
+    });
+
+    // 3. Fetch Contributors
+    const contributorsPromise = axios.get(`https://api.github.com/repos/${repoFullName}/contributors`, {
+      headers: { Authorization: `Bearer ${req.githubToken}` },
+      params: { per_page: 100 },
+    });
+
+    const [repoResponse, commitsResponse, contributorsResponse] = await Promise.all([
+        repoDetailsPromise,
+        commitsPromise,
+        contributorsPromise
+    ]);
+
+    // Format Data
+    const formattedCommits = commitsResponse.data.map(commit => ({
+      sha: commit.sha,
       message: commit.commit.message,
       author: commit.commit.author.name,
       date: commit.commit.author.date,
-      sha: commit.sha,
+      url: commit.html_url,
     }));
 
-    res.json(formattedCommits);
+    const formattedContributors = contributorsResponse.data.map(contributor => ({
+      login: contributor.login,
+      avatar_url: contributor.avatar_url,
+      contributions: contributor.contributions,
+      html_url: contributor.html_url,
+    }));
+
+    res.json({
+      details: {
+        id: repoResponse.data.id,
+        name: repoResponse.data.name,
+        full_name: repoResponse.data.full_name,
+        private: repoResponse.data.private,
+        html_url: repoResponse.data.html_url,
+        description: repoResponse.data.description,
+        created_at: repoResponse.data.created_at,
+        updated_at: repoResponse.data.updated_at,
+        language: repoResponse.data.language,
+        stars: repoResponse.data.stargazers_count,
+        forks: repoResponse.data.forks_count,
+        open_issues: repoResponse.data.open_issues_count,
+      },
+      commits: formattedCommits,
+      contributors: formattedContributors,
+    });
+
   } catch (error) {
-    console.error('Error fetching commits:', error);
-    res.status(500).json({ error: 'Failed to fetch commits' });
+    console.error(`GitHub Details Error for ${repoFullName}:`, error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({ error: 'Failed to fetch repository details' });
   }
 });
 

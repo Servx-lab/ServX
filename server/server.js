@@ -5,6 +5,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const User = require('./models/User');
 const UserConnection = require('./models/UserConnection');
+const authRoutes = require('./routes/authRoutes');
 const githubRoutes = require('./routes/githubRoutes');
 
 const app = express();
@@ -32,6 +33,7 @@ app.use(cors({
 app.use(express.json());
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/github', githubRoutes);
 
 // Database Connection

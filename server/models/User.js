@@ -10,6 +10,16 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  githubId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  githubAccessToken: {
+    type: String,
+    select: false // Hide by default
+  },
+  avatarUrl: String,
   role: {
     type: String,
     default: 'user'
