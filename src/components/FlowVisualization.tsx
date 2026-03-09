@@ -16,17 +16,17 @@ const sources = [
 const FlowVisualization = () => {
   const [hoveredSource, setHoveredSource] = useState<number | null>(null);
 
-  const centerX = 520;
+  const centerX = 700;
   const centerY = 300;
   const sourceStartX = 60;
   const sourceSpacing = 58;
-  const startY = 40;
+  const startY = 68;
 
   const getSourceY = (i: number) => startY + i * sourceSpacing;
 
   const generatePath = (index: number) => {
     const sy = getSourceY(index);
-    const dotX = 310;
+    const dotX = 240;
     const cp1x = dotX + 80;
     const cp2x = centerX - 100;
     return `M ${dotX} ${sy} C ${cp1x} ${sy}, ${cp2x} ${centerY}, ${centerX} ${centerY}`;
@@ -35,7 +35,7 @@ const FlowVisualization = () => {
   // Right-side output paths
   const generateOutputPath = (endY: number, color: "red" | "blue") => {
     const startX = centerX;
-    const endX = 750;
+    const endX = 1400;
     const cp1x = centerX + 100;
     const cp2x = endX - 80;
     return `M ${startX} ${centerY} C ${cp1x} ${centerY}, ${cp2x} ${endY}, ${endX} ${endY}`;
@@ -53,9 +53,10 @@ const FlowVisualization = () => {
   return (
     <div className="relative w-full h-full">
       <svg
-        viewBox="0 0 800 600"
-        className="w-full h-full"
-        style={{ filter: "drop-shadow(0 0 2px rgba(59,130,246,0.2))" }}
+        viewBox="0 0 1400 600"
+        className="w-full h-full overflow-visible"
+        style={{}}
+        shapeRendering="geometricPrecision"
       >
         <defs>
           <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
@@ -188,7 +189,7 @@ const FlowVisualization = () => {
               </text>
               {/* Glowing dot */}
               <circle
-                cx={310}
+                cx={240}
                 cy={y}
                 r={isHovered ? 6 : 4}
                 fill="#3B82F6"
@@ -197,7 +198,7 @@ const FlowVisualization = () => {
                 className="transition-all duration-300"
               />
               <circle
-                cx={310}
+                cx={240}
                 cy={y}
                 r={2}
                 fill="#60A5FA"

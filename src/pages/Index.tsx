@@ -33,10 +33,10 @@ const Index = () => {
         </motion.h1>
 
         {/* Dashboard Content */}
-        <div className="flex-1 flex items-start gap-6">
+        <div className="flex-1 flex items-start gap-0 w-full">
           {/* Sources label */}
           <motion.div
-            className="flex-1 relative"
+            className="relative flex-1"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}

@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   Search,
@@ -11,16 +10,18 @@ import {
   Settings,
   HelpCircle,
   ChevronDown,
+  Database
 } from "lucide-react";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
-  { icon: Search, label: "Exposure Analysis" },
-  { icon: Route, label: "Attack Paths" },
-  { icon: PenTool, label: "Scenario Designer" },
-  { icon: Calendar, label: "Events" },
-  { icon: Shield, label: "Administration" },
-  { icon: FileText, label: "Report Center" },
+  { icon: LayoutDashboard, label: "Dashboard", to: "/" },
+  { icon: Database, label: "Databases", to: "/databases" },
+  { icon: Search, label: "Exposure Analysis", to: "/exposure" },
+  { icon: Route, label: "Attack Paths", to: "/attack-paths" },
+  { icon: PenTool, label: "Scenario Designer", to: "/scenarios" },
+  { icon: Calendar, label: "Events", to: "/events" },
+  { icon: Shield, label: "Administration", to: "/admin" },
+  { icon: FileText, label: "Report Center", to: "/reports" },
 ];
 
 const bottomItems = [
@@ -29,40 +30,36 @@ const bottomItems = [
 ];
 
 const Sidebar = () => {
-  const [activeIndex, setActiveIndex] = useState(0);
-
   return (
-    <div className="glass-sidebar w-56 h-screen flex flex-col py-6 px-3 fixed left-0 top-0 z-50">
+    <div className="glass-sidebar w-56 h-screen flex flex-col py-6 px-3 fixed left-0 top-0 z-50 overflow-y-auto no-scrollbar">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-3 mb-8">
         <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center cyber-glow-blue">
           <Shield className="w-4.5 h-4.5 text-primary" />
         </div>
-        <span className="text-foreground font-semibold text-lg tracking-wide">CyberX</span>
+        <span className="text-foreground font-semibold text-lg tracking-wide">ORIZON</span>
       </div>
 
       {/* Main Nav */}
       <nav className="flex-1 flex flex-col gap-1">
-        {navItems.map((item, i) => (
-          <motion.button
+        {navItems.map((item) => (
+          <NavLink
             key={item.label}
-            onClick={() => setActiveIndex(i)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 w-full text-left ${
-              activeIndex === i
+            to={item.to}
+            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 w-full text-left ${
+              isActive
                 ? "pill-active"
                 : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
             }`}
-            whileHover={{ x: 2 }}
-            whileTap={{ scale: 0.98 }}
           >
             <item.icon className="w-4.5 h-4.5 flex-shrink-0" />
             <span>{item.label}</span>
-          </motion.button>
+          </NavLink>
         ))}
       </nav>
 
       {/* Bottom Nav */}
-      <div className="flex flex-col gap-1 mb-4">
+      <div className="flex flex-col gap-1 mb-4 mt-4">
         {bottomItems.map((item) => (
           <button
             key={item.label}
@@ -87,5 +84,6 @@ const Sidebar = () => {
     </div>
   );
 };
+
 
 export default Sidebar;
