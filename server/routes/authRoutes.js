@@ -7,12 +7,32 @@ const router = express.Router();
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 // Fallback if not set in env, though it should be
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const USER_AGENT = 'Orizon-App'; // Good practice for GitHub API
 
 // GET /api/auth/github
-// Redirects user to GitHub for authorization
+// Redirects user to GitHub for authorization or app installation
 router.get('/github', (req, res) => {
-  const redirectUri = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&scope=repo,read:user`;
+  const appName = process.env.GITHUB_APP_NAME;
+  const clientId = process.env.GITHUB_CLIENT_ID; // Read dynamically to ensure env is loaded
+
+  console.log('GitHub Auth Start:', { appName, clientId: clientId ? 'Exists' : 'Missing' });
+  
+  // If App Name is provided, use the App Installation flow (Install & Authorize)
+  // This prompts the user to install the app on repositories
+  if (appName) {
+    const installUrl = `https://github.com/apps/${appName}/installations/new`;
+    console.log('Redirecting to App Install:', installUrl);
+    return res.redirect(installUrl);
+  }
+
+  if (!clientId) {
+    console.error('Missing GITHUB_CLIENT_ID');
+    return res.status(500).send('Server Error: Missing GITHUB_CLIENT_ID');
+  }
+
+  // Fallback to standard OAuth flow (Authorize only) if no App Name
+  const redirectUri = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,read:user`;
+  console.log('Redirecting to OAuth:', redirectUri);
   res.redirect(redirectUri);
 });
 
