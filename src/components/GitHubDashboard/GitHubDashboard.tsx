@@ -1,10 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import GitHubCalendar from 'react-github-calendar';
-import { Repository } from './types';
+import { Repository, Commit } from './types';
+import { X } from 'lucide-react';
 
 const GitHubDashboard = () => {
   const [repos, setRepos] = useState<Repository[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+  const [commits, setCommits] = useState<Commit[]>([]);
+
+  // Fetch Commits on selection
+  useEffect(() => {
+    if (!selectedRepo) return;
+    const fetchCommits = async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/github/repos/${selectedRepo}/commits`);
+        const data = await res.json();
+        setCommits(data);
+      } catch (err) {
+        console.error('Failed to fetch commits', err);
+      }
+    };
+    fetchCommits();
+  }, [selectedRepo]);
 
   useEffect(() => {
     const fetchRepos = async () => {
@@ -84,6 +101,36 @@ const GitHubDashboard = () => {
           </div>
         ))}
       </div>
+      
+      {/* Commit Analysis Side Panel */}
+      {selectedRepo && (
+        <div className="fixed top-0 right-0 w-80 h-full bg-background border-l border-border shadow-2xl z-50 p-6 overflow-y-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-primary truncate max-w-[200px]">
+              {selectedRepo} Commits
+            </h2>
+            <button 
+              onClick={() => { setSelectedRepo(null); setCommits([]); }}
+              className="hover:text-primary transition-none"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            {commits.map((commit) => (
+              <div key={commit.sha} className="border-b border-border pb-3 last:border-0">
+                <p className="text-[11px] font-medium leading-normal mb-1">{commit.message}</p>
+                <div className="flex justify-between text-[10px] text-muted-foreground opacity-60">
+                  <span>{commit.author}</span>
+                  <span>{new Date(commit.date).toLocaleDateString()}</span>
+                </div>
+              </div>
+            ))}
+            {commits.length === 0 && <p className="text-muted-foreground text-xs">Loading commits...</p>}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
