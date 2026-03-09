@@ -100,6 +100,26 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     }
   };
 
+  const getButtonClassName = () => {
+      if (status === 'connected') {
+          return 'bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/50';
+      }
+      
+      switch (provider) {
+          case 'Vercel':
+              return 'bg-black hover:bg-zinc-900 text-white border border-zinc-800 shadow-[0_0_15px_-3px_rgba(255,255,255,0.1)]';
+          case 'Railway':
+              return 'bg-purple-600 hover:bg-purple-500 text-white shadow-[0_0_15px_-3px_rgba(147,51,234,0.3)] hover:shadow-[0_0_25px_-5px_rgba(147,51,234,0.5)] border border-purple-500/50';
+          case 'DigitalOcean':
+              return 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_-3px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_-5px_rgba(37,99,235,0.5)] border border-blue-500/50';
+          case 'Fly.io':
+              return 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_15px_-3px_rgba(79,70,229,0.3)] border border-indigo-500/50';
+          default:
+              // Default / Render
+              return 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)]';
+      }
+  };
+
   return (
     <div className="glass-card relative overflow-hidden rounded-xl border border-white/10 bg-black/40 p-8 backdrop-blur-xl transition-all duration-300 hover:border-white/20">
       {/* Background Glow */}
@@ -134,11 +154,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
           <Button 
             onClick={isOAuthProvider ? handleOAuthLogin : handleManualConnect}
             disabled={status === 'connecting' || status === 'connected'}
-            className={`w-full relative overflow-hidden transition-all duration-300 ${
-                status === 'connected' 
-                ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/50'
-                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)]'
-            }`}
+            className={`w-full relative overflow-hidden transition-all duration-300 ${getButtonClassName()}`}
           >
             {status === 'connecting' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {status === 'connected' 
