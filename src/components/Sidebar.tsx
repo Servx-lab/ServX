@@ -12,7 +12,8 @@ import {
   ChevronDown,
   Database,
   Github,
-  Server as ServerIcon
+  Server as ServerIcon,
+  Stethoscope
 } from "lucide-react";
 import {
   Collapsible,
@@ -22,6 +23,7 @@ import {
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", to: "/" },
+  { icon: Stethoscope, label: "Auto-Medic Pipeline", to: "/auto-medic" },
   { icon: Database, label: "Databases", to: "/databases" },
   { icon: ServerIcon, label: "Hosting & Servers", to: "/hosting/render" },
   { icon: Github, label: "GitHub", to: "/github" },
