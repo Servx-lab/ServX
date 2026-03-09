@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import GitHubCalendar from 'react-github-calendar';
+// @ts-ignore
+import { GitHubCalendar } from 'react-github-calendar';
 import { Repository, Commit } from './types';
 import { X } from 'lucide-react';
 
