@@ -68,6 +68,18 @@ export default {
           "red-glow": "#F87171",
           dark: "#0B0E14",
         },
+        orizons: {
+          void: "#0B0E14",
+          card: "#181C25",
+          input: "#222831",
+          teal: "#00C2CB",
+          mint: "#01D1CC",
+          purple: "#6C63FF",
+          text: {
+            high: "#FFFFFF",
+            low: "#A4ADB3",
+          },
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

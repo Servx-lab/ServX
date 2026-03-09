@@ -7,12 +7,20 @@ import {
     Eye, 
     EyeOff, 
     ArrowRight, 
-    CheckCircle2 
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { auth } from '@/lib/firebase';
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword,
+    signInWithPopup,
+    GoogleAuthProvider,
+    GithubAuthProvider
+} from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from "@/hooks/use-toast";
 
 const GoogleIcon = () => (
     <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
@@ -38,42 +46,98 @@ const GoogleIcon = () => (
 const AuthCard = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
+    const { toast } = useToast();
+
+    const handleAuth = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+
+        try {
+            if (isLogin) {
+                await signInWithEmailAndPassword(auth, email, password);
+                toast({
+                    title: "Welcome back!",
+                    description: "Successfully signed in to Orizons.",
+                });
+            } else {
+                await createUserWithEmailAndPassword(auth, email, password);
+                toast({
+                    title: "Account created",
+                    description: "Welcome to Orizons! Your account has been created.",
+                });
+            }
+            navigate('/dashboard');
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Authentication Error",
+                description: error.message || "Something went wrong. Please try again.",
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSocialLogin = async (provider: 'google' | 'github') => {
+        try {
+            const authProvider = provider === 'google' 
+                ? new GoogleAuthProvider() 
+                : new GithubAuthProvider();
+            
+            await signInWithPopup(auth, authProvider);
+            toast({
+                title: "Welcome back!",
+                description: `Successfully signed in with ${provider}.`,
+            });
+            navigate('/dashboard');
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Authentication Error",
+                description: error.message || "Failed to sign in with social provider.",
+            });
+        }
+    };
 
     return (
         <div className="w-full max-w-md mx-auto relative z-10">
-            {/* Glassmorphism Card */}
-            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 backdrop-blur-2xl shadow-2xl">
+            {/* Glassmorphism Card - Updated to Surface Dark #181C25 */}
+            <div className="relative overflow-hidden rounded-2xl border border-orizons-border-inactive bg-orizons-card backdrop-blur-2xl shadow-2xl">
                 {/* Auth content container */}
                 <div className="p-8">
                     {/* Header */}
                     <div className="text-center mb-8">
-                        <h2 className="text-2xl font-bold tracking-tight text-white mb-2">
+                        <h2 className="text-2xl font-bold tracking-tight text-orizons-text-high mb-2">
                             {isLogin ? 'Welcome Back' : 'Create Account'}
                         </h2>
-                        <p className="text-sm text-white/50">
+                        <p className="text-sm text-orizons-text-low">
                             {isLogin 
                                 ? 'Enter your credentials to access the console.' 
-                                : 'Start your 14-day free trial. No credit card required.'}
+                                : 'Start your journey. No credit card required.'}
                         </p>
                     </div>
 
                     {/* Toggle Switch */}
-                    <div className="relative bg-white/5 p-1 rounded-lg mb-8 flex">
+                    <div className="relative bg-orizons-input p-1 rounded-lg mb-8 flex">
                         <motion.div 
-                            className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white/10 rounded-md shadow-sm border border-white/5"
+                            className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-orizons-teal/10 rounded-md shadow-sm border border-orizons-teal/30"
                             layout
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                             style={{ left: isLogin ? '4px' : 'calc(50% + 0px)' }}
                         />
                          <button 
                             onClick={() => setIsLogin(true)}
-                            className={`flex-1 relative z-10 text-sm font-medium py-2 rounded-md transition-colors duration-200 ${isLogin ? 'text-white' : 'text-white/50 hover:text-white/80'}`}
+                            className={`flex-1 relative z-10 text-sm font-medium py-2 rounded-md transition-colors duration-200 ${isLogin ? 'text-orizons-text-high' : 'text-orizons-text-low hover:text-orizons-text-high'}`}
                         >
                             Sign In
                         </button>
                         <button 
                             onClick={() => setIsLogin(false)}
-                            className={`flex-1 relative z-10 text-sm font-medium py-2 rounded-md transition-colors duration-200 ${!isLogin ? 'text-white' : 'text-white/50 hover:text-white/80'}`}
+                            className={`flex-1 relative z-10 text-sm font-medium py-2 rounded-md transition-colors duration-200 ${!isLogin ? 'text-orizons-text-high' : 'text-orizons-text-low hover:text-orizons-text-high'}`}
                         >
                             Join Free
                         </button>
@@ -88,45 +152,55 @@ const AuthCard = () => {
                             exit={{ opacity: 0, x: isLogin ? 20 : -20 }}
                             transition={{ duration: 0.2 }}
                             className="space-y-4"
-                            onSubmit={(e) => e.preventDefault()}
+                            onSubmit={handleAuth}
                         >
                             <div className="space-y-2">
-                                <Label className="text-xs font-medium text-white/70">Email Address</Label>
+                                <Label className="text-xs font-medium text-orizons-text-low">Email Address</Label>
                                 <div className="relative group">
-                                    <Mail className="absolute left-3 top-3 h-4 w-4 text-white/30 group-focus-within:text-cyan-400 transition-colors" />
+                                    <Mail className="absolute left-3 top-3 h-4 w-4 text-orizons-text-low group-focus-within:text-orizons-teal transition-colors" />
                                     <Input 
                                         type="email" 
                                         placeholder="dev@company.com" 
-                                        className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-cyan-500/50 focus:ring-cyan-500/20 transition-all rounded-lg"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                        className="pl-9 bg-orizons-input border-orizons-border-inactive text-orizons-text-high placeholder:text-orizons-text-low/50 focus:border-orizons-teal focus:ring-orizons-teal/20 transition-all rounded-lg"
                                     />
                                 </div>
                             </div>
                             
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center">
-                                    <Label className="text-xs font-medium text-white/70">Password</Label>
-                                    {isLogin && <a href="#" className="text-xs text-cyan-400 hover:text-cyan-300">Forgot?</a>}
+                                    <Label className="text-xs font-medium text-orizons-text-low">Password</Label>
+                                    {isLogin && <a href="#" className="text-xs text-orizons-teal hover:text-orizons-mint">Forgot?</a>}
                                 </div>
                                 <div className="relative group">
-                                    <Lock className="absolute left-3 top-3 h-4 w-4 text-white/30 group-focus-within:text-cyan-400 transition-colors" />
+                                    <Lock className="absolute left-3 top-3 h-4 w-4 text-orizons-text-low group-focus-within:text-orizons-teal transition-colors" />
                                     <Input 
                                         type={showPassword ? 'text' : 'password'} 
                                         placeholder="••••••••" 
-                                        className="pl-9 pr-9 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-cyan-500/50 focus:ring-cyan-500/20 transition-all rounded-lg"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                        className="pl-9 pr-9 bg-orizons-input border-orizons-border-inactive text-orizons-text-high placeholder:text-orizons-text-low/50 focus:border-orizons-teal focus:ring-orizons-teal/20 transition-all rounded-lg"
                                     />
                                     <button 
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-3 text-white/30 hover:text-white/70 transition-colors"
+                                        className="absolute right-3 top-3 text-orizons-text-low hover:text-orizons-text-high transition-colors"
                                     >
                                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
                                 </div>
                             </div>
 
-                            <Button className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-5 rounded-lg shadow-lg shadow-cyan-500/20 border border-white/10 transition-all group">
-                                {isLogin ? 'Sign In to Console' : 'Create Free Account'}
-                                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                            <Button 
+                                type="submit" 
+                                disabled={isLoading}
+                                className="w-full bg-orizons-teal hover:bg-orizons-mint text-orizons-text-high font-semibold py-5 rounded-lg shadow-[0_0_20px_rgba(0,194,203,0.3)] border border-transparent hover:border-orizons-mint/50 transition-all group"
+                            >
+                                {isLoading ? 'Processing...' : (isLogin ? 'Sign In to Console' : 'Create Free Account')}
+                                {!isLoading && <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />}
                             </Button>
                         </motion.form>
                     </AnimatePresence>
@@ -135,19 +209,29 @@ const AuthCard = () => {
                     <div className="mt-8">
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t border-white/10" />
+                                <span className="w-full border-t border-orizons-border-inactive" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-[#12141C] px-2 text-white/40">Or continue with</span>
+                                <span className="bg-orizons-card px-2 text-orizons-text-low">Or continue with</span>
                             </div>
                         </div>
 
                         <div className="mt-6 grid grid-cols-2 gap-3">
-                            <Button variant="outline" className="bg-white/5 border-white/10 hover:bg-white/10 hover:text-white text-white/70">
+                            <Button 
+                                type="button"
+                                onClick={() => handleSocialLogin('github')}
+                                variant="outline" 
+                                className="bg-orizons-input border-orizons-border-inactive hover:bg-white/5 hover:text-orizons-text-high text-orizons-text-low"
+                            >
                                 <Github className="mr-2 h-4 w-4" />
                                 GitHub
                             </Button>
-                            <Button variant="outline" className="bg-white/5 border-white/10 hover:bg-white/10 hover:text-white text-white/70">
+                            <Button 
+                                type="button"
+                                onClick={() => handleSocialLogin('google')}
+                                variant="outline" 
+                                className="bg-orizons-input border-orizons-border-inactive hover:bg-white/5 hover:text-orizons-text-high text-orizons-text-low"
+                            >
                                 <GoogleIcon />
                                 <span className="ml-2">Google</span>
                             </Button>
@@ -156,12 +240,12 @@ const AuthCard = () => {
                 </div>
                 
                 {/* Bottom Highlight Line */}
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-blue-500" />
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-orizons-teal via-orizons-purple to-orizons-teal" />
             </div>
 
             {/* Background Glow Effects around the card */}
-            <div className="absolute -top-20 -left-20 w-40 h-40 bg-purple-500/30 rounded-full blur-[80px] -z-10" />
-            <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-cyan-500/30 rounded-full blur-[80px] -z-10" />
+            <div className="absolute -top-20 -left-20 w-40 h-40 bg-orizons-purple/20 rounded-full blur-[80px] -z-10" />
+            <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-orizons-teal/20 rounded-full blur-[80px] -z-10" />
         </div>
     );
 };

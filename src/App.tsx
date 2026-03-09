@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,11 @@ import InfrastructureConnections from "./pages/InfrastructureConnections";
 import AutoMedic from "./pages/AutoMedic";
 import Operations from "./pages/Operations";
 import NotFound from "./pages/NotFound";
+import AuthPage from "./pages/AuthPage";
+import Bridge from "./pages/Bridge";
+import Onboarding from "./pages/Onboarding";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { RequireAuth } from "@/components/RequireAuth";
 
 const queryClient = new QueryClient();
 
@@ -21,18 +26,92 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/dashboard" element={<Index />} />
-          <Route path="/databases" element={<Databases />} />
-          <Route path="/github" element={<GitHub />} />
-          <Route path="/hosting/:providerId" element={<HostingRender />} />
-          <Route path="/settings/connections" element={<InfrastructureConnections />} />
-          <Route path="/auto-medic" element={<AutoMedic />} />
-          <Route path="/operations" element={<Operations />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/auth" element={<AuthPage />} />
+
+            {/* Protected Routes (Require Auth + GitHub Link) */}
+            <Route
+              path="/dashboard"
+              element={
+                <RequireAuth>
+                  <Index />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/onboarding"
+              element={
+                <RequireAuth>
+                  <Onboarding />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/databases"
+              element={
+                <RequireAuth>
+                  <Databases />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/github"
+              element={
+                <RequireAuth>
+                  <GitHub />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/hosting/:providerId"
+              element={
+                <RequireAuth>
+                  <HostingRender />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/settings/connections"
+              element={
+                <RequireAuth>
+                  <InfrastructureConnections />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/auto-medic"
+              element={
+                <RequireAuth>
+                  <AutoMedic />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/operations"
+              element={
+                <RequireAuth>
+                  <Operations />
+                </RequireAuth>
+              }
+            />
+
+            {/* Special Protected Route (Requires Auth, but allows No GitHub Link) */}
+            <Route
+              path="/bridge"
+              element={
+                <RequireAuth requireGitHub={false}>
+                  <Bridge />
+                </RequireAuth>
+              }
+            />
+
+            {/* Catch-all */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
