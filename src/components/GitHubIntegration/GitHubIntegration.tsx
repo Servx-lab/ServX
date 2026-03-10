@@ -32,6 +32,7 @@ import {
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { RepoDetails, RepositorySummary, Deployment, Language } from "./types";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,8 @@ const GitHubIntegration = () => {
   const [repoDetails, setRepoDetails] = useState<RepoDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { linkGitHub, signInWithGitHub, isGitHubLinked } = useAuth();
 
   // Authentication Check (Wait for Firebase Auth)
   useEffect(() => {
@@ -82,7 +85,14 @@ const GitHubIntegration = () => {
       } catch (err: any) {
         console.error('Failed to fetch repos:', err);
         if (err.response?.status === 401) {
-            setError("GitHub not connected. Please connect your account.");
+            const serverError = err.response?.data?.error;
+            if (serverError === 'User record not found in database.' || serverError === 'GitHub account not connected.') {
+                setError("GitHub not connected. Please connect your account.");
+            } else {
+                setError(serverError || "GitHub not connected. Please connect your account.");
+            }
+        } else {
+            setError("Failed to fetch repositories.");
         }
       }
     };
@@ -157,12 +167,14 @@ const GitHubIntegration = () => {
 
   const handleConnectGitHub = async () => {
     try {
-      const res = await apiClient.get('/auth/github/url');
-      if (res.data.url) {
-        window.location.href = res.data.url;
+      if (isGitHubLinked) {
+        await signInWithGitHub(false);
+      } else {
+        await linkGitHub(false);
       }
+      window.location.reload();
     } catch (err: any) {
-      console.error('Failed to get GitHub Auth URL:', err);
+      console.error('Failed to connect GitHub:', err);
       setError("Failed to initiate GitHub connection. Please try again.");
     }
   };
@@ -433,12 +445,21 @@ const GitHubIntegration = () => {
                 <h3 className="text-xl font-semibold mb-2">Error Loading Analysis</h3>
                 <p className="text-muted-foreground max-w-sm mb-6">{error}</p>
                 <div className="flex gap-3">
-                    <button 
-                        onClick={() => window.location.reload()}
-                        className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm transition-all"
-                    >
-                        Retry
-                    </button>
+                    {error.includes("not connected") ? (
+                        <button 
+                            onClick={handleConnectGitHub}
+                            className="px-6 py-2 bg-primary hover:opacity-90 text-primary-foreground rounded-lg text-sm transition-all font-medium"
+                        >
+                            Connect GitHub
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={() => window.location.reload()}
+                            className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm transition-all"
+                        >
+                            Retry
+                        </button>
+                    )}
                     <button 
                         onClick={handleDisconnectGitHub}
                         className="px-6 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg text-sm transition-all"

@@ -147,6 +147,41 @@ router.get('/github/callback', async (req, res) => {
   }
 });
 
+// POST /api/auth/sync
+// Creates or updates the User record in MongoDB after Firebase login
+router.post('/sync', requireAuth, async (req, res) => {
+  try {
+    const { uid, email } = req.user;
+    const { name, avatarUrl, githubAccessToken, githubId } = req.body;
+
+    let user = await User.findOne({ uid }).select('+githubAccessToken');
+
+    if (user) {
+      // Update existing user
+      if (name) user.name = name;
+      if (avatarUrl) user.avatarUrl = avatarUrl;
+      if (githubAccessToken) user.githubAccessToken = githubAccessToken;
+      if (githubId) user.githubId = githubId;
+      await user.save();
+    } else {
+      // Create new user
+      user = await User.create({
+        uid,
+        email,
+        name: name || email.split('@')[0],
+        avatarUrl: avatarUrl || '',
+        githubAccessToken: githubAccessToken || undefined,
+        githubId: githubId || undefined,
+      });
+    }
+
+    res.json({ message: 'User synced', userId: user._id });
+  } catch (error) {
+    console.error('User Sync Error:', error.message);
+    res.status(500).json({ message: 'Failed to sync user' });
+  }
+});
+
 // POST /api/auth/github/disconnect
 // Clears the GitHub access token and ID for the authenticated user
 router.post('/github/disconnect', requireAuth, async (req, res) => {

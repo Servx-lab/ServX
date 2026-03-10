@@ -4,8 +4,11 @@ import { getAuth } from "firebase/auth";
 /**
  * Custom Axios instance for Orizon API with automatic Firebase Auth injection
  */
+const rawUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '';
+const baseURL = rawUrl ? `${rawUrl.replace(/\/+$/, '')}/api` : '/api';
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },

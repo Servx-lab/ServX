@@ -3,21 +3,20 @@ import React, { useEffect, useState } from 'react';
 import { GitHubCalendar } from 'react-github-calendar';
 import { Repository, Commit } from './types';
 import { X } from 'lucide-react';
+import apiClient from '@/lib/apiClient';
 
 const GitHubDashboard = () => {
   const [repos, setRepos] = useState<Repository[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const [commits, setCommits] = useState<Commit[]>([]);
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   // Fetch Commits on selection
   useEffect(() => {
     if (!selectedRepo) return;
     const fetchCommits = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/github/repos/${selectedRepo}/commits`);
-        const data = await res.json();
-        setCommits(data);
+        const res = await apiClient.get(`/github/repos/${selectedRepo}/commits`);
+        setCommits(res.data);
       } catch (err) {
         console.error('Failed to fetch commits', err);
       }
@@ -28,16 +27,15 @@ const GitHubDashboard = () => {
   useEffect(() => {
     const fetchRepos = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/github/repos`);
-        const data = await res.json();
+        const res = await apiClient.get(`/github/repos`);
+        const data = res.data;
         setRepos(data);
 
         // Fetch stack for each repo
         data.forEach(async (repo: Repository) => {
           try {
-            const stackRes = await fetch(`${API_URL}/api/github/repos/${repo.name}/stack`);
-            const stackData = await stackRes.json();
-            setRepos(prev => prev.map(r => r.name === repo.name ? { ...r, stack: stackData.stack } : r));
+            const stackRes = await apiClient.get(`/github/repos/${repo.name}/stack`);
+            setRepos(prev => prev.map(r => r.name === repo.name ? { ...r, stack: stackRes.data.stack } : r));
           } catch (err) {
             console.error(err);
           }
@@ -47,7 +45,7 @@ const GitHubDashboard = () => {
       }
     };
     fetchRepos();
-  }, [API_URL]);
+  }, []);
 
   return (
     <div className="w-full h-full bg-background p-6 font-mono text-xs text-foreground overflow-y-auto">
