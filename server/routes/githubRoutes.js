@@ -14,8 +14,14 @@ const authenticate = async (req, res, next) => {
   try {
     const user = await User.findOne({ uid }).select('+githubAccessToken');
     
-    if (!user || !user.githubAccessToken) {
-      return res.status(401).json({ error: 'User not found or not connected to GitHub' });
+    if (!user) {
+      console.log('[GitHub Auth] User not found in DB for UID:', uid);
+      return res.status(401).json({ error: 'User record not found in database.' });
+    }
+
+    if (!user.githubAccessToken) {
+      console.log('[GitHub Auth] GitHub token missing for user:', uid);
+      return res.status(401).json({ error: 'GitHub account not connected.' });
     }
     
     req.githubToken = user.githubAccessToken;

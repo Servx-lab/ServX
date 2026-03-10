@@ -167,6 +167,24 @@ const GitHubIntegration = () => {
     }
   };
 
+  const handleDisconnectGitHub = async () => {
+    if (!window.confirm("Are you sure you want to disconnect GitHub? This will clear your analytics access.")) return;
+    try {
+      await apiClient.post('/auth/github/disconnect');
+      setRepos([]);
+      setFilteredRepos([]);
+      setRepoDetails(null);
+      setError(null);
+      // Force user back to connect state
+      // Actually, since we're using Firebase auth, we just need to wait for local state to catch up
+      // or we can just reload
+      window.location.reload();
+    } catch (err: any) {
+      console.error('Failed to disconnect GitHub:', err);
+      setError("Failed to disconnect. Please try again.");
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[500px] gap-4">
@@ -187,8 +205,14 @@ const GitHubIntegration = () => {
       {/* Sidebar List */}
       <div className="w-80 border-r border-white/10 flex flex-col bg-black/20">
         <div className="p-4 border-b border-white/10 space-y-3">
-          <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <Box className="w-4 h-4" /> Repositories
+          <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+            <span className="flex items-center gap-2"><Box className="w-4 h-4" /> Repositories</span>
+            <button 
+                onClick={handleDisconnectGitHub}
+                className="text-[10px] text-red-400/60 hover:text-red-400 transition-colors uppercase tracking-tight"
+            >
+                Disconnect
+            </button>
           </h3>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
@@ -408,6 +432,20 @@ const GitHubIntegration = () => {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Error Loading Analysis</h3>
                 <p className="text-muted-foreground max-w-sm mb-6">{error}</p>
+                <div className="flex gap-3">
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm transition-all"
+                    >
+                        Retry
+                    </button>
+                    <button 
+                        onClick={handleDisconnectGitHub}
+                        className="px-6 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg text-sm transition-all"
+                    >
+                        Reset Connection
+                    </button>
+                </div>
             </div>
         ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground opacity-50">

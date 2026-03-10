@@ -7,6 +7,7 @@ const requireAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('[Auth] Missing or malformed header:', authHeader);
     return res.status(401).json({ 
       error: 'Unauthorized', 
       message: 'Missing or malformed Authorization header' 
@@ -17,6 +18,7 @@ const requireAuth = async (req, res, next) => {
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(token);
+    console.log('[Auth] Token verified for UID:', decodedToken.uid);
     // Attach the global UID to the request object
     req.user = {
       uid: decodedToken.uid,

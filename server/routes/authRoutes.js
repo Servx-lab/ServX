@@ -147,6 +147,28 @@ router.get('/github/callback', async (req, res) => {
   }
 });
 
+// POST /api/auth/github/disconnect
+// Clears the GitHub access token and ID for the authenticated user
+router.post('/github/disconnect', requireAuth, async (req, res) => {
+  try {
+    const ownerUid = req.user.uid;
+    const user = await User.findOne({ uid: ownerUid });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.githubAccessToken = undefined;
+    user.githubId = undefined;
+    await user.save();
+
+    res.json({ message: 'GitHub connection removed successfully' });
+  } catch (error) {
+    console.error('GitHub Disconnect Error:', error.message);
+    res.status(500).json({ message: 'Failed to disconnect GitHub' });
+  }
+});
+
 // --- Firebase User Management Routes ---
 
 // Helper: Get or create a Firebase Admin app from an encrypted saved connection
