@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import SecurityInfo from "./SecurityInfo";
+import WorkspaceBranding from "./WorkspaceBranding";
 import {
   LayoutDashboard,
   Search,
@@ -56,6 +57,9 @@ const Sidebar = () => {
         </div>
         <span className="text-foreground font-semibold text-lg tracking-wide">ORIZON</span>
       </div>
+
+      {/* Workspace Branding */}
+      <WorkspaceBranding ownerName="Chitkul" />
 
       {/* Main Nav */}
       <nav className="flex-1 flex flex-col gap-1">

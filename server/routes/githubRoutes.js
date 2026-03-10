@@ -95,7 +95,7 @@ router.get('/repos/:owner/:repo/details', authenticate, async (req, res) => {
     // 5. Fetch Deployments
     const deploymentsPromise = axios.get(`https://api.github.com/repos/${repoFullName}/deployments`, {
       headers: { Authorization: `Bearer ${req.githubToken}` },
-      params: { per_page: 5 },
+      params: { per_page: 6 },
     });
 
     const [repoResponse, commitsResponse, contributorsResponse, languagesResponse, deploymentsResponse] = await Promise.all([

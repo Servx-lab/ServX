@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Globe, 
   Key, 
@@ -67,6 +68,34 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
   const [connections, setConnections] = useState(MOCK_CONNECTIONS);
   const [apiKeys, setApiKeys] = useState({ render: '', fly: '' });
   const [loading, setLoading] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    // Check for query params indicating success from OAuth callback
+    const vercelConnected = searchParams.get('vercel_connected');
+    const doConnected = searchParams.get('digitalocean_connected');
+    const railwayConnected = searchParams.get('railway_connected');
+    
+    if (vercelConnected === 'true') {
+        setConnections(prev => ({ ...prev, vercel: true }));
+        // Clean up URL
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('vercel_connected');
+        setSearchParams(newParams);
+    }
+    if (doConnected === 'true') {
+        setConnections(prev => ({ ...prev, digitalocean: true }));
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('digitalocean_connected');
+        setSearchParams(newParams);
+    }
+    if (railwayConnected === 'true') {
+        setConnections(prev => ({ ...prev, railway: true }));
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('railway_connected');
+        setSearchParams(newParams);
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleOAuthLogin = (provider: 'vercel' | 'digitalocean' | 'railway') => {
     // Redirect to backend OAuth initiation route
