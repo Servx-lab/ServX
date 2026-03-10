@@ -8,7 +8,9 @@ const User = require('./models/User');
 const UserConnection = require('./models/UserConnection');
 const authRoutes = require('./routes/authRoutes');
 const githubRoutes = require('./routes/githubRoutes');
+const oauthRoutes = require('./routes/oauthRoutes');
 const databaseExplorerRoutes = require('./routes/databaseExplorerRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const autoMedicMiddleware = require('./middleware/autoMedicMiddleware');
 const { encrypt } = require('./utils/encryption');
 
@@ -23,7 +25,9 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/github', githubRoutes);
+app.use('/api/oauth', oauthRoutes);
 app.use('/api/db', databaseExplorerRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Database Connection
 const connectDB = async () => {
