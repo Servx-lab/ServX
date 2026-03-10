@@ -5,15 +5,14 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-// Middleware to authenticate user and get GitHub token from DB
-const authenticate = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
+const requireAuth = require('../middleware/requireAuth');
 
-  const token = authHeader.split(' ')[1];
+// Middleware to authenticate user and get GitHub token from DB using Firebase UID
+const authenticate = async (req, res, next) => {
+  // requireAuth is expected to be called before this or integrated
+  const uid = req.user.uid;
   try {
-    const decoded = jwt.verify(token, process.env.ENCRYPTION_KEY || 'secret');
-    const user = await User.findById(decoded.userId).select('+githubAccessToken');
+    const user = await User.findOne({ uid }).select('+githubAccessToken');
     
     if (!user || !user.githubAccessToken) {
       return res.status(401).json({ error: 'User not found or not connected to GitHub' });
@@ -22,13 +21,14 @@ const authenticate = async (req, res, next) => {
     req.githubToken = user.githubAccessToken;
     next();
   } catch (error) {
-    return res.status(403).json({ error: 'Invalid or expired token' });
+    console.error('GitHub Auth Error:', error.message);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
 // GET /api/github/repos
 // Fetches all repositories for the authenticated user
-router.get('/repos', authenticate, async (req, res) => {
+router.get('/repos', requireAuth, authenticate, async (req, res) => {
   try {
     const response = await axios.get('https://api.github.com/user/repos', {
       headers: {
@@ -65,7 +65,7 @@ router.get('/repos', authenticate, async (req, res) => {
 
 // GET /api/github/repos/:owner/:repo/details
 // Fetches comprehensive details: repo info, last 50 commits, contributors
-router.get('/repos/:owner/:repo/details', authenticate, async (req, res) => {
+router.get('/repos/:owner/:repo/details', requireAuth, authenticate, async (req, res) => {
   const { owner, repo } = req.params;
   const repoFullName = `${owner}/${repo}`;
 

@@ -3,11 +3,12 @@ const { MongoClient } = require('mongodb');
 const router = express.Router();
 const UserConnection = require('../models/UserConnection');
 const { decrypt } = require('../utils/encryption');
+const requireAuth = require('../middleware/requireAuth');
 
-// Helper: get connection string from a saved connection
-async function getConnectionString(connectionId) {
-    const connection = await UserConnection.findById(connectionId);
-    if (!connection) throw new Error('Connection not found');
+// Helper: get connection string from a saved connection securely
+async function getConnectionString(connectionId, ownerUid) {
+    const connection = await UserConnection.findOne({ _id: connectionId, ownerUid });
+    if (!connection) throw new Error('Connection not found or access denied');
     const decryptedConfig = decrypt({ content: connection.encryptedConfig, iv: connection.iv });
     const config = JSON.parse(decryptedConfig);
     if (!config.connectionUri) throw new Error('Invalid connection configuration');
@@ -15,13 +16,13 @@ async function getConnectionString(connectionId) {
 }
 
 // 1. GET /api/db/explore/databases - List all databases on the cluster
-router.get('/explore/databases', async (req, res) => {
+router.get('/explore/databases', requireAuth, async (req, res) => {
   let client;
   try {
     const { connectionId } = req.query;
     if (!connectionId) return res.status(400).json({ message: 'Connection ID is required' });
 
-    const connectionString = await getConnectionString(connectionId);
+    const connectionString = await getConnectionString(connectionId, req.user.uid);
     client = new MongoClient(connectionString);
     await client.connect();
 
@@ -41,7 +42,7 @@ router.get('/explore/databases', async (req, res) => {
 });
 
 // 2. GET /api/db/explore/collections?connectionId=...&dbName=...
-router.get('/explore/collections', async (req, res) => {
+router.get('/explore/collections', requireAuth, async (req, res) => {
   let client;
   try {
     const { connectionId, dbName } = req.query;
@@ -49,7 +50,7 @@ router.get('/explore/collections', async (req, res) => {
       return res.status(400).json({ message: 'Connection ID and database name are required' });
     }
 
-    const connectionString = await getConnectionString(connectionId);
+    const connectionString = await getConnectionString(connectionId, req.user.uid);
     client = new MongoClient(connectionString);
     await client.connect();
 
@@ -67,7 +68,7 @@ router.get('/explore/collections', async (req, res) => {
 });
 
 // 3. POST /api/db/explore/documents
-router.post('/explore/documents', async (req, res) => {
+router.post('/explore/documents', requireAuth, async (req, res) => {
   let client;
   try {
     const { connectionId, dbName, collectionName } = req.body;
@@ -75,7 +76,7 @@ router.post('/explore/documents', async (req, res) => {
       return res.status(400).json({ message: 'Connection ID, database name, and collection name are required' });
     }
 
-    const connectionString = await getConnectionString(connectionId);
+    const connectionString = await getConnectionString(connectionId, req.user.uid);
     client = new MongoClient(connectionString);
     await client.connect();
 

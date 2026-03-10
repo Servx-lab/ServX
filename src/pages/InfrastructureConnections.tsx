@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import apiClient from '@/lib/apiClient';
 
 // --- Mock Connect State ---
 const MOCK_CONNECTIONS = {
@@ -66,11 +67,33 @@ interface InfrastructureConnectionsProps {}
 
 const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () => {
   const [connections, setConnections] = useState(MOCK_CONNECTIONS);
+  const [savedConnections, setSavedConnections] = useState<any[]>([]);
   const [apiKeys, setApiKeys] = useState({ render: '', fly: '' });
   const [loading, setLoading] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
+    const fetchConnections = async () => {
+        try {
+            const response = await apiClient.get('/connections');
+            setSavedConnections(response.data);
+            
+            // Map saved connections to the simple boolean state for UI
+            const newConnState = { ...MOCK_CONNECTIONS };
+            response.data.forEach((c: any) => {
+                const provider = c.provider.toLowerCase();
+                if (provider in newConnState) {
+                    (newConnState as any)[provider] = true;
+                }
+            });
+            setConnections(newConnState);
+        } catch (err) {
+            console.error('Failed to fetch connections:', err);
+        }
+    };
+
+    fetchConnections();
+
     // Check for query params indicating success from OAuth callback
     const vercelConnected = searchParams.get('vercel_connected');
     const doConnected = searchParams.get('digitalocean_connected');
@@ -108,15 +131,20 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
 
     setLoading(provider);
     
-    // Log the payload as requested
-    console.log('Sending to backend:', provider, token);
-    
-    // Simulate API call for Demo purposes
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setLoading(null);
-    setConnections(prev => ({ ...prev, [provider]: true }));
-    setApiKeys(prev => ({ ...prev, [provider]: '' })); // Clear input
+    try {
+        await apiClient.post('/connections', {
+            name: `${provider} Connection`,
+            provider: provider.charAt(0).toUpperCase() + provider.slice(1),
+            config: { apiKey: token }
+        });
+        
+        setConnections(prev => ({ ...prev, [provider]: true }));
+        setApiKeys(prev => ({ ...prev, [provider]: '' }));
+    } catch (err) {
+        console.error(`Failed to save ${provider} connection:`, err);
+    } finally {
+        setLoading(null);
+    }
   };
 
   const handleInputChange = (provider: 'render' | 'fly', value: string) => {
