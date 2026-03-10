@@ -8,15 +8,7 @@ import Sidebar from "@/components/Sidebar";
 
 // --- sub-components ---
 
-const AttackParticles = ({ start, end, active }: any) => {
-  const points = useMemo(() => {
-    const p = [];
-    for (let i = 0; i <= 20; i++) {
-      p.push(new THREE.Vector3().lerpVectors(new THREE.Vector3(...start), new THREE.Vector3(...end), i / 20));
-    }
-    return p;
-  }, [start, end]);
-
+const AttackParticles = React.memo(({ start, end, active }: any) => {
   const [pos, setPos] = useState(0);
   
   useFrame((state, delta) => {
@@ -32,14 +24,14 @@ const AttackParticles = ({ start, end, active }: any) => {
 
   return (
     <mesh position={currentPos}>
-      <sphereGeometry args={[0.1, 8, 8]} />
+      <sphereGeometry args={[0.08, 16, 16]} />
       <meshBasicMaterial color="#6C63FF" />
-      <pointLight color="#6C63FF" intensity={2} distance={2} />
+      <pointLight color="#6C63FF" intensity={4} distance={3} />
     </mesh>
   );
-};
+});
 
-const TopologyNode = ({ position, label, isTargeted }: any) => {
+const TopologyNode = React.memo(({ position, label, isTargeted }: any) => {
   const meshRef = useRef<THREE.Mesh>(null);
   
   useFrame((state) => {
@@ -50,13 +42,13 @@ const TopologyNode = ({ position, label, isTargeted }: any) => {
   });
 
   return (
-    <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
+    <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
       <group position={position}>
         <Icosahedron ref={meshRef} args={[0.5, 1]} onPointerOver={(e) => (e.stopPropagation())}>
           <meshStandardMaterial 
             color={isTargeted ? "#6C63FF" : "#00C2CB"} 
             emissive={isTargeted ? "#6C63FF" : "#00C2CB"} 
-            emissiveIntensity={isTargeted ? 15 : 2} 
+            emissiveIntensity={isTargeted ? 20 : 2} 
             wireframe 
           />
         </Icosahedron>
