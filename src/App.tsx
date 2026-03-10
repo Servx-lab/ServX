@@ -16,6 +16,7 @@ import AuthPage from "./pages/AuthPage";
 import Bridge from "./pages/Bridge";
 import Onboarding from "./pages/Onboarding";
 import Administrator from "./pages/Administrator";
+import AttackPath from "./pages/AttackPath";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "@/components/RequireAuth";
 
@@ -103,6 +104,14 @@ const App = () => (
               element={
                 <RequireAuth>
                   <Administrator />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/attack-paths"
+              element={
+                <RequireAuth>
+                  <AttackPath />
                 </RequireAuth>
               }
             />
