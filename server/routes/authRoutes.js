@@ -14,7 +14,23 @@ const USER_AGENT = 'Orizon-App'; // Good practice for GitHub API
 
 const requireAuth = require('../middleware/requireAuth');
 
-// GET /api/auth/github
+// GET /api/auth/github/url
+// Returns the GitHub OAuth authorization URL for the frontend to redirect to
+router.get('/github/url', requireAuth, (req, res) => {
+  const clientId = process.env.GITHUB_CLIENT_ID;
+  const ownerUid = req.user.uid;
+
+  if (!clientId) {
+    return res.status(500).json({ error: 'GitHub Client ID not configured' });
+  }
+
+  const state = encodeURIComponent(JSON.stringify({ ownerUid }));
+  const authorizeUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,read:user&state=${state}`;
+  
+  res.json({ url: authorizeUrl });
+});
+
+// GET /api/auth/github (Legacy/Direct)
 // Redirects user to GitHub for authorization or app installation
 router.get('/github', requireAuth, (req, res) => {
   const clientId = process.env.GITHUB_CLIENT_ID; 

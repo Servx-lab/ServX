@@ -31,6 +31,7 @@ import {
 } from "recharts";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 import { RepoDetails, RepositorySummary, Deployment, Language } from "./types";
 import { Badge } from "@/components/ui/badge";
@@ -50,14 +51,23 @@ const GitHubIntegration = () => {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Authentication Check (Simplified for Firebase-first flow)
+  // Authentication Check (Wait for Firebase Auth)
   useEffect(() => {
-    // If we have a token in URL (legacy), clean it up
-    if (searchParams.get("token")) {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
+    });
+
+    // Cleanup search params
+    if (searchParams.get("token") || searchParams.get("success")) {
       setSearchParams({});
     }
-    // We assume Firebase Auth is already active thanks to our global RequireAuth wrapper
-    setIsAuthenticated(true);
+
+    return () => unsubscribe();
   }, [searchParams, setSearchParams]);
 
   // Fetch Repos
@@ -145,13 +155,25 @@ const GitHubIntegration = () => {
   }, [repoDetails]);
 
 
+  const handleConnectGitHub = async () => {
+    try {
+      const res = await apiClient.get('/auth/github/url');
+      if (res.data.url) {
+        window.location.href = res.data.url;
+      }
+    } catch (err: any) {
+      console.error('Failed to get GitHub Auth URL:', err);
+      setError("Failed to initiate GitHub connection. Please try again.");
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[500px] gap-4">
         <Github className="w-16 h-16 opacity-50" />
         <h2 className="text-xl font-semibold">Connect GitHub to view Analytics</h2>
         <button
-          onClick={() => (window.location.href = `/api/auth/github`)}
+          onClick={handleConnectGitHub}
           className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all font-medium"
         >
           Connect GitHub
