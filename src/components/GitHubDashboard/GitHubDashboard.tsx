@@ -8,13 +8,14 @@ const GitHubDashboard = () => {
   const [repos, setRepos] = useState<Repository[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const [commits, setCommits] = useState<Commit[]>([]);
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   // Fetch Commits on selection
   useEffect(() => {
     if (!selectedRepo) return;
     const fetchCommits = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/github/repos/${selectedRepo}/commits`);
+        const res = await fetch(`${API_URL}/api/github/repos/${selectedRepo}/commits`);
         const data = await res.json();
         setCommits(data);
       } catch (err) {
@@ -27,14 +28,14 @@ const GitHubDashboard = () => {
   useEffect(() => {
     const fetchRepos = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/github/repos');
+        const res = await fetch(`${API_URL}/api/github/repos`);
         const data = await res.json();
         setRepos(data);
 
         // Fetch stack for each repo
         data.forEach(async (repo: Repository) => {
           try {
-            const stackRes = await fetch(`http://localhost:5000/api/github/repos/${repo.name}/stack`);
+            const stackRes = await fetch(`${API_URL}/api/github/repos/${repo.name}/stack`);
             const stackData = await stackRes.json();
             setRepos(prev => prev.map(r => r.name === repo.name ? { ...r, stack: stackData.stack } : r));
           } catch (err) {
@@ -46,7 +47,7 @@ const GitHubDashboard = () => {
       }
     };
     fetchRepos();
-  }, []);
+  }, [API_URL]);
 
   return (
     <div className="w-full h-full bg-background p-6 font-mono text-xs text-foreground overflow-y-auto">

@@ -12,9 +12,10 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus(null);
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
     try {
-      const response = await fetch('http://localhost:5000/api/connections', {
+      const response = await fetch(`${API_URL}/api/connections`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

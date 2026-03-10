@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   Search,
@@ -43,6 +44,8 @@ const bottomItems = [
 ];
 
 const Sidebar = () => {
+  const { user } = useAuth();
+
   return (
     <div className="glass-sidebar w-56 h-screen flex flex-col py-6 px-3 fixed left-0 top-0 z-50 overflow-y-auto no-scrollbar">
       {/* Logo */}
@@ -111,11 +114,24 @@ const Sidebar = () => {
 
       {/* User Profile */}
       <div className="glass-card px-3 py-3 flex items-center gap-3 cursor-pointer hover:bg-secondary/80 transition-colors">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-xs font-bold text-primary-foreground">
-          JM
-        </div>
+        {user?.photoURL ? (
+           <img src={user.photoURL} alt={user.displayName || "User"} className="w-8 h-8 rounded-full object-cover" />
+        ) : (
+           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-xs font-bold text-primary-foreground">
+             {user?.displayName
+               ? user.displayName
+                   .split(" ")
+                   .map((n) => n[0])
+                   .join("")
+                   .substring(0, 2)
+                   .toUpperCase()
+               : "U"}
+           </div>
+        )}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">James McIntyre</p>
+          <p className="text-sm font-medium text-foreground truncate">
+            {user?.displayName || user?.email || "User"}
+          </p>
         </div>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
       </div>

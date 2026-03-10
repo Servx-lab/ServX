@@ -11,12 +11,13 @@ const DatabaseViewer = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:5000/api/databases/mongodb/users');
+      const response = await fetch(`${API_URL}/api/databases/mongodb/users`);
       
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
