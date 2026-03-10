@@ -11,14 +11,16 @@ const VERCEL_REDIRECT_URI = process.env.VERCEL_REDIRECT_URI || 'http://localhost
 const UserConnection = require('../models/UserConnection');
 const { decrypt } = require('../utils/encryption');
 
-router.get('/vercel', async (req, res) => {
+const requireAuth = require('../middleware/requireAuth');
+
+router.get('/vercel', requireAuth, async (req, res) => {
   const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-  const userId = req.query.userId || req.user?.uid || 'mock-user-123';
+  const ownerUid = req.user.uid;
 
   try {
     // 1. Fetch the user's Vercel connection from DB
     const connection = await UserConnection.findOne({ 
-      userId, 
+      ownerUid, 
       provider: 'Vercel' 
     });
 
@@ -43,7 +45,7 @@ router.get('/vercel', async (req, res) => {
     if (!clientId) throw new Error('Client ID missing in connection config');
 
     const state = Math.random().toString(36).substring(7);
-    const url = `https://vercel.com/oauth/authorize?client_id=${clientId}&state=${state}&redirect_uri=${VERCEL_REDIRECT_URI}&user_id=${userId}`; // Pass user_id for callback context
+    const url = `https://vercel.com/oauth/authorize?client_id=${clientId}&state=${state}&redirect_uri=${VERCEL_REDIRECT_URI}&owner_uid=${ownerUid}`; // Pass owner_uid for callback context
     res.redirect(url);
 
   } catch (error) {
@@ -53,9 +55,9 @@ router.get('/vercel', async (req, res) => {
 });
 
 router.get('/vercel/callback', async (req, res) => {
-  const { code, user_id: userId } = req.query;
+  const { code, owner_uid: ownerUid } = req.query;
   const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-  const targetUserId = userId || 'mock-user-123';
+  const targetOwnerUid = ownerUid || 'mock-user-123';
 
   if (!code) {
     return res.redirect(`${FRONTEND_URL}/infrastructure?error=no_code`);
@@ -63,7 +65,7 @@ router.get('/vercel/callback', async (req, res) => {
 
   try {
     // 1. Get user's credentials again for token exchange
-    const connection = await UserConnection.findOne({ userId: targetUserId, provider: 'Vercel' });
+    const connection = await UserConnection.findOne({ ownerUid: targetOwnerUid, provider: 'Vercel' });
     let clientId = VERCEL_CLIENT_ID;
     let clientSecret = VERCEL_CLIENT_SECRET;
 

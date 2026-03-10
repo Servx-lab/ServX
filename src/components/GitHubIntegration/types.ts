@@ -7,6 +7,10 @@ export interface RepoDetails {
   html_url: string;
   language: string;
   stargazers_count: number;
+  private?: boolean;
+  forks?: number;
+  open_issues?: number;
+  created_at?: string;
   updated_at: string;
   owner: { login: string };
   commits?: Commit[];

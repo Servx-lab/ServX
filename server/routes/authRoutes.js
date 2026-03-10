@@ -12,18 +12,20 @@ const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 // Fallback if not set in env, though it should be
 const USER_AGENT = 'Orizon-App'; // Good practice for GitHub API
 
+const requireAuth = require('../middleware/requireAuth');
+
 // GET /api/auth/github
 // Redirects user to GitHub for authorization or app installation
-router.get('/github', (req, res) => {
-  const appName = process.env.GITHUB_APP_NAME;
+router.get('/github', requireAuth, (req, res) => {
   const clientId = process.env.GITHUB_CLIENT_ID; 
+  const ownerUid = req.user.uid;
 
-  console.log('GitHub Auth Start:', { appName, clientId: clientId ? 'Exists' : 'Missing' });
+  console.log('GitHub Auth Start for UID:', ownerUid);
   
-  // Always use the OAuth flow for "Connecting" existing users or simple auth
-  // The App Install flow is only needed if you specifically want to trigger a new installation
-  // Standard OAuth will ask for permissions on installed repos anyway
-  const redirectUri = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,read:user`;
+  // Use state to pass the Firebase UID securely through the OAuth flow
+  const state = encodeURIComponent(JSON.stringify({ ownerUid }));
+  const redirectUri = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,read:user&state=${state}`;
+  
   console.log('Redirecting to OAuth:', redirectUri);
   res.redirect(redirectUri);
 });
@@ -32,16 +34,21 @@ router.get('/github', (req, res) => {
 // Handles the callback, exchanges code for token
 router.get('/github/callback', async (req, res) => {
   const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-  const { code } = req.query;
+  const { code, state } = req.query;
+  let ownerUid = null;
 
-  console.log('GitHub Callback Received. Code:', code ? 'Present' : 'Missing');
-  console.log('Using Credentials:', { 
-    clientId: CLIENT_ID, 
-    clientSecretHeader: CLIENT_SECRET ? `...${CLIENT_SECRET.slice(-4)}` : 'Missing' 
-  });
+  if (state) {
+    try {
+      const decodedState = JSON.parse(decodeURIComponent(state));
+      ownerUid = decodedState.ownerUid;
+    } catch (e) {
+      console.error('Failed to parse OAuth state:', e.message);
+    }
+  }
 
+  console.log('GitHub Callback Received. Code:', code ? 'Present' : 'Missing', 'UID:', ownerUid);
+  
   if (!code) {
-    // Redirect to frontend with error instead of sending 400 text
     return res.redirect(`${FRONTEND_URL}/github?error=no_code_provided`);
   }
 
@@ -68,51 +75,49 @@ router.get('/github/callback', async (req, res) => {
       throw new Error(`Failed to obtain access token from GitHub: ${tokenResponse.data.error_description || tokenResponse.data.error || 'Unknown error'}`);
     }
 
-    // 2. Initial fetch of user profile to identify them in our DB
+    // 2. Fetch profile to get GitHub ID
     const userProfileResponse = await axios.get('https://api.github.com/user', {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
-
     const profile = userProfileResponse.data;
-    console.log('GitHub Profile Fetched:', { id: profile.id, login: profile.login, email: profile.email });
 
-    // 3. Find or Create User in DB
-    let user = await User.findOne({ githubId: profile.id.toString() });
-
-    if (!user) {
-        // Try to find by email if available to link accounts
-        if (profile.email) {
-            user = await User.findOne({ email: profile.email });
-        }
+    // 3. Link to existing Firebase user if ownerUid is present
+    let user;
+    if (ownerUid) {
+        user = await User.findOne({ uid: ownerUid });
     }
 
     if (user) {
-      console.log('Updating existing user:', user._id);
-      // Update access token
+      console.log('Linking GitHub to Firebase user:', ownerUid);
       user.githubAccessToken = accessToken;
-      if (!user.githubId) user.githubId = profile.id.toString(); // Link if found by email
+      user.githubId = profile.id.toString();
       await user.save();
     } else {
-      console.log('Creating new user for:', profile.login);
-      // Create new user
-      user = await User.create({
-        githubId: profile.id.toString(),
-        name: profile.name || profile.login,
-        email: profile.email || `${profile.login}@users.noreply.github.com`, // Use standard GitHub no-reply format
-        avatarUrl: profile.avatar_url,
-        githubAccessToken: accessToken,
-      });
+      // Fallback: search by githubId or email (old logic)
+      user = await User.findOne({ githubId: profile.id.toString() });
+      if (!user && profile.email) {
+          user = await User.findOne({ email: profile.email });
+      }
+
+      if (user) {
+        user.githubAccessToken = accessToken;
+        if (!user.githubId) user.githubId = profile.id.toString();
+        await user.save();
+      } else {
+        // Create new user if not found at all
+        user = await User.create({
+            uid: ownerUid || `legacy-${profile.id}`, // Maintain consistency
+            githubId: profile.id.toString(),
+            name: profile.name || profile.login,
+            email: profile.email || `${profile.login}@users.noreply.github.com`,
+            avatarUrl: profile.avatar_url,
+            githubAccessToken: accessToken,
+        });
+      }
     }
 
-    // 4. Issue a session token (JWT) for OUR app
-    // This token encodes the user ID, so future requests can look up the user & their GitHub token
-    const sessionToken = jwt.sign({ userId: user._id }, process.env.ENCRYPTION_KEY || 'secret', { expiresIn: '7d' });
-
-    // 5. Redirect back to frontend with the token
-    // In a real app, you might use a cookie, but query param is simple for now
-    res.redirect(`${FRONTEND_URL}/github?token=${sessionToken}`);
+    // 5. Redirect back to frontend
+    res.redirect(`${FRONTEND_URL}/github?success=true`);
 
   } catch (error) {
     const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';

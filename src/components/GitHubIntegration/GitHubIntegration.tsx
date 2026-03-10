@@ -35,8 +35,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RepoDetails, RepositorySummary, Deployment, Language } from "./types";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import apiClient from "@/lib/apiClient";
 
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api";
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
 
 const GitHubIntegration = () => {
@@ -50,18 +50,14 @@ const GitHubIntegration = () => {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Authentication Check
+  // Authentication Check (Simplified for Firebase-first flow)
   useEffect(() => {
-    const tokenFromUrl = searchParams.get("token");
-    const tokenFromStorage = localStorage.getItem("github_token");
-
-    if (tokenFromUrl) {
-      localStorage.setItem("github_token", tokenFromUrl);
-      setIsAuthenticated(true);
+    // If we have a token in URL (legacy), clean it up
+    if (searchParams.get("token")) {
       setSearchParams({});
-    } else if (tokenFromStorage) {
-      setIsAuthenticated(true);
     }
+    // We assume Firebase Auth is already active thanks to our global RequireAuth wrapper
+    setIsAuthenticated(true);
   }, [searchParams, setSearchParams]);
 
   // Fetch Repos
@@ -69,17 +65,15 @@ const GitHubIntegration = () => {
     if (!isAuthenticated) return;
     const fetchRepos = async () => {
       try {
-        const token = localStorage.getItem("github_token");
-        const res = await fetch(`${API_BASE}/github/repos`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Failed to fetch repos");
-        const data = await res.json();
-        setRepos(data);
-        setFilteredRepos(data);
-        if (data.length > 0) setSelectedRepoId(data[0].id);
-      } catch (err) {
-        console.error(err);
+        const res = await apiClient.get('/github/repos');
+        setRepos(res.data);
+        setFilteredRepos(res.data);
+        if (res.data.length > 0) setSelectedRepoId(res.data[0].id);
+      } catch (err: any) {
+        console.error('Failed to fetch repos:', err);
+        if (err.response?.status === 401) {
+            setError("GitHub not connected. Please connect your account.");
+        }
       }
     };
     fetchRepos();
@@ -102,17 +96,12 @@ const GitHubIntegration = () => {
 
     const fetchDetails = async () => {
       setLoadingDetails(true);
-      setRepoDetails(null); // Clear previous details immediately
+      setRepoDetails(null); 
       try {
-        const token = localStorage.getItem("github_token");
         const [owner, name] = repo.full_name.split("/");
-        const res = await fetch(`${API_BASE}/github/repos/${owner}/${name}/details`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Failed to fetch details");
-        const data = await res.json();
+        const res = await apiClient.get(`/github/repos/${owner}/${name}/details`);
+        const data = res.data;
         
-        // Merge detail properties
         setRepoDetails({
             ...data.details,
             commits: data.commits,
@@ -162,7 +151,7 @@ const GitHubIntegration = () => {
         <Github className="w-16 h-16 opacity-50" />
         <h2 className="text-xl font-semibold">Connect GitHub to view Analytics</h2>
         <button
-          onClick={() => (window.location.href = `${API_BASE}/auth/github`)}
+          onClick={() => (window.location.href = `/api/auth/github`)}
           className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all font-medium"
         >
           Connect GitHub

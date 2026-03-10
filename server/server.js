@@ -11,6 +11,7 @@ const githubRoutes = require('./routes/githubRoutes');
 const oauthRoutes = require('./routes/oauthRoutes');
 const databaseExplorerRoutes = require('./routes/databaseExplorerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const requireAuth = require('./middleware/requireAuth');
 const autoMedicMiddleware = require('./middleware/autoMedicMiddleware');
 const { encrypt } = require('./utils/encryption');
 
@@ -48,9 +49,10 @@ app.get('/', (req, res) => {
 });
 
 // POST /api/connections - Save a new database connection securely
-app.post('/api/connections', async (req, res) => {
+app.post('/api/connections', requireAuth, async (req, res) => {
   try {
     const { name, provider, config } = req.body;
+    const ownerUid = req.user.uid; // Enforce ownerUid from verified token
 
     if (!name || !provider || !config) {
       return res.status(400).json({ message: 'Missing required configuration' });
@@ -89,7 +91,7 @@ app.post('/api/connections', async (req, res) => {
       encryptedConfig: encrypted.content,
       iv: encrypted.iv,
       isEncrypted: true,
-      userId: req.user?.uid || 'mock-user-123' // Fallback for demo/mock if auth not fully integrated
+      ownerUid // Forcefully inject the user's UID
     });
 
     await newConnection.save();
@@ -110,9 +112,13 @@ app.post('/api/connections', async (req, res) => {
 });
 
 // GET /api/connections - List all saved connections (masked)
-app.get('/api/connections', async (req, res) => {
+app.get('/api/connections', requireAuth, async (req, res) => {
   try {
-    const connections = await UserConnection.find({}, 'name provider createdAt isActive lastTestedAt'); 
+    // Hardcode ownerUid filter so users can only see their own data
+    const connections = await UserConnection.find(
+      { ownerUid: req.user.uid }, 
+      'name provider createdAt isActive lastTestedAt'
+    ); 
     res.json(connections);
   } catch (error) {
     console.error('Error fetching connections:', error);
@@ -121,12 +127,13 @@ app.get('/api/connections', async (req, res) => {
 });
 
 // DELETE /api/connections/:id - Delete a connection
-app.delete('/api/connections/:id', async (req, res) => {
+app.delete('/api/connections/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await UserConnection.findByIdAndDelete(id);
+    // Ensure the connection belongs to the user before deleting
+    const deleted = await UserConnection.findOneAndDelete({ _id: id, ownerUid: req.user.uid });
     if (!deleted) {
-      return res.status(404).json({ message: 'Connection not found' });
+      return res.status(404).json({ message: 'Connection not found or unauthorized' });
     }
     res.json({ message: 'Connection deleted successfully' });
   } catch (error) {

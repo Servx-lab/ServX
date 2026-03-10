@@ -10,6 +10,11 @@ const userConnectionSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Provider type is required'],
     enum: [
+      'Vercel',
+      'Render',
+      'DigitalOcean',
+      'Railway',
+      'Fly.io',
       'Firebase', 
       'MongoDB',
       'Supabase', 
@@ -42,6 +47,11 @@ const userConnectionSchema = new mongoose.Schema({
   },
   lastTestedAt: {
     type: Date
+  },
+  ownerUid: {
+    type: String, // Associated Firebase UID
+    required: [true, 'Owner UID is required'],
+    index: true
   },
   status: {
     type: String,
