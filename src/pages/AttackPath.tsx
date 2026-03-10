@@ -86,7 +86,7 @@ const TopologyNode = React.memo(({ position, label, isTargeted }: any) => {
       </group>
     </Float>
   );
-};
+});
 
 const AttackPath = () => {
   const [isAttackActive, setIsAttackActive] = useState(false);
