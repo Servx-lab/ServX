@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const admin = require('../utils/firebaseAdmin');
 const Admin = require('../models/Admin');
+const AccessControl = require('../models/AccessControl');
 const isAdmin = require('../middleware/isAdmin');
 
 // NOTE: All write operations should ideally be protected by the isAdmin middleware
@@ -81,6 +82,77 @@ router.delete('/revoke/:uid', async (req, res) => {
     res.json({ message: 'Access revoked successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error revoking access' });
+  }
+});
+
+/**
+ * GET /api/admin/permissions/:userUid
+ * Fetches permissions for a specific user.
+ */
+router.get('/permissions/:userUid', isAdmin, async (req, res) => {
+  try {
+    const { userUid } = req.params;
+    const ownerUid = req.uid; // From isAdmin middleware
+
+    let permissions = await AccessControl.findOne({ ownerUid, userUid });
+    
+    if (!permissions) {
+      // Return default empty permissions if not found
+      permissions = {
+        ownerUid,
+        userUid,
+        permissions: {
+          repos: [],
+          dbs: [],
+          global: { isFullControl: false, canBanIPs: false, canViewDeviceUUIDs: false }
+        }
+      };
+    }
+    
+    res.json(permissions);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching permissions' });
+  }
+});
+
+/**
+ * POST /api/admin/permissions/update
+ * Updates permissions for a specific user.
+ */
+router.post('/permissions/update', isAdmin, async (req, res) => {
+  try {
+    const { userUid, permissions } = req.body;
+    const ownerUid = req.uid;
+
+    const updated = await AccessControl.findOneAndUpdate(
+      { ownerUid, userUid },
+      { permissions },
+      { upsert: true, new: true }
+    );
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating permissions' });
+  }
+});
+
+/**
+ * POST /api/admin/workspace/logo
+ * Updates the workspace logo URL for the owner.
+ */
+router.post('/workspace/logo', isAdmin, async (req, res) => {
+  try {
+    const { logoUrl } = req.body;
+    const ownerUid = req.uid;
+
+    await AccessControl.updateMany(
+      { ownerUid },
+      { ownerLogoUrl: logoUrl }
+    );
+
+    res.json({ message: 'Workspace logo updated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating workspace logo' });
   }
 });
 
