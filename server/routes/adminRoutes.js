@@ -4,6 +4,9 @@ const admin = require('../utils/firebaseAdmin');
 const Admin = require('../models/Admin');
 const isAdmin = require('../middleware/isAdmin');
 
+// NOTE: All write operations should ideally be protected by the isAdmin middleware
+// for production-level security.
+
 /**
  * POST /api/admin/invite
  * Invites a user by email and saves their Firebase UID to the Admins collection.
