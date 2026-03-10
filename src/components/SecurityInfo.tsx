@@ -29,7 +29,7 @@ const SecurityInfo = () => {
           <span className="flex items-center gap-1">
             <Monitor className="w-3 h-3" /> Hardware ID
           </span>
-          <span className="font-mono text-[#00C2CB]/80">
+          <span className="font-mono text-[#00C2CB]/80" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
             DEVICE-{deviceUUID.slice(0, 8).toUpperCase()}
           </span>
         </div>
