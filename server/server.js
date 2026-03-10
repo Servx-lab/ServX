@@ -15,15 +15,12 @@ const { encrypt } = require('./utils/encryption');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-// Allow requests from your frontend (adjust origin as needed for production)
 app.use(cors({
   origin: [process.env.FRONTEND_URL, 'http://localhost:8080', 'http://localhost:5173'].filter(Boolean),
   credentials: true
 }));
 app.use(express.json());
 
-// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/github', githubRoutes);
 app.use('/api/db', databaseExplorerRoutes);

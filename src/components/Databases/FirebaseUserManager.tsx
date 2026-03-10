@@ -86,7 +86,7 @@ export function FirebaseUserManager({ connectionId }: { connectionId?: string })
     };
 
     return (
-        <div className="flex flex-col h-full gap-4 p-4 text-foreground w-[850px]">
+        <div className="flex flex-col h-full gap-4 p-4 text-foreground w-full">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-lg font-semibold tracking-tight text-[#00C2CB]">User Management</h2>
