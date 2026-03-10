@@ -25,21 +25,29 @@ interface PermissionMatrixProps {
 
 const AdminPermissionMatrix: React.FC<PermissionMatrixProps> = ({ userUid, userEmail, onClose }) => {
   const [permissions, setPermissions] = useState<any>(null);
+  const [resources, setResources] = useState<{ dbs: any[], repos: any[] }>({ dbs: [], repos: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchPermissions = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`/api/admin/permissions/${userUid}`);
-        const data = await response.json();
-        setPermissions(data.permissions);
+        const [permRes, resRes] = await Promise.all([
+          fetch(`/api/admin/permissions/${userUid}`),
+          fetch('/api/admin/resources')
+        ]);
+        
+        const permData = await permRes.json();
+        const resData = await resRes.json();
+        
+        setPermissions(permData.permissions);
+        setResources(resData);
       } catch (error) {
-        toast.error("Failed to fetch user permissions");
+        toast.error("Failed to fetch data");
       } finally {
         setLoading(false);
       }
     };
-    fetchPermissions();
+    fetchData();
   }, [userUid]);
 
   const handleToggleGlobal = (key: string) => {
@@ -47,6 +55,26 @@ const AdminPermissionMatrix: React.FC<PermissionMatrixProps> = ({ userUid, userE
       ...prev,
       global: { ...prev.global, [key]: !prev.global[key] }
     }));
+  };
+
+  const handleToggleResource = (type: 'dbs' | 'repos', resourceName: string, permissionKey: string) => {
+    setPermissions((prev: any) => {
+      const items = [...(prev[type] || [])];
+      const index = items.findIndex((i: any) => i.name === resourceName);
+      
+      if (index === -1) {
+        items.push({ name: resourceName, [permissionKey]: true });
+      } else {
+        items[index] = { ...items[index], [permissionKey]: !items[index][permissionKey] };
+      }
+      
+      return { ...prev, [type]: items };
+    });
+  };
+
+  const getResourceValue = (type: 'dbs' | 'repos', resourceName: string, permissionKey: string) => {
+    const item = permissions[type]?.find((i: any) => i.name === resourceName);
+    return item ? item[permissionKey] : false;
   };
 
   const handleUpdate = async () => {
@@ -110,18 +138,65 @@ const AdminPermissionMatrix: React.FC<PermissionMatrixProps> = ({ userUid, userE
         {/* Categories */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Databases */}
-          <CategorySection 
-            title="Database Access" 
-            icon={<Database className="w-4 h-4" />} 
-            items={permissions.dbs} 
-          />
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-[#00C2CB]" />
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-400">Database Access</h4>
+            </div>
+            <div className="bg-[#0B0E14] rounded-xl border border-gray-800 p-2 space-y-2">
+              {resources.dbs.map(db => (
+                <div key={db.name} className="p-3 bg-[#151921]/50 rounded-lg border border-gray-800/50">
+                  <p className="text-xs font-bold text-gray-300 mb-2">{db.name} ({db.provider})</p>
+                  <div className="flex gap-4">
+                    <ResourceToggle 
+                      label="View" 
+                      checked={getResourceValue('dbs', db.name, 'canView')} 
+                      onToggle={() => handleToggleResource('dbs', db.name, 'canView')} 
+                    />
+                    <ResourceToggle 
+                      label="Modify" 
+                      checked={getResourceValue('dbs', db.name, 'canModify')} 
+                      onToggle={() => handleToggleResource('dbs', db.name, 'canModify')} 
+                    />
+                  </div>
+                </div>
+              ))}
+              {resources.dbs.length === 0 && <p className="text-[10px] text-gray-600 p-2">No databases connected</p>}
+            </div>
+          </div>
           
           {/* Repositories */}
-          <CategorySection 
-            title="Repository Data" 
-            icon={<Github className="w-4 h-4" />} 
-            items={permissions.repos} 
-          />
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Github className="w-4 h-4 text-[#00C2CB]" />
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-400">Repository Data</h4>
+            </div>
+            <div className="bg-[#0B0E14] rounded-xl border border-gray-800 p-2 space-y-2">
+              {resources.repos.map(repo => (
+                <div key={repo.name} className="p-3 bg-[#151921]/50 rounded-lg border border-gray-800/50">
+                  <p className="text-xs font-bold text-gray-300 mb-2">{repo.name}</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    <ResourceToggle 
+                      label="Logs" 
+                      checked={getResourceValue('repos', repo.name, 'canViewLogs')} 
+                      onToggle={() => handleToggleResource('repos', repo.name, 'canViewLogs')} 
+                    />
+                    <ResourceToggle 
+                      label="Commits" 
+                      checked={getResourceValue('repos', repo.name, 'canViewCommits')} 
+                      onToggle={() => handleToggleResource('repos', repo.name, 'canViewCommits')} 
+                    />
+                    <ResourceToggle 
+                      label="Pipeline" 
+                      checked={getResourceValue('repos', repo.name, 'canTriggerPipeline')} 
+                      onToggle={() => handleToggleResource('repos', repo.name, 'canTriggerPipeline')} 
+                    />
+                  </div>
+                </div>
+              ))}
+              {resources.repos.length === 0 && <p className="text-[10px] text-gray-600 p-2">No repositories linked</p>}
+            </div>
+          </div>
         </div>
 
         {/* Global Security */}
@@ -159,15 +234,14 @@ const AdminPermissionMatrix: React.FC<PermissionMatrixProps> = ({ userUid, userE
   );
 };
 
-const CategorySection = ({ title, icon, items }: any) => (
-  <div className="space-y-4">
-    <div className="flex items-center gap-2">
-      <span className="text-[#00C2CB]">{icon}</span>
-      <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-400">{title}</h4>
-    </div>
-    <div className="bg-[#0B0E14] rounded-xl border border-gray-800 p-4 space-y-3 min-h-[100px] flex flex-col justify-center items-center">
-      <p className="text-xs text-gray-600 italic">No resources connected yet.</p>
-    </div>
+const ResourceToggle = ({ label, checked, onToggle }: any) => (
+  <div className="flex items-center gap-2">
+    <Switch 
+      checked={checked} 
+      onCheckedChange={onToggle}
+      className="scale-75 data-[state=checked]:bg-[#00C2CB]"
+    />
+    <span className="text-[10px] font-medium text-gray-400">{label}</span>
   </div>
 );
 
