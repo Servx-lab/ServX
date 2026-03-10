@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import SecurityInfo from "./SecurityInfo";
 import {
   LayoutDashboard,
   Search,
@@ -111,6 +112,9 @@ const Sidebar = () => {
           </button>
         ))}
       </div>
+
+      {/* Security Info Widget */}
+      <SecurityInfo />
 
       {/* User Profile */}
       <div className="glass-card px-3 py-3 flex items-center gap-3 cursor-pointer hover:bg-secondary/80 transition-colors">
