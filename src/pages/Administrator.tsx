@@ -6,7 +6,8 @@ import {
   Search, 
   Mail, 
   UserCheck,
-  ShieldAlert
+  ShieldAlert,
+  Settings
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AdminPermissionMatrix from "@/components/AdminPermissionMatrix";
@@ -43,7 +44,19 @@ const Administrator = () => {
   const [role, setRole] = useState<string>("viewer");
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [selectedUser, setSelectedUser] = useState<Admin | null>(null);
+  const [workspaceLogo, setWorkspaceLogo] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const fetchWorkspaceLogo = async () => {
+    try {
+      // For simplicity, we fetch it from a test user's permissions or a dedicated endpoint
+      const response = await fetch('/api/admin/permissions/me'); // Optional: dedicated workspace info endpoint
+      if (response.ok) {
+        const data = await response.json();
+        setWorkspaceLogo(data.ownerLogoUrl || "");
+      }
+    } catch (e) {}
+  };
 
   const fetchAdmins = async () => {
     try {
@@ -113,6 +126,25 @@ const Administrator = () => {
     }
   };
 
+  const handleLogoUpdate = async () => {
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/admin/workspace/logo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ logoUrl: workspaceLogo })
+      });
+      if (response.ok) {
+        toast.success("Workspace branding updated");
+      }
+    } catch (error) {
+      toast.error("Failed to update branding");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0B0E14] text-gray-100 p-8 pt-24 ml-56">
       <div className="max-w-6xl mx-auto">
@@ -126,48 +158,77 @@ const Administrator = () => {
           </div>
         </div>
 
-        {/* Section 1: Invite Admin */}
-        <section className="mb-12 bg-[#151921] border border-gray-800 rounded-2xl p-6 shadow-2xl">
-          <div className="flex items-center gap-2 mb-6">
-            <UserPlus className="w-5 h-5 text-[#00C2CB]" />
-            <h2 className="text-xl font-semibold">Invite New Administrator</h2>
-          </div>
-          
-          <form onSubmit={handleInvite} className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <Input 
-                placeholder="User email address..." 
-                className="pl-10 bg-[#0B0E14] border-gray-700 focus:border-[#00C2CB] focus:ring-1 focus:ring-[#00C2CB] transition-all"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                required
-              />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+          {/* Section 1: Invite Admin */}
+          <section className="lg:col-span-2 bg-[#151921] border border-gray-800 rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-center gap-2 mb-6">
+              <UserPlus className="w-5 h-5 text-[#00C2CB]" />
+              <h2 className="text-xl font-semibold">Invite New Administrator</h2>
             </div>
             
-            <div className="w-full md:w-48">
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger className="bg-[#0B0E14] border-gray-700 focus:ring-[#00C2CB]">
-                  <SelectValue placeholder="Select Role" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#151921] border-gray-700 text-gray-200">
-                  <SelectItem value="owner">Owner</SelectItem>
-                  <SelectItem value="editor">Editor</SelectItem>
-                  <SelectItem value="viewer">Viewer</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <form onSubmit={handleInvite} className="flex flex-col gap-4">
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Input 
+                  placeholder="User email address..." 
+                  className="pl-10 bg-[#0B0E14] border-gray-700 focus:border-[#00C2CB] focus:ring-1 focus:ring-[#00C2CB] transition-all"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  required
+                />
+              </div>
+              
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <Select value={role} onValueChange={setRole}>
+                    <SelectTrigger className="bg-[#0B0E14] border-gray-700 focus:ring-[#00C2CB]">
+                      <SelectValue placeholder="Select Role" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#151921] border-gray-700 text-gray-200">
+                      <SelectItem value="owner">Owner</SelectItem>
+                      <SelectItem value="editor">Editor</SelectItem>
+                      <SelectItem value="viewer">Viewer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <Button 
-              type="submit" 
-              className="bg-[#00C2CB] hover:bg-[#00AAB1] text-black font-semibold px-8"
-              disabled={loading}
-            >
-              {loading ? "Inviting..." : "Invite Admin"}
-            </Button>
-          </form>
-        </section>
+                <Button 
+                  type="submit" 
+                  className="bg-[#00C2CB] hover:bg-[#00AAB1] text-black font-semibold px-8"
+                  disabled={loading}
+                >
+                  {loading ? "Inviting..." : "Invite Admin"}
+                </Button>
+              </div>
+            </form>
+          </section>
+
+          {/* Section: Workspace Settings */}
+          <section className="bg-[#151921] border border-gray-800 rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-center gap-2 mb-6">
+              <Settings className="w-5 h-5 text-[#00C2CB]" />
+              <h2 className="text-xl font-semibold">Workspace Settings</h2>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Workspace Logo URL</label>
+                <Input 
+                  placeholder="https://example.com/logo.png" 
+                  className="bg-[#0B0E14] border-gray-700 focus:border-[#00C2CB] text-xs"
+                  value={workspaceLogo}
+                  onChange={(e) => setWorkspaceLogo(e.target.value)}
+                />
+              </div>
+              <Button 
+                onClick={handleLogoUpdate}
+                className="w-full bg-transparent border border-[#00C2CB] text-[#00C2CB] hover:bg-[#00C2CB]/10 font-bold"
+              >
+                Update Branding
+              </Button>
+            </div>
+          </section>
+        </div>
 
         <AnimatePresence mode="wait">
           {selectedUser && (
