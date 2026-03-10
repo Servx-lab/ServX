@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import Bridge from "./pages/Bridge";
 import Onboarding from "./pages/Onboarding";
+import Administrator from "./pages/Administrator";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "@/components/RequireAuth";
 
@@ -94,6 +95,14 @@ const App = () => (
               element={
                 <RequireAuth>
                   <Operations />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <RequireAuth>
+                  <Administrator />
                 </RequireAuth>
               }
             />
