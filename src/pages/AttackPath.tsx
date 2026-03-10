@@ -132,6 +132,9 @@ const AttackPath = () => {
                 <TopologyNode position={[4, 0, 0]} label="DB_PERSISTENCE" isTargeted={false} />
                 <TopologyNode position={[0, -2, 0]} label="AUTH_AUTHZ" isTargeted={false} />
 
+                {/* Attack Animation */}
+                <AttackParticles start={[-4, 0, 0]} end={[0, 2, 0]} active={isAttackActive} />
+
                 {/* Holographic Flow Paths */}
                 <Line
                   points={[[-4, 0, 0], [0, 2, 0]]}
