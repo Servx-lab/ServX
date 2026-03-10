@@ -9,14 +9,10 @@ const VERCEL_CLIENT_SECRET = process.env.VERCEL_CLIENT_SECRET;
 const VERCEL_REDIRECT_URI = process.env.VERCEL_REDIRECT_URI || 'http://localhost:5000/api/oauth/vercel/callback';
 
 router.get('/vercel', (req, res) => {
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+  
   if (!VERCEL_CLIENT_ID) {
-      console.warn('Vercel Client ID missing');
-      // For demo purposes, if no ID is present, we might want to simulate a success redirect 
-      // or show an error.
-      // return res.status(500).json({ error: 'Vercel Client ID not configured' });
-      
-      // MOCK BEHAVIOR FOR DEMO if env vars are missing:
-      const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+      // Mock behavior for demo purposes if no Vercel App is registered
       return res.redirect(`${FRONTEND_URL}/infrastructure?vercel_connected=true&mock=true`);
   }
   
