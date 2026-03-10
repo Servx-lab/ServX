@@ -8,6 +8,8 @@ import {
   UserCheck,
   ShieldAlert
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import AdminPermissionMatrix from "@/components/AdminPermissionMatrix";
 import { 
   Table, 
   TableBody, 
@@ -40,6 +42,7 @@ const Administrator = () => {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<string>("viewer");
   const [admins, setAdmins] = useState<Admin[]>([]);
+  const [selectedUser, setSelectedUser] = useState<Admin | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchAdmins = async () => {
@@ -166,6 +169,24 @@ const Administrator = () => {
           </form>
         </section>
 
+        <AnimatePresence mode="wait">
+          {selectedUser && (
+            <motion.div 
+              key={selectedUser.uid}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-12"
+            >
+              <AdminPermissionMatrix 
+                userUid={selectedUser.uid} 
+                userEmail={selectedUser.email} 
+                onClose={() => setSelectedUser(null)} 
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Section 2: Admin List */}
         <section className="bg-[#151921] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
           <div className="p-6 border-b border-gray-800 flex items-center justify-between">
@@ -191,7 +212,11 @@ const Administrator = () => {
               </TableHeader>
               <TableBody>
                 {admins.map((admin) => (
-                  <TableRow key={admin.uid} className="border-gray-800 hover:bg-[#0B0E14]/30 transition-colors">
+                  <TableRow 
+                    key={admin.uid} 
+                    className={`border-gray-800 hover:bg-[#0B0E14]/30 transition-colors cursor-pointer ${selectedUser?.uid === admin.uid ? 'bg-[#00C2CB]/5 border-[#00C2CB]/30' : ''}`}
+                    onClick={() => setSelectedUser(admin)}
+                  >
                     <TableCell className="font-medium text-gray-200">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00C2CB]/20 to-[#00C2CB]/5 border border-[#00C2CB]/20 flex items-center justify-center text-[#00C2CB] text-xs font-bold">
