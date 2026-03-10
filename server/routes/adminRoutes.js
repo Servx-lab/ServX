@@ -156,4 +156,45 @@ router.post('/workspace/logo', isAdmin, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/admin/resources
+ * Fetches all available databases and repositories.
+ */
+router.get('/resources', isAdmin, async (req, res) => {
+  try {
+    const UserConnection = require('../models/UserConnection');
+    const User = require('../models/User');
+    const axios = require('axios');
+
+    // 1. Fetch Databases (Connections)
+    const connections = await UserConnection.find({}, 'name provider');
+
+    // 2. Fetch Repositories (requires the owner's GitHub token)
+    const user = await User.findById(req.admin._id || req.uid).select('+githubAccessToken');
+    let repos = [];
+
+    if (user && user.githubAccessToken) {
+      try {
+        const githubRes = await axios.get('https://api.github.com/user/repos', {
+          headers: {
+            Authorization: `Bearer ${user.githubAccessToken}`,
+            Accept: 'application/vnd.github.v3+json',
+          }
+        });
+        repos = githubRes.data.map(repo => ({ name: repo.name, full_name: repo.full_name }));
+      } catch (e) {
+        console.error('Failed to fetch GitHub repos for resources:', e.message);
+      }
+    }
+
+    res.json({
+      dbs: connections.map(c => ({ name: c.name, provider: c.provider })),
+      repos: repos
+    });
+  } catch (error) {
+    console.error('Error fetching resources:', error);
+    res.status(500).json({ message: 'Error fetching resource list' });
+  }
+});
+
 module.exports = router;
