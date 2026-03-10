@@ -225,7 +225,7 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
                             }
                         }}
                     >
-                        <DatabaseLogo type={option.id} className="w-5 h-5 flex-shrink-0" />
+                        <DatabaseLogo type={option.id} className="w-8 h-8 flex-shrink-0" />
                         {option.label}
                     </Button>
                 ))}

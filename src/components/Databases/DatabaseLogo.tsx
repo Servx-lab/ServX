@@ -41,11 +41,28 @@ export const DatabaseLogo: React.FC<DatabaseLogoProps> = ({ type, className = "w
         </svg>
       );
     case 'AWS':
+    case 'AWS RDS':
       return (
          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={className} fill="none">
              <path d="M12 2L18.5 6V18L12 22L5.5 18V6L12 2Z" stroke="#FF9900" strokeWidth="2"/>
              <path d="M15 15C15 15 13 17 12 17C9 17 8 14 8 12C8 10 9 7 12 7C14 7 15 8 15.5 9" stroke="#FF9900" strokeWidth="2" strokeLinecap="round"/>
          </svg>
+      );
+    case 'Redis':
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={className} fill="none">
+            <path d="M4 16C4 18.2 7.6 20 12 20C16.4 20 20 18.2 20 16" stroke="#D82C20" strokeWidth="2"/>
+            <path d="M4 12C4 14.2 7.6 16 12 16C16.4 16 20 14.2 20 12" stroke="#D82C20" strokeWidth="2"/>
+            <path d="M4 8C4 10.2 7.6 12 12 12C16.4 12 20 10.2 20 8" stroke="#D82C20" strokeWidth="2"/>
+            <ellipse cx="12" cy="8" rx="8" ry="4" stroke="#D82C20" strokeWidth="2"/>
+        </svg>
+      );
+    case 'MariaDB':
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={className} fill="none">
+            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM6 12C6 11 6.8 10 8 10C9.2 10 10 10.8 10 12C10 13.2 9.2 14 8 14C6.8 14 6 13.2 6 12ZM16 12C16 11 16.8 10 18 10C19.2 10 20 10.8 20 12C20 13.2 19.2 14 18 14C16.8 14 16 13.2 16 12Z" fill="#C0765A"/>
+            <path d="M12 17C14.5 17 16.5 15 16.5 12.5C16.5 10 14.5 8 12 8C9.5 8 7.5 10 7.5 12.5C7.5 15 9.5 17 12 17Z" fill="#C0765A"/>
+        </svg>
       );
     case 'Oracle':
        return (

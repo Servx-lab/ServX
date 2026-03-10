@@ -14,8 +14,9 @@ import {
   ShieldCheck 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DatabaseLogo } from './DatabaseLogo';
 
-type Provider = 'Firebase' | 'Supabase' | 'MySQL' | 'PostgreSQL' | 'AWS RDS' | 'Oracle' | 'Redis' | 'MariaDB';
+type Provider = 'Firebase' | 'MongoDB' | 'Supabase' | 'MySQL' | 'PostgreSQL' | 'AWS RDS' | 'Oracle' | 'Redis' | 'MariaDB';
 
 interface DatabaseConfig {
   apiKey?: string;
@@ -43,6 +44,7 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
 
   const providers: { id: Provider; icon: any }[] = [
+    { id: 'MongoDB', icon: Database },
     { id: 'Firebase', icon: Cloud },
     { id: 'Supabase', icon: Database },
     { id: 'MySQL', icon: Server },
@@ -64,7 +66,11 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
 
   const validateInput = () => {
     // Basic regex validation logic for URIs
-    if (['MySQL', 'PostgreSQL', 'MariaDB', 'Redis'].includes(selectedProvider || '')) {
+    if (['MongoDB', 'MySQL', 'PostgreSQL', 'MariaDB', 'Redis'].includes(selectedProvider || '')) {
+       // Allow mongodb:// or mongodb+srv://
+       if (selectedProvider === 'MongoDB') {
+          return /^mongodb(?:\+srv)?:\/\/.+/.test(formData.connectionUri || '');
+       }
        const uriPattern = /^[a-z]+:\/\/[^:]+(:[^@]+)?@[^:]+:\d+\/.+/;
        return uriPattern.test(formData.connectionUri || '');
     }
@@ -143,11 +149,17 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       case 'PostgreSQL':
       case 'MariaDB':
       case 'Redis':
+      case 'MariaDB':
+      case 'MongoDB':
         return (
           <InputField 
             label="Connection URI" 
             field="connectionUri" 
-            placeholder={`${selectedProvider?.toLowerCase()}://user:pass@host:port/db`} 
+            placeholder={
+              selectedProvider === 'MongoDB' 
+              ? 'mongodb+srv://user:password@cluster.mongodb.net/db'
+              : `${selectedProvider?.toLowerCase()}://user:pass@host:port/db`
+            } 
             type="password"
           />
         );
@@ -160,6 +172,7 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
      switch (selectedProvider) {
         case 'Firebase': return 'Copy this from Project Settings > General > Your Apps in Firebase Console.';
         case 'Supabase': return 'Copy from Settings > API.';
+        case 'MongoDB': return 'Format: mongodb+srv://username:password@cluster.mongodb.net/database';
         case 'MySQL':
         case 'PostgreSQL':
         case 'MariaDB': return `Format: ${selectedProvider.toLowerCase()}://username:password@hostname:port/database_name`;
@@ -181,13 +194,13 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
             value={formData[field] || ''}
             onChange={(e) => handleInputChange(field, e.target.value)}
             placeholder={placeholder}
-            className="w-full bg-[#0B0E14] border border-[#1f2937] text-gray-200 text-sm rounded-lg px-4 py-3 focus:outline-none focus:border-[#00C2CB] focus:ring-1 focus:ring-[#00C2CB] transition-all placeholder:text-gray-600"
+            className={`w-full bg-[#0B0E14] border border-[#1f2937] text-gray-200 text-sm rounded-lg pl-4 pr-10 py-3 focus:outline-none focus:border-[#00C2CB] focus:ring-1 focus:ring-[#00C2CB] transition-all placeholder:text-gray-600`}
           />
           {isPassword && (
             <button
               type="button"
               onClick={() => togglePasswordVisibility(field)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#00C2CB] transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#00C2CB] transition-colors bg-[#0B0E14] pl-2"
             >
               {isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
@@ -218,7 +231,7 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                         "p-2 rounded-full bg-[#0B0E14]", 
                         selectedProvider === p.id ? "text-[#00C2CB]" : "text-gray-400"
                     )}>
-                        <p.icon size={24} />
+                        <DatabaseLogo type={p.id} className="w-8 h-8" />
                     </div>
                     <span className={cn(
                         "font-medium text-xs",
