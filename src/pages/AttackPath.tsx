@@ -1,12 +1,81 @@
 import React, { useState, Suspense, useRef, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera, Float, MeshDistortMaterial, Sphere, Icosahedron, Line, Stars, Text, Trail } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera, Float, MeshDistortMaterial, Sphere, Icosahedron, Line, Stars, Text, Trail, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Zap, Lock, AlertTriangle, Play, RefreshCcw, Binary } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 
 // --- sub-components ---
+
+const SolarSystemBackground = () => {
+  const sunRef = useRef<THREE.Mesh>(null);
+  const earthRef = useRef<THREE.Group>(null);
+  const marsRef = useRef<THREE.Group>(null);
+  const jupiterRef = useRef<THREE.Group>(null);
+
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    if (sunRef.current) sunRef.current.rotation.y += 0.005;
+    if (earthRef.current) {
+      earthRef.current.position.x = Math.cos(t * 0.5) * 10;
+      earthRef.current.position.z = Math.sin(t * 0.5) * 10;
+      earthRef.current.rotation.y += 0.02;
+    }
+    if (marsRef.current) {
+      marsRef.current.position.x = Math.cos(t * 0.3 + 2) * 14;
+      marsRef.current.position.z = Math.sin(t * 0.3 + 2) * 14;
+      marsRef.current.rotation.y += 0.015;
+    }
+    if (jupiterRef.current) {
+      jupiterRef.current.position.x = Math.cos(t * 0.1 + 4) * 20;
+      jupiterRef.current.position.z = Math.sin(t * 0.1 + 4) * 20;
+      jupiterRef.current.rotation.y += 0.01;
+    }
+  });
+
+  return (
+    <group position={[0, -2, -15]} rotation={[0.4, 0, 0]}>
+      {/* Sun */}
+      <mesh ref={sunRef}>
+        <sphereGeometry args={[2, 32, 32]} />
+        <meshBasicMaterial color="#ffaa00" />
+        <pointLight color="#ffaa00" intensity={2} distance={100} />
+        {/* Sun Glow */}
+        <Sphere args={[2.2, 32, 32]}>
+          <meshBasicMaterial color="#ffaa00" transparent opacity={0.2} blending={THREE.AdditiveBlending} />
+        </Sphere>
+      </mesh>
+
+      {/* Earth Orbit */}
+      <Line points={Array.from({ length: 65 }).map((_, i) => [Math.cos(i / 64 * Math.PI * 2) * 10, 0, Math.sin(i / 64 * Math.PI * 2) * 10])} color="#ffffff" opacity={0.15} transparent lineWidth={1} />
+      <group ref={earthRef}>
+        <mesh>
+          <sphereGeometry args={[0.4, 32, 32]} />
+          <meshStandardMaterial color="#2266ff" roughness={0.7} />
+        </mesh>
+      </group>
+
+      {/* Mars Orbit */}
+      <Line points={Array.from({ length: 65 }).map((_, i) => [Math.cos(i / 64 * Math.PI * 2) * 14, 0, Math.sin(i / 64 * Math.PI * 2) * 14])} color="#ffffff" opacity={0.15} transparent lineWidth={1} />
+      <group ref={marsRef}>
+        <mesh>
+          <sphereGeometry args={[0.3, 32, 32]} />
+          <meshStandardMaterial color="#ff4422" roughness={0.8} />
+        </mesh>
+      </group>
+
+      {/* Jupiter Orbit */}
+      <Line points={Array.from({ length: 65 }).map((_, i) => [Math.cos(i / 64 * Math.PI * 2) * 20, 0, Math.sin(i / 64 * Math.PI * 2) * 20])} color="#ffffff" opacity={0.15} transparent lineWidth={1} />
+      <group ref={jupiterRef}>
+        <mesh>
+          <sphereGeometry args={[0.8, 32, 32]} />
+          <meshStandardMaterial color="#ddaa88" roughness={0.6} />
+        </mesh>
+      </group>
+    </group>
+  );
+};
 
 const AttackParticles = React.memo(({ start, end, active }: any) => {
   const [pos, setPos] = useState(0);
@@ -125,6 +194,7 @@ const AttackPath = () => {
             <Stars radius={100} depth={50} count={7000} factor={4} saturation={1} fade speed={1.5} />
 
             <Suspense fallback={null}>
+              <SolarSystemBackground />
               <group rotation={[0.2, 0, 0]}>
                 <TopologyNode position={[-4, 0, 0]} label="G-FRONTEND-01" isTargeted={false} />
                 <TopologyNode position={[0, 2.5, 0]} label="G-CORE-API-07" isTargeted={isAttackActive} />

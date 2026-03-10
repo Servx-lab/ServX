@@ -45,6 +45,8 @@ export interface Deployment {
   state: string;
   created_at: string;
   creator?: string;
+  creator_login?: string;
+  creator_avatar?: string;
   url: string;
 }
 

@@ -17,6 +17,7 @@ import Bridge from "./pages/Bridge";
 import Onboarding from "./pages/Onboarding";
 import Administrator from "./pages/Administrator";
 import AttackPath from "./pages/AttackPath";
+import ComingSoon from "./pages/ComingSoon";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "@/components/RequireAuth";
 
@@ -112,6 +113,38 @@ const App = () => (
               element={
                 <RequireAuth>
                   <AttackPath />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/exposure"
+              element={
+                <RequireAuth>
+                  <ComingSoon />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/scenarios"
+              element={
+                <RequireAuth>
+                  <ComingSoon />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/events"
+              element={
+                <RequireAuth>
+                  <ComingSoon />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <RequireAuth>
+                  <ComingSoon />
                 </RequireAuth>
               }
             />

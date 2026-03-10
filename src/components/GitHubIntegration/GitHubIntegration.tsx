@@ -363,16 +363,21 @@ const GitHubIntegration = () => {
                                     {repoDetails.deployments && repoDetails.deployments.length > 0 ? (
                                         repoDetails.deployments.map(dep => (
                                             <div key={dep.id} className="p-3 bg-white/5 rounded-lg border border-white/5 flex items-center justify-between group hover:border-primary/30 transition-colors">
-                                                <div>
-                                                    <p className="text-sm font-medium capitalize flex items-center gap-2">
-                                                        <span className={`w-2 h-2 rounded-full ${dep.state === 'success' ? 'bg-emerald-400' : 'bg-yellow-400'}`} />
-                                                        {dep.environment}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                                        {format(new Date(dep.created_at), 'MMM dd, HH:mm')} by {dep.creator || 'bot'}
-                                                    </p>
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    {dep.creator_avatar && (
+                                                        <img src={dep.creator_avatar} alt={dep.creator || ''} className="w-6 h-6 rounded-full flex-shrink-0" />
+                                                    )}
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-medium capitalize flex items-center gap-2">
+                                                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dep.state === 'success' ? 'bg-emerald-400' : 'bg-yellow-400'}`} />
+                                                            {dep.environment}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                                            {format(new Date(dep.created_at), 'MMM dd, HH:mm')} by {dep.creator || 'bot'}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <a href={dep.url} target="_blank" className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-white/10 rounded-md">
+                                                <a href={dep.url} target="_blank" className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-white/10 rounded-md flex-shrink-0">
                                                     <ExternalLink className="w-3.5 h-3.5" />
                                                 </a>
                                             </div>

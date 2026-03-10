@@ -134,13 +134,30 @@ router.get('/repos/:owner/:repo/details', requireAuth, authenticate, async (req,
       bytes: Number(bytes),
     })).sort((a, b) => b.bytes - a.bytes); // Sort descending
 
-    // Format Deployments
+    // Format Deployments -- resolve creator display names in parallel
+    const deploymentCreatorLogins = [...new Set(
+      deploymentsResponse.data.map(dep => dep.creator?.login).filter(Boolean)
+    )];
+    const creatorProfiles = {};
+    await Promise.all(deploymentCreatorLogins.map(async (login) => {
+      try {
+        const profile = await axios.get(`https://api.github.com/users/${login}`, {
+          headers: { Authorization: `Bearer ${req.githubToken}` },
+        });
+        creatorProfiles[login] = profile.data.name || login;
+      } catch {
+        creatorProfiles[login] = login;
+      }
+    }));
+
     const formattedDeployments = deploymentsResponse.data.map(dep => ({
       id: dep.id,
       environment: dep.environment,
       state: dep.state,
       created_at: dep.created_at,
-      creator: dep.creator?.login,
+      creator: creatorProfiles[dep.creator?.login] || dep.creator?.login,
+      creator_login: dep.creator?.login,
+      creator_avatar: dep.creator?.avatar_url,
       url: dep.html_url || dep.statuses_url,
     }));
 
