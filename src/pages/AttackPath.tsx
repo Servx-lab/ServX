@@ -234,26 +234,47 @@ const AttackPath = () => {
 
 const ChaosToggle = ({ label, active, onClick }: any) => {
   return (
-    <div className="flex items-center justify-between group">
-      <span className="text-sm font-medium text-gray-400 group-hover:text-white transition-colors">{label}</span>
-      <button 
+    <div className="flex items-center justify-between group pointer-events-auto">
+      <span className={`text-xs font-bold tracking-wider transition-colors duration-300 ${active ? 'text-white' : 'text-gray-500'}`}>
+        {label}
+      </span>
+      <div 
         onClick={onClick}
-        className={`relative w-12 h-6 rounded-full transition-all duration-300 ${active ? 'bg-[#6C63FF]' : 'bg-gray-800'}`}
+        className="relative w-14 h-7 cursor-pointer"
       >
+        {/* Track */}
+        <div className={`absolute inset-0 rounded-full border transition-all duration-500 ${active ? 'bg-[#6C63FF]/20 border-[#6C63FF]' : 'bg-[#0B0E14] border-gray-700'}`} />
+        
+        {/* Handle */}
         <motion.div 
-          animate={{ x: active ? 24 : 0 }}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-          className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-lg"
-        />
-        {active && (
-          <motion.div 
-            initial={{ scale: 0, opacity: 0.5 }}
-            animate={{ scale: 4, opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="absolute inset-0 rounded-full bg-white/50"
-          />
-        )}
-      </button>
+          animate={{ 
+            x: active ? 28 : 0,
+            backgroundColor: active ? "#6C63FF" : "#374151"
+          }}
+          transition={{ 
+            type: "spring", 
+            stiffness: 400, 
+            damping: 25,
+            mass: 0.8
+          }}
+          className="absolute top-1 left-1 w-5 h-5 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)] flex items-center justify-center"
+        >
+          <div className={`w-1 h-1 rounded-full ${active ? 'bg-white' : 'bg-gray-500'}`} />
+        </motion.div>
+
+        {/* Ripple Effect */}
+        <AnimatePresence>
+          {active && (
+            <motion.div 
+              initial={{ scale: 0.5, opacity: 1 }}
+              animate={{ scale: 8, opacity: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="absolute inset-0 rounded-full border-2 border-[#00C2CB] pointer-events-none"
+            />
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };
