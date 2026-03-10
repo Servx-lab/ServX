@@ -1,285 +1,420 @@
-import React, { useEffect, useState } from 'react';
-import { RepoDetails, RepositorySummary } from './types';
-import { Github, ExternalLink, GitCommit, Users, X } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import {
+  Github,
+  GitCommit,
+  GitPullRequest,
+  Star,
+  Users,
+  Box,
+  ExternalLink,
+  Search,
+  Code,
+  Activity,
+  Calendar,
+  Rocket
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from "recharts";
+import { format } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
 
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api';
+import { RepoDetails, RepositorySummary, Deployment, Language } from "./types";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api";
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
 
 const GitHubIntegration = () => {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [repos, setRepos] = useState<RepositorySummary[]>([]);
-    const [selectedRepo, setSelectedRepo] = useState<RepoDetails | null>(null);
-    const [loadingRepos, setLoadingRepos] = useState(false);
-    const [loadingDetails, setLoadingDetails] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [repos, setRepos] = useState<RepositorySummary[]>([]);
+  const [filteredRepos, setFilteredRepos] = useState<RepositorySummary[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null);
+  const [repoDetails, setRepoDetails] = useState<RepoDetails | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    // 1. Auth Check (On Mount)
-    useEffect(() => {
-        const tokenFromUrl = searchParams.get('token');
-        const tokenFromStorage = localStorage.getItem('github_token');
+  // Authentication Check
+  useEffect(() => {
+    const tokenFromUrl = searchParams.get("token");
+    const tokenFromStorage = localStorage.getItem("github_token");
 
-        if (tokenFromUrl) {
-            // Save token and clean URL
-            localStorage.setItem('github_token', tokenFromUrl);
-            setIsAuthenticated(true);
-            setSearchParams({}); // Remove query params
-        } else if (tokenFromStorage) {
-            setIsAuthenticated(true);
-        }
-    }, [searchParams, setSearchParams]);
-
-    // 2. Fetch Repos (When Authenticated)
-    useEffect(() => {
-        if (!isAuthenticated) return;
-
-        const fetchRepos = async () => {
-            setLoadingRepos(true);
-            setError(null);
-            try {
-                const token = localStorage.getItem('github_token');
-                if (!token) throw new Error("No token found");
-
-                const res = await fetch(`${API_BASE}/github/repos`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!res.ok) {
-                    if (res.status === 401 || res.status === 403) {
-                        // Token invalid/expired
-                        handleLogout();
-                        throw new Error("Session expired. Please reconnect.");
-                    }
-                    throw new Error("Failed to fetch repositories.");
-                }
-
-                const data = await res.json();
-                setRepos(data);
-            } catch (err: any) {
-                console.error(err);
-                setError(err.message);
-            } finally {
-                setLoadingRepos(false);
-            }
-        };
-
-        fetchRepos();
-    }, [isAuthenticated]);
-
-    // 3. Handlers
-    const handleLogin = () => {
-        window.location.href = `${API_BASE}/auth/github`;
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('github_token');
-        setIsAuthenticated(false);
-        setRepos([]);
-        setSelectedRepo(null);
-    };
-
-    const handleRepoClick = async (repo: RepositorySummary) => {
-        if (selectedRepo?.id === repo.id) return; // Already selected
-        
-        setLoadingDetails(true);
-        setError(null);
-        // Clear previous details immediately for "snappy" feel, or keep stale data? 
-        // User asked for "immediate". Let's show a loading state in the panels but keep the layout stable.
-        setSelectedRepo(null); 
-
-        try {
-            const token = localStorage.getItem('github_token');
-            // Parse owner/repo from full_name
-            const [owner, name] = repo.full_name.split('/');
-
-            const res = await fetch(`${API_BASE}/github/repos/${owner}/${name}/details`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (!res.ok) throw new Error("Failed to fetch repository details.");
-
-            const data = await res.json();
-            // Extract and format data to fit our state shape
-            const fullDetails: RepoDetails = {
-                ...data.details,
-                commits: data.commits,
-                contributors: data.contributors
-            };
-            
-            setSelectedRepo(fullDetails);
-
-        } catch (err: any) {
-            console.error(err);
-            setError("Could not load repository details.");
-        } finally {
-            setLoadingDetails(false);
-        }
-    };
-
-    // 4. Render
-    if (!isAuthenticated) {
-        return (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6">
-                <div className="p-4 bg-muted rounded-full">
-                    <Github className="w-12 h-12" />
-                </div>
-                <h2 className="text-2xl font-bold tracking-tight">Connect to GitHub</h2>
-                <p className="text-muted-foreground max-w-md">
-                    Integrate your repositories to view detailed insights, commit history, and contributor statistics directly from your dashboard.
-                </p>
-                <button 
-                    onClick={handleLogin}
-                    className="px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded hover:opacity-90 transition-none active:translate-y-0.5"
-                >
-                    Connect GitHub Account
-                </button>
-            </div>
-        );
+    if (tokenFromUrl) {
+      localStorage.setItem("github_token", tokenFromUrl);
+      setIsAuthenticated(true);
+      setSearchParams({});
+    } else if (tokenFromStorage) {
+      setIsAuthenticated(true);
     }
+  }, [searchParams, setSearchParams]);
 
+  // Fetch Repos
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const fetchRepos = async () => {
+      try {
+        const token = localStorage.getItem("github_token");
+        const res = await fetch(`${API_BASE}/github/repos`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Failed to fetch repos");
+        const data = await res.json();
+        setRepos(data);
+        setFilteredRepos(data);
+        if (data.length > 0) setSelectedRepoId(data[0].id);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchRepos();
+  }, [isAuthenticated]);
+
+  // Search Filter
+  useEffect(() => {
+    setFilteredRepos(
+      repos.filter((repo) =>
+        repo.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    );
+  }, [searchQuery, repos]);
+
+  // Fetch Details when Selected Repo Changes
+  useEffect(() => {
+    if (!selectedRepoId) return;
+    const repo = repos.find((r) => r.id === selectedRepoId);
+    if (!repo) return;
+
+    const fetchDetails = async () => {
+      setLoadingDetails(true);
+      setRepoDetails(null); // Clear previous details immediately
+      try {
+        const token = localStorage.getItem("github_token");
+        const [owner, name] = repo.full_name.split("/");
+        const res = await fetch(`${API_BASE}/github/repos/${owner}/${name}/details`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Failed to fetch details");
+        const data = await res.json();
+        
+        // Merge detail properties
+        setRepoDetails({
+            ...data.details,
+            commits: data.commits,
+            contributors: data.contributors,
+            languages: data.languages,
+            deployments: data.deployments
+        });
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load repository details.");
+      } finally {
+        setLoadingDetails(false);
+      }
+    };
+    fetchDetails();
+  }, [selectedRepoId, repos]);
+
+  // Data Preparation for Charts
+  const commitData = useMemo(() => {
+    if (!repoDetails?.commits) return [];
+    // Aggregation by date
+    const counts: Record<string, number> = {};
+    repoDetails.commits.forEach((c) => {
+        const date = format(new Date(c.date), 'MMM dd');
+        counts[date] = (counts[date] || 0) + 1;
+    });
+    return Object.entries(counts).map(([date, count]) => ({ date, count })).reverse();
+  }, [repoDetails]);
+
+  const languageData = useMemo(() => {
+    if (!repoDetails?.languages) return [];
+    return repoDetails.languages.slice(0, 6);
+  }, [repoDetails]);
+
+  const contributorData = useMemo(() => {
+     if (!repoDetails?.contributors) return [];
+     return repoDetails.contributors.slice(0, 10).map(c => ({
+         name: c.login,
+         contributions: c.contributions
+     }));
+  }, [repoDetails]);
+
+
+  if (!isAuthenticated) {
     return (
-        <div className="flex flex-col h-full bg-background text-foreground font-sans">
-            {/* Header / Meta */}
-            <div className="flex justify-between items-center pb-4 mb-4 border-b border-border">
-                <div>
-                    <h2 className="text-lg font-bold flex items-center gap-2">
-                        <Github className="w-5 h-5" /> 
-                        Your Repositories <span className="opacity-50 font-normal ml-2 text-sm">{repos.length}</span>
-                    </h2>
-                </div>
-                <div className="flex gap-4 items-center">
-                    {loadingRepos && <span className="text-xs text-muted-foreground uppercase tracking-widest">Syncing...</span>}
-                    <button 
-                        onClick={handleLogout} 
-                        className="text-xs text-destructive hover:underline transition-none"
-                    >
-                        Disconnect
-                    </button>
-                </div>
-            </div>
+      <div className="flex flex-col items-center justify-center h-full min-h-[500px] gap-4">
+        <Github className="w-16 h-16 opacity-50" />
+        <h2 className="text-xl font-semibold">Connect GitHub to view Analytics</h2>
+        <button
+          onClick={() => (window.location.href = `${API_BASE}/auth/github`)}
+          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all font-medium"
+        >
+          Connect GitHub
+        </button>
+      </div>
+    );
+  }
 
-            {error && (
-                <div className="p-3 mb-4 text-sm bg-destructive/10 text-destructive border border-destructive/20 rounded">
-                    {error}
+  return (
+    <div className="flex h-[800px] w-full bg-background/50 backdrop-blur-xl rounded-xl overflow-hidden shadow-2xl border border-white/5">
+      {/* Sidebar List */}
+      <div className="w-80 border-r border-white/10 flex flex-col bg-black/20">
+        <div className="p-4 border-b border-white/10 space-y-3">
+          <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <Box className="w-4 h-4" /> Repositories
+          </h3>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search repositories..."
+              className="w-full bg-secondary/30 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all text-foreground placeholder:text-muted-foreground/50"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+        
+        <ScrollArea className="flex-1">
+          <div className="p-2 space-y-1">
+            {filteredRepos.map((repo) => (
+              <button
+                key={repo.id}
+                onClick={() => {
+                  if (selectedRepoId === repo.id) return;
+                  setRepoDetails(null);
+                  setError(null);
+                  setLoadingDetails(true);
+                  setSelectedRepoId(repo.id);
+                }}
+                className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 transition-all duration-200 group ${
+                  selectedRepoId === repo.id
+                    ? "bg-primary/10 border border-primary/20"
+                    : "hover:bg-white/5 border border-transparent"
+                }`}
+              >
+                <div className={`p-2 rounded-md ${selectedRepoId === repo.id ? "bg-primary/20 text-primary" : "bg-white/5 text-muted-foreground group-hover:text-foreground"}`}>
+                   <Github className="w-4 h-4" />
                 </div>
-            )}
+                <div className="flex-1 min-w-0">
+                    <h4 className={`text-sm font-medium truncate ${selectedRepoId === repo.id ? "text-primary" : "text-foreground"}`}>
+                        {repo.name}
+                    </h4>
+                    <p className="text-xs text-muted-foreground truncate opacity-70">
+                         Updated {format(new Date(repo.updated_at), 'MMM dd')}
+                    </p>
+                </div>
+                {selectedRepoId === repo.id && (
+                    <motion.div layoutId="active-indicator" className="w-1.5 h-1.5 rounded-full bg-primary box-shadow-glow" />
+                )}
+              </button>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
 
-            <div className="flex flex-1 gap-6 overflow-hidden min-h-0">
-                {/* Left Panel: Repo List */}
-                <div className="w-1/3 border-r border-border overflow-y-auto pr-2">
-                    <div className="grid grid-cols-1 gap-0.5">
-                        {repos.map(repo => (
-                            <div 
-                                key={repo.id}
-                                onClick={() => handleRepoClick(repo)}
-                                className={`
-                                    p-3 border rounded-sm cursor-pointer select-none
-                                    ${selectedRepo?.id === repo.id ? 'bg-secondary border-primary/50' : 'bg-card border-border hover:bg-muted/50'}
-                                `}
-                            >
-                                <div className="flex justify-between items-start mb-1">
-                                    <h3 className="text-sm font-semibold truncate leading-none">{repo.name}</h3>
-                                    {repo.language && (
-                                        <span className="text-[9px] uppercase tracking-wider opacity-60 bg-muted px-1.5 py-0.5 rounded-sm">
-                                            {repo.language}
-                                        </span>
-                                    )}
-                                </div>
-                                <p className="text-[11px] text-muted-foreground line-clamp-1 h-4">
-                                    {repo.description || "No description"}
-                                </p>
-                                <div className="mt-1.5 flex justify-between items-center text-[10px] opacity-40">
-                                    <span>{new Date(repo.updated_at).toLocaleDateString()}</span>
-                                </div>
-                            </div>
-                        ))}
+      {/* Main Dashboard */}
+      <div className="flex-1 flex flex-col bg-gradient-to-br from-background/50 to-background/80 overflow-hidden relative">
+        {loadingDetails ? (
+           <div className="flex-1 flex items-center justify-center">
+             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
+           </div>
+        ) : repoDetails ? (
+          <ScrollArea className="flex-1">
+             <div className="p-8 space-y-8 pb-20">
+                {/* Header Section */}
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-3">
+                            {repoDetails.name} 
+                            <Badge variant="outline" className="text-xs font-normal bg-secondary/20 border-white/10">
+                                {repoDetails.private ? "Private" : "Public"}
+                            </Badge>
+                        </h1>
+                        <p className="text-muted-foreground max-w-2xl leading-relaxed">
+                            {repoDetails.description || "No description provided."}
+                        </p>
+                    </div>
+                    <div className="flex gap-4">
+                        <a href={repoDetails.html_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-sm font-medium">
+                            <ExternalLink className="w-4 h-4" /> View on GitHub
+                        </a>
                     </div>
                 </div>
 
-                {/* Right Panel: Details (Two static panels) */}
-                <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-                    {!selectedRepo && !loadingDetails ? (
-                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-30">
-                            <GitCommit className="w-16 h-16 mb-2" />
-                            <p>Select a repository to view details</p>
-                        </div>
-                    ) : (
-                        loadingDetails ? (
-                            <div className="h-full flex items-center justify-center text-xs uppercase tracking-widest text-muted-foreground animate-pulse">
-                                Loading Repository Data...
-                            </div>
-                        ) : (
-                            selectedRepo && (
-                                <div className="h-full flex flex-row gap-4">
-                                    {/* Panel A: Commits */}
-                                    <div className="flex-1 flex flex-col border border-border bg-card rounded-md overflow-hidden">
-                                        <div className="p-3 border-b border-border bg-muted/20">
-                                            <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                                                <GitCommit className="w-3.5 h-3.5" /> Latest Commits
-                                            </h3>
-                                        </div>
-                                        <div className="flex-1 overflow-y-auto p-0">
-                                            <table className="w-full text-left text-[11px] font-mono">
-                                                <tbody>
-                                                    {selectedRepo.commits?.slice(0, 50).map((commit) => (
-                                                        <tr key={commit.sha} className="border-b border-border/50 last:border-0 hover:bg-muted/30">
-                                                            <td className="p-2 align-top text-muted-foreground w-20 truncate opacity-70">
-                                                                {commit.sha.substring(0, 7)}
-                                                            </td>
-                                                            <td className="p-2 align-top text-foreground">
-                                                                {commit.message}
-                                                            </td>
-                                                            <td className="p-2 align-top text-xs text-right opacity-60 w-24 whitespace-nowrap">
-                                                                {new Date(commit.date).toLocaleDateString()}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                    {!selectedRepo.commits?.length && (
-                                                        <tr><td colSpan={3} className="p-4 text-center text-muted-foreground">No commits found.</td></tr>
-                                                    )}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                                    {/* Panel B: Contributors */}
-                                    <div className="w-64 flex flex-col border border-border bg-card rounded-md overflow-hidden">
-                                         <div className="p-3 border-b border-border bg-muted/20">
-                                            <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                                                <Users className="w-3.5 h-3.5" /> Contributors
-                                            </h3>
-                                        </div>
-                                        <div className="flex-1 overflow-y-auto">
-                                            <div className="divide-y divide-border/50">
-                                                {selectedRepo.contributors?.map(contributor => (
-                                                    <div key={contributor.login} className="p-3 flex items-center justify-between hover:bg-muted/30">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-6 h-6 rounded-full bg-muted overflow-hidden">
-                                                                {contributor.avatar_url && (
-                                                                    <img src={contributor.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                                )}
-                                                            </div>
-                                                            <span className="text-xs font-medium">{contributor.login}</span>
-                                                        </div>
-                                                        <span className="text-xs font-bold bg-secondary/50 px-1.5 py-0.5 rounded text-secondary-foreground">
-                                                            {contributor.contributions}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                                {!selectedRepo.contributors?.length && (
-                                                    <div className="p-4 text-center text-muted-foreground text-xs">No contributors found.</div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )
-                        )
-                    )}
+                {/* KPI Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <KpiCard icon={Star} label="Stars" value={repoDetails.stargazers_count} color="text-yellow-400" />
+                    <KpiCard icon={GitPullRequest} label="Forks" value={repoDetails.forks || 0} color="text-purple-400" />
+                    <KpiCard icon={Activity} label="Open Issues" value={repoDetails.open_issues || 0} color="text-red-400" />
+                    <KpiCard icon={Calendar} label="Created" value={format(new Date(repoDetails.created_at || new Date()), 'MMM yyyy')} color="text-blue-400" isText />
                 </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Commits Line Chart */}
+                    <div className="lg:col-span-2 glass-panel p-6 rounded-xl border border-white/5 bg-black/20">
+                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                            <GitCommit className="w-5 h-5 text-primary" /> Commit Activity
+                        </h3>
+                        <div className="h-[300px] w-full">
+                            {commitData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={commitData}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                                    <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                                        itemStyle={{ color: '#fff' }}
+                                    />
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="count" 
+                                        stroke="#0ea5e9" 
+                                        strokeWidth={3} 
+                                        dot={{ r: 4, fill: "#0ea5e9", strokeWidth: 2, stroke: "#fff" }} 
+                                        activeDot={{ r: 6, fill: "#fff" }} 
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                            ) : (
+                                <div className="flex h-full items-center justify-center text-muted-foreground opacity-60">No commit data available</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Left Column Stack */}
+                    <div className="space-y-6">
+                         {/* Deployments Section */}
+                         <div className="glass-panel p-6 rounded-xl border border-white/5 bg-black/20 min-h-[200px]">
+                            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <Rocket className="w-5 h-5 text-emerald-400" /> Recent Deployments
+                            </h3>
+                            <ScrollArea className="h-[250px] pr-4">
+                                <div className="space-y-3">
+                                    {repoDetails.deployments && repoDetails.deployments.length > 0 ? (
+                                        repoDetails.deployments.map(dep => (
+                                            <div key={dep.id} className="p-3 bg-white/5 rounded-lg border border-white/5 flex items-center justify-between group hover:border-primary/30 transition-colors">
+                                                <div>
+                                                    <p className="text-sm font-medium capitalize flex items-center gap-2">
+                                                        <span className={`w-2 h-2 rounded-full ${dep.state === 'success' ? 'bg-emerald-400' : 'bg-yellow-400'}`} />
+                                                        {dep.environment}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                                        {format(new Date(dep.created_at), 'MMM dd, HH:mm')} by {dep.creator || 'bot'}
+                                                    </p>
+                                                </div>
+                                                <a href={dep.url} target="_blank" className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-white/10 rounded-md">
+                                                    <ExternalLink className="w-3.5 h-3.5" />
+                                                </a>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-40 text-muted-foreground text-sm opacity-60 bg-white/5 rounded-lg border-dashed border border-white/10">
+                                            <p>No deployments found</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Contributors Bar Chart */}
+                    <div className="glass-panel p-6 rounded-xl border border-white/5 bg-black/20">
+                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                            <Users className="w-5 h-5 text-indigo-400" /> Top Contributors
+                        </h3>
+                        <div className="h-[300px] w-full">
+                             <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={contributorData} layout="vertical" margin={{ left: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" horizontal={false} />
+                                    <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                    <YAxis dataKey="name" type="category" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={80} />
+                                    <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }} />
+                                    <Bar dataKey="contributions" fill="#818cf8" radius={[0, 4, 4, 0]} barSize={20} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Languages Pie Chart */}
+                    <div className="glass-panel p-6 rounded-xl border border-white/5 bg-black/20">
+                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                            <Code className="w-5 h-5 text-pink-400" /> Languages
+                        </h3>
+                        <div className="h-[300px] w-full flex items-center justify-center">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={languageData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={100}
+                                        paddingAngle={5}
+                                        dataKey="bytes"
+                                    >
+                                        {languageData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0.2)" strokeWidth={2} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+             </div>
+          </ScrollArea>
+        ) : error ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-200">
+                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                    <Activity className="w-8 h-8 text-red-500" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Error Loading Analysis</h3>
+                <p className="text-muted-foreground max-w-sm mb-6">{error}</p>
             </div>
-        </div>
-    );
+        ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground opacity-50">
+                <Search className="w-16 h-16 mb-4 opacity-20" />
+                <p>Select a repository to view analytics</p>
+            </div>
+        )}
+      </div>
+    </div>
+  );
 };
+
+// Helper Components
+const KpiCard = ({ icon: Icon, label, value, color, isText }: any) => (
+    <div className="glass-panel bg-black/20 border border-white/5 p-4 rounded-xl flex items-center gap-4 hover:border-white/10 transition-colors">
+        <div className={`p-3 rounded-lg bg-white/5 ${color}`}>
+            <Icon className="w-5 h-5" />
+        </div>
+        <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+            <p className="text-xl font-bold tracking-tight text-foreground">{value}</p>
+        </div>
+    </div>
+);
 
 export default GitHubIntegration;

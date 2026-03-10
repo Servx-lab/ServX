@@ -11,6 +11,8 @@ export interface RepoDetails {
   owner: { login: string };
   commits?: Commit[];
   contributors?: Contributor[];
+  languages?: Language[];
+  deployments?: Deployment[];
 }
 
 export interface Commit {
@@ -26,6 +28,20 @@ export interface Contributor {
   avatar_url: string;
   contributions: number;
   html_url: string;
+}
+
+export interface Language {
+  name: string;
+  bytes: number;
+}
+
+export interface Deployment {
+  id: number;
+  environment: string;
+  state: string;
+  created_at: string;
+  creator?: string;
+  url: string;
 }
 
 // Minimal Repo Summary structure for the list

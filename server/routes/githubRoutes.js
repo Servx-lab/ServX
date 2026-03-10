@@ -87,10 +87,23 @@ router.get('/repos/:owner/:repo/details', authenticate, async (req, res) => {
       params: { per_page: 100 },
     });
 
-    const [repoResponse, commitsResponse, contributorsResponse] = await Promise.all([
+    // 4. Fetch Languages
+    const languagesPromise = axios.get(`https://api.github.com/repos/${repoFullName}/languages`, {
+      headers: { Authorization: `Bearer ${req.githubToken}` },
+    });
+
+    // 5. Fetch Deployments
+    const deploymentsPromise = axios.get(`https://api.github.com/repos/${repoFullName}/deployments`, {
+      headers: { Authorization: `Bearer ${req.githubToken}` },
+      params: { per_page: 5 },
+    });
+
+    const [repoResponse, commitsResponse, contributorsResponse, languagesResponse, deploymentsResponse] = await Promise.all([
         repoDetailsPromise,
         commitsPromise,
-        contributorsPromise
+        contributorsPromise,
+        languagesPromise,
+        deploymentsPromise
     ]);
 
     // Format Data
@@ -107,6 +120,22 @@ router.get('/repos/:owner/:repo/details', authenticate, async (req, res) => {
       avatar_url: contributor.avatar_url,
       contributions: contributor.contributions,
       html_url: contributor.html_url,
+    }));
+
+    // Format Languages
+    const formattedLanguages = Object.entries(languagesResponse.data).map(([name, bytes]) => ({
+      name,
+      bytes: Number(bytes),
+    })).sort((a, b) => b.bytes - a.bytes); // Sort descending
+
+    // Format Deployments
+    const formattedDeployments = deploymentsResponse.data.map(dep => ({
+      id: dep.id,
+      environment: dep.environment,
+      state: dep.state,
+      created_at: dep.created_at,
+      creator: dep.creator?.login,
+      url: dep.html_url || dep.statuses_url,
     }));
 
     res.json({
@@ -126,6 +155,8 @@ router.get('/repos/:owner/:repo/details', authenticate, async (req, res) => {
       },
       commits: formattedCommits,
       contributors: formattedContributors,
+      languages: formattedLanguages,
+      deployments: formattedDeployments,
     });
 
   } catch (error) {
