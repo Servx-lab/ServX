@@ -13,7 +13,7 @@ import {
   Wifi, 
   ShieldCheck 
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils'; // Assuming valid utils path from existing workspace
 
 type Provider = 'Firebase' | 'Supabase' | 'MySQL' | 'PostgreSQL' | 'AWS RDS' | 'Oracle' | 'Redis' | 'MariaDB';
 
@@ -34,7 +34,7 @@ interface DatabaseConfig {
   serviceName?: string;
 }
 
-const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
+const DatabaseConnector = () => {
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [formData, setFormData] = useState<DatabaseConfig>({});
   const [showHelp, setShowHelp] = useState(false);
@@ -63,33 +63,23 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   };
 
   const validateInput = () => {
-    // Basic regex validation logic for URIs
+    // Basic regex validation logic
     if (['MySQL', 'PostgreSQL', 'MariaDB', 'Redis'].includes(selectedProvider || '')) {
        const uriPattern = /^[a-z]+:\/\/[^:]+(:[^@]+)?@[^:]+:\d+\/.+/;
        return uriPattern.test(formData.connectionUri || '');
     }
+    // Add more specific validations as needed
     return true;
   };
 
-  const handleSaveConnection = async () => {
-       // In a real app, this would post to the backend
-       // const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-       // await fetch(...)
-
-       // Simulate API call
-       await new Promise(resolve => setTimeout(resolve, 1000));
-       if (onSuccess) onSuccess();
-  }
-
   const handleTestConnection = async () => {
     if (!validateInput()) {
-        // You might want a better UI for error feedback
-        alert("Invalid format detected. Please check the Help section for the correct format.");
+        alert("Invalid format detected.");
         return;
     }
 
     setIsTesting(true);
-    // Simulate API call for testing
+    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 2000));
     setIsTesting(false);
     setTestSuccess(true);
@@ -198,9 +188,17 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   };
 
   return (
-    <div className="w-full bg-[#0B0E14] text-white p-4 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#0B0E14] text-white p-8 flex flex-col items-center justify-center font-sans">
+      <div className="w-full max-w-4xl space-y-8">
+        
+        {/* Header */}
+        <div className="text-center space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">Connect Data Source</h1>
+            <p className="text-gray-500">Select a provider to configure your secure connection vault.</p>
+        </div>
+
         {/* 1. Selection Logic: Grid of Database Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {providers.map((p) => (
                 <motion.button
                     key={p.id}
@@ -208,29 +206,29 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => { setSelectedProvider(p.id); setFormData({}); setTestSuccess(false); setShowHelp(false); }}
                     className={cn(
-                        "relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all duration-300 bg-[#181C25]",
+                        "relative flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 transition-all duration-300 bg-[#181C25]",
                         selectedProvider === p.id 
-                            ? "border-[#00C2CB] shadow-[0_0_10px_-5px_#00C2CB40] z-10" 
+                            ? "border-[#00C2CB] shadow-[0_0_20px_-5px_#00C2CB40]" 
                             : "border-transparent hover:border-white/10"
                     )}
                 >
                     <div className={cn(
-                        "p-2 rounded-full bg-[#0B0E14]", 
+                        "p-3 rounded-full bg-[#0B0E14]", 
                         selectedProvider === p.id ? "text-[#00C2CB]" : "text-gray-400"
                     )}>
-                        <p.icon size={24} />
+                        <p.icon size={28} />
                     </div>
                     <span className={cn(
-                        "font-medium text-xs",
+                        "font-medium text-sm",
                         selectedProvider === p.id ? "text-white" : "text-gray-400"
                     )}>{p.id}</span>
                     
                     {selectedProvider === p.id && (
                         <motion.div 
                             layoutId="active-check"
-                            className="absolute top-2 right-2 text-[#00C2CB]"
+                            className="absolute top-3 right-3 text-[#00C2CB]"
                         >
-                            <ShieldCheck size={14} />
+                            <ShieldCheck size={16} />
                         </motion.div>
                     )}
                 </motion.button>
@@ -239,25 +237,25 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
 
         {/* 2. Smart Input Logic */}
         <AnimatePresence mode="wait">
-            {selectedProvider ? (
+            {selectedProvider && (
                 <motion.div
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="bg-[#181C25] rounded-xl p-6 border border-white/5"
+                    exit={{ opacity: 0, y: -20 }}
+                    className="bg-[#181C25] rounded-2xl p-8 border border-white/5 shadow-xl"
                 >
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-3">
-                            <span className="h-6 w-1 bg-[#00C2CB] rounded-full"></span>
-                            <h2 className="text-lg font-semibold">{selectedProvider} Configuration</h2>
+                            <span className="h-8 w-1 bg-[#00C2CB] rounded-full"></span>
+                            <h2 className="text-xl font-semibold">{selectedProvider} Configuration</h2>
                         </div>
                         
-                        <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-white transition-colors">
+                        <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-white transition-colors">
                             <input 
                                 type="checkbox" 
                                 checked={showHelp} 
                                 onChange={(e) => setShowHelp(e.target.checked)}
-                                className="w-3.5 h-3.5 rounded border-gray-600 bg-[#0B0E14] text-[#00C2CB] focus:ring-[#00C2CB]" 
+                                className="w-4 h-4 rounded border-gray-600 bg-[#0B0E14] text-[#00C2CB] focus:ring-[#00C2CB]" 
                             />
                             <span>Show Help</span>
                             <HelpCircle size={14} />
@@ -273,8 +271,8 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                                 exit={{ height: 0, opacity: 0 }}
                                 className="overflow-hidden"
                             >
-                                <div className="bg-[#00C2CB]/10 border border-[#00C2CB]/20 rounded-lg p-4 mb-6 text-[#00C2CB] text-xs flex items-start gap-3">
-                                    <HelpCircle size={16} className="mt-0.5 shrink-0" />
+                                <div className="bg-[#00C2CB]/10 border border-[#00C2CB]/20 rounded-lg p-4 mb-8 text-[#00C2CB] text-sm flex items-start gap-3">
+                                    <HelpCircle size={18} className="mt-0.5 shrink-0" />
                                     <p>{renderHelpText()}</p>
                                 </div>
                             </motion.div>
@@ -282,15 +280,15 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                     </AnimatePresence>
 
                     {/* Dynamic Fields */}
-                    <div className="grid gap-4 mb-6">
+                    <div className="grid gap-6">
                         {renderFields()}
                     </div>
 
                     {/* 3. Action Buttons */}
-                    <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                    <div className="mt-8 flex justify-end gap-4 border-t border-white/5 pt-6">
                         <button 
-                            className="px-4 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white transition-colors"
-                            onClick={() => { setSelectedProvider(null); if (onSuccess) onSuccess(); }} 
+                            className="px-6 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                            onClick={() => setSelectedProvider(null)}
                         >
                             Cancel
                         </button>
@@ -299,55 +297,36 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                             onClick={handleTestConnection}
                             disabled={isTesting || testSuccess}
                             className={cn(
-                                "px-4 py-2 rounded-lg text-xs font-medium transition-all duration-300 flex items-center gap-2 min-w-[140px] justify-center",
+                                "relative px-8 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2",
                                 testSuccess 
                                     ? "bg-green-500/10 text-green-500 border border-green-500/50 cursor-default"
-                                    : "bg-[#00C2CB] text-black hover:bg-[#00C2CB]/90"
+                                    : "bg-[#00C2CB] text-black hover:bg-[#00C2CB]/90 shadow-[0_0_15px_-3px_#00C2CB]"
                             )}
                         >
                             {isTesting ? (
                                 <>
-                                    <Loader2 size={14} className="animate-spin" />
+                                    <Loader2 size={16} className="animate-spin" />
                                     Testing...
                                 </>
                             ) : testSuccess ? (
                                 <>
-                                    <Check size={14} />
+                                    <Check size={16} />
                                     Connected
                                 </>
                             ) : (
                                 <>
-                                    <Wifi size={14} />
+                                    <Wifi size={16} />
                                     Test Connection
                                 </>
                             )}
                         </button>
-
-                         {testSuccess && (
-                            <motion.button
-                                initial={{ opacity: 0, x: 10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                onClick={handleSaveConnection}
-                                className="px-6 py-2 rounded-lg text-xs font-bold bg-white text-black hover:bg-gray-200 transition-colors"
-                            >
-                                Save
-                            </motion.button>
-                         )}
                     </div>
-                </motion.div>
-            ) : (
-                 <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col items-center justify-center p-8 text-gray-500 border-2 border-dashed border-[#1f2937] rounded-xl"
-                >
-                    <Database size={32} className="mb-2 opacity-50" />
-                    <p className="text-sm">Select a provider above to get started</p>
                 </motion.div>
             )}
         </AnimatePresence>
+      </div>
     </div>
   );
 };
 
-export default AddDatabaseForm;
+export default DatabaseConnector;
