@@ -11,6 +11,7 @@ const userConnectionSchema = new mongoose.Schema({
     required: [true, 'Provider type is required'],
     enum: [
       'Firebase', 
+      'MongoDB',
       'Supabase', 
       'MySQL', 
       'PostgreSQL', 
@@ -20,33 +21,10 @@ const userConnectionSchema = new mongoose.Schema({
       'MariaDB'
     ]
   },
-  // Store provider-specific configuration
-  config: {
-    // Shared / Common Fields
-    host: { type: String },
-    port: { type: Number },
-    username: { type: String },
-    password: { type: String }, // Should be encrypted before saving
-    dbName: { type: String },
-    
-    // URI-based (MySQL, Postgres, MariaDB, Redis)
-    connectionUri: { type: String },
-
-    // Firebase Specific
-    apiKey: { type: String },
-    authDomain: { type: String },
-    projectId: { type: String },
-    storageBucket: { type: String },
-
-    // Supabase Specific
-    projectUrl: { type: String },
-    anonKey: { type: String }, // Treated as sensitive
-
-    // AWS RDS Specific
-    endpoint: { type: String },
-
-    // Oracle Specific
-    serviceName: { type: String }
+  // Store encrypted configuration as a JSON string
+  encryptedConfig: {
+    type: String,
+    required: true
   },
   
   // Security & Metadata
@@ -76,13 +54,9 @@ const userConnectionSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Create a virtual property to get the type-specific connection string equivalent if possible
-userConnectionSchema.virtual('displayString').get(function() {
-  if (this.config.connectionUri) return this.config.connectionUri.replace(/:[^:]*@/, ':****@'); // Mask password
-  if (this.config.host) return `${this.config.host}:${this.config.port}`;
-  if (this.config.projectUrl) return this.config.projectUrl;
-  if (this.config.projectId) return this.config.projectId;
-  return 'Unknown Endpoint';
-});
+// Helper method to get safe display string
+userConnectionSchema.methods.getDisplayString = function() {
+  return `${this.provider} Connection`;
+};
 
 module.exports = mongoose.models.UserConnection || mongoose.model('UserConnection', userConnectionSchema);

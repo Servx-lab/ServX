@@ -59,20 +59,22 @@ app.get('/', (req, res) => {
 // POST /api/connections - Save a new database connection securely
 app.post('/api/connections', async (req, res) => {
   try {
-    const { dbName, dbType, connectionString } = req.body;
+    const { name, provider, config } = req.body;
 
-    if (!dbName || !dbType || !connectionString) {
-      return res.status(400).json({ message: 'Missing required fields' });
+    if (!name || !provider || !config) {
+      return res.status(400).json({ message: 'Missing required configuration' });
     }
 
-    // Encrypt the connection string
-    const encrypted = encrypt(connectionString);
+    // Encrypt the configuration object
+    const configString = JSON.stringify(config);
+    const encrypted = encrypt(configString);
 
     const newConnection = new UserConnection({
-      dbName,
-      dbType,
-      connectionString: encrypted.content,
-      iv: encrypted.iv
+      name,
+      provider,
+      encryptedConfig: encrypted.content,
+      iv: encrypted.iv,
+      isEncrypted: true
     });
 
     await newConnection.save();
@@ -81,20 +83,21 @@ app.post('/api/connections', async (req, res) => {
       message: 'Connection saved successfully',
       connection: {
         _id: newConnection._id,
-        dbName: newConnection.dbName,
-        dbType: newConnection.dbType
+        name: newConnection.name,
+        provider: newConnection.provider,
+        createdAt: newConnection.createdAt
       }
     });
   } catch (error) {
     console.error('Error saving connection:', error);
-    res.status(500).json({ message: 'Server Error' });
+    res.status(500).json({ message: 'Server Error: ' + error.message });
   }
 });
 
 // GET /api/connections - List all saved connections (masked)
 app.get('/api/connections', async (req, res) => {
   try {
-    const connections = await UserConnection.find({}, 'dbName dbType createdAt'); // Select only safe fields
+    const connections = await UserConnection.find({}, 'name provider createdAt isActive lastTestedAt'); 
     res.json(connections);
   } catch (error) {
     console.error('Error fetching connections:', error);

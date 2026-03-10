@@ -36,12 +36,14 @@ interface DatabaseConfig {
 }
 
 const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
+  const [connectionName, setConnectionName] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [formData, setFormData] = useState<DatabaseConfig>({});
   const [showHelp, setShowHelp] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testSuccess, setTestSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState<string | null>(null);
 
   const providers: { id: Provider; icon: any }[] = [
     { id: 'MongoDB', icon: Database },
