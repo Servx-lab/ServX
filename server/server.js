@@ -55,6 +55,22 @@ app.post('/api/connections', async (req, res) => {
       return res.status(400).json({ message: 'Missing required configuration' });
     }
 
+    // Firebase-specific: validate service account JSON before saving
+    if (provider === 'Firebase') {
+      const raw = config.serviceAccountJson;
+      if (!raw) {
+        return res.status(400).json({ message: 'Service Account JSON is required for Firebase.' });
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        if (!parsed.project_id || !parsed.private_key || !parsed.client_email) {
+          return res.status(400).json({ message: 'Service Account JSON missing required fields: project_id, private_key, client_email.' });
+        }
+      } catch (e) {
+        return res.status(400).json({ message: 'Invalid Service Account JSON format.' });
+      }
+    }
+
     // Encrypt the configuration object
     const configString = JSON.stringify(config);
     const encrypted = encrypt(configString);

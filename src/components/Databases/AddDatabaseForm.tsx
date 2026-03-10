@@ -33,6 +33,7 @@ interface DatabaseConfig {
   password?: string;
   host?: string;
   serviceName?: string;
+  serviceAccountJson?: string;
 }
 
 const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
@@ -44,6 +45,7 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [testSuccess, setTestSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
+  const [jsonMasked, setJsonMasked] = useState(false);
 
   const providers: { id: Provider; icon: any }[] = [
     { id: 'MongoDB', icon: Database },
@@ -88,6 +90,28 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                setError("Please provide a name for this connection.");
                setIsTesting(false);
                return;
+           }
+
+           // Firebase-specific: validate the pasted JSON before sending
+           if (selectedProvider === 'Firebase') {
+               const raw = formData.serviceAccountJson;
+               if (!raw) {
+                   setError('Please paste your Service Account JSON.');
+                   setIsTesting(false);
+                   return;
+               }
+               try {
+                   const parsed = JSON.parse(raw);
+                   if (!parsed.project_id || !parsed.private_key || !parsed.client_email) {
+                       setError('Service Account JSON is missing required fields: project_id, private_key, or client_email.');
+                       setIsTesting(false);
+                       return;
+                   }
+               } catch {
+                   setError('Invalid JSON format. Please paste the raw JSON from Firebase.');
+                   setIsTesting(false);
+                   return;
+               }
            }
 
            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -137,12 +161,67 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     switch (selectedProvider) {
       case 'Firebase':
         return (
-          <>
-            <InputField label="API Key" field="apiKey" type="password" />
-            <InputField label="Auth Domain" field="authDomain" placeholder="project-id.firebaseapp.com" />
-            <InputField label="Project ID" field="projectId" />
-            <InputField label="Storage Bucket" field="storageBucket" placeholder="project-id.appspot.com" />
-          </>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                <Cloud size={14} className="text-[#00C2CB]" />
+                Paste Service Account JSON
+              </label>
+              <button
+                type="button"
+                onClick={() => setJsonMasked(!jsonMasked)}
+                className={cn(
+                  "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md transition-all border",
+                  jsonMasked
+                    ? "bg-[#00C2CB]/10 text-[#00C2CB] border-[#00C2CB]/30"
+                    : "text-gray-500 hover:text-white border-transparent hover:border-white/10"
+                )}
+              >
+                {jsonMasked ? <EyeOff size={12} /> : <Eye size={12} />}
+                {jsonMasked ? 'Masked' : 'Mask JSON'}
+              </button>
+            </div>
+            <div className="relative rounded-lg border-2 border-[#00C2CB]/40 shadow-[0_0_15px_-3px_#00C2CB30] focus-within:border-[#00C2CB] focus-within:shadow-[0_0_20px_-3px_#00C2CB50] transition-all">
+              <textarea
+                value={formData.serviceAccountJson || ''}
+                onChange={(e) => handleInputChange('serviceAccountJson', e.target.value)}
+                placeholder={'{\n  "type": "service_account",\n  "project_id": "your-project-id",\n  "private_key_id": "...",\n  "private_key": "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n",\n  "client_email": "firebase-adminsdk-...@your-project.iam.gserviceaccount.com",\n  ...\n}'}
+                rows={10}
+                spellCheck={false}
+                className={cn(
+                  "w-full bg-[#0B0E14] text-sm rounded-lg px-4 py-3 focus:outline-none transition-all placeholder:text-gray-700 resize-none font-mono leading-relaxed",
+                  jsonMasked
+                    ? "text-transparent caret-gray-400 selection:bg-[#00C2CB]/30 selection:text-transparent"
+                    : "text-gray-200"
+                )}
+                style={jsonMasked ? {
+                  WebkitTextSecurity: 'disc',
+                } as React.CSSProperties : {}}
+              />
+              {jsonMasked && (
+                <div className="absolute top-2 right-3 flex items-center gap-1 text-[10px] text-[#00C2CB]/60 pointer-events-none">
+                  <ShieldCheck size={10} />
+                  SECURED
+                </div>
+              )}
+            </div>
+            {formData.serviceAccountJson && (() => {
+              try {
+                const parsed = JSON.parse(formData.serviceAccountJson);
+                const hasRequired = parsed.project_id && parsed.private_key && parsed.client_email;
+                return hasRequired ? (
+                  <div className="flex items-center gap-2 text-xs text-green-500">
+                    <Check size={12} />
+                    Valid: project <span className="font-mono text-green-400">{parsed.project_id}</span>
+                  </div>
+                ) : (
+                  <div className="text-xs text-yellow-500">Missing required fields: project_id, private_key, or client_email</div>
+                );
+              } catch {
+                return <div className="text-xs text-red-400">Invalid JSON format</div>;
+              }
+            })()}
+          </div>
         );
       case 'Supabase':
         return (
@@ -202,7 +281,7 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
 
   const renderHelpText = () => {
      switch (selectedProvider) {
-        case 'Firebase': return 'Copy this from Project Settings > General > Your Apps in Firebase Console.';
+        case 'Firebase': return 'Go to Firebase Console → Project Settings → Service Accounts → Click "Generate New Private Key". Download the JSON and paste its entire contents into the editor above.';
         case 'Supabase': return 'Copy from Settings > API.';
         case 'MongoDB': return 'Format: mongodb+srv://username:password@cluster.mongodb.net/database';
         case 'MySQL':

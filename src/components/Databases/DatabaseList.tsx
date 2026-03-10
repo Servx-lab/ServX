@@ -24,6 +24,7 @@ import { FileUpload } from './FileUpload';
 import AddDatabaseForm from './AddDatabaseForm';
 import { DatabaseLogo } from './DatabaseLogo';
 import DataGrid from './DataGrid';
+import { FirebaseUserManager } from './FirebaseUserManager';
 
 const MOCK_DATA: UniversalRecord[] = [
   {
@@ -156,6 +157,7 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
 
   // Explorer State
   const [explorerMode, setExplorerMode] = useState(false);
+  const [showFirebaseUsers, setShowFirebaseUsers] = useState(false);
   const [databases, setDatabases] = useState<{name: string; sizeOnDisk: number}[]>([]);
   const [selectedDatabase, setSelectedDatabase] = useState<string | null>(null);
   const [collections, setCollections] = useState<string[]>([]);
@@ -206,29 +208,36 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       
       const isRealConnection = option.group === 'Your Connections';
       const isMongoDB = option.provider === 'MongoDB';
+      const isFirebase = option.provider === 'Firebase';
 
-      if (isRealConnection && isMongoDB) {
-          setExplorerMode(true);
-          setLoadingExplorer(true);
-          setDatabases([]);
-          setSelectedDatabase(null);
-          setCollections([]); 
-          setSelectedCollection(null);
-          setExplorerDocuments([]);
+      // Reset
+      setExplorerMode(false);
+      setShowFirebaseUsers(false);
 
-          try {
-             const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-             const res = await fetch(`${API_URL}/api/db/explore/databases?connectionId=${option.id}`);
-             if (!res.ok) throw new Error('Failed to fetch databases');
-             const data = await res.json();
-             setDatabases(data.databases || []);
-          } catch(err) {
-              console.error(err);
-          } finally {
-              setLoadingExplorer(false);
+      if (isRealConnection) {
+          if (isMongoDB) {
+              setExplorerMode(true);
+              setLoadingExplorer(true);
+              setDatabases([]);
+              setSelectedDatabase(null);
+              setCollections([]); 
+              setSelectedCollection(null);
+              setExplorerDocuments([]);
+
+              try {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                const res = await fetch(`${API_URL}/api/db/explore/databases?connectionId=${option.id}`);
+                if (!res.ok) throw new Error('Failed to fetch databases');
+                const data = await res.json();
+                setDatabases(data.databases || []);
+              } catch(err) {
+                  console.error(err);
+              } finally {
+                  setLoadingExplorer(false);
+              }
+          } else if (isFirebase) {
+              setShowFirebaseUsers(true);
           }
-      } else {
-          setExplorerMode(false);
       }
 
       if (option.id === 'Google Sheets') {
@@ -392,7 +401,7 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
                         <span className="hidden sm:inline">Add Connection</span>
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Connect New Database</DialogTitle>
                         <DialogDescription>
@@ -480,6 +489,8 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
                          )}
                      </div>
                  </div>
+            ) : showFirebaseUsers ? (
+                <FirebaseUserManager connectionId={selectedSource !== 'All' ? selectedSource as string : undefined} />
             ) : (
                 <div className="h-full overflow-y-auto no-scrollbar">
                     {/* Upload Area (Conditional) */}
