@@ -8,6 +8,7 @@ const providers = [
     { name: 'AWS', icon: Server, path: '/hosting/aws' },
     { name: 'Railway', icon: Box, path: '/hosting/railway' },
     { name: 'DigitalOcean', icon: Cpu, path: '/hosting/digitalocean' },
+    { name: 'Fly.io', icon: Globe, path: '/hosting/fly' },
 ];
 
 const HostingSidebar = () => {

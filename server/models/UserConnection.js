@@ -15,6 +15,7 @@ const userConnectionSchema = new mongoose.Schema({
       'DigitalOcean',
       'Railway',
       'Fly.io',
+      'AWS',
       'Firebase', 
       'MongoDB',
       'Supabase', 
