@@ -118,17 +118,18 @@ const AttackPath = () => {
         <div className="absolute inset-0 z-0">
           <Canvas shadows>
             <PerspectiveCamera makeDefault position={[0, 0, 10]} />
-            <ambientLight intensity={0.5} />
-            <pointLight position={[10, 10, 10]} intensity={1} color="#00C2CB" />
+            <ambientLight intensity={0.4} />
+            <pointLight position={[10, 10, 10]} intensity={2} color="#00C2CB" />
+            <pointLight position={[-10, -10, -10]} intensity={1} color="#6C63FF" />
             
-            <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+            <Stars radius={100} depth={50} count={7000} factor={4} saturation={1} fade speed={1.5} />
 
             <Suspense fallback={null}>
               <group rotation={[0.2, 0, 0]}>
-                <TopologyNode position={[-4, 0, 0]} label="FRONTEND_GATEWAY" isTargeted={false} />
-                <TopologyNode position={[0, 2, 0]} label="API_CORE_V2" isTargeted={isAttackActive} />
-                <TopologyNode position={[4, 0, 0]} label="DB_PERSISTENCE" isTargeted={false} />
-                <TopologyNode position={[0, -2, 0]} label="AUTH_AUTHZ" isTargeted={false} />
+                <TopologyNode position={[-4, 0, 0]} label="G-FRONTEND-01" isTargeted={false} />
+                <TopologyNode position={[0, 2.5, 0]} label="G-CORE-API-07" isTargeted={isAttackActive} />
+                <TopologyNode position={[4, 0, 0]} label="G-PERSIST-09" isTargeted={false} />
+                <TopologyNode position={[0, -2.5, 0]} label="G-AUTH-SYS-04" isTargeted={false} />
 
                 {/* Attack Animation */}
                 <AttackParticles start={[-4, 0, 0]} end={[0, 2, 0]} active={isAttackActive} />
