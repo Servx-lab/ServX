@@ -1,21 +1,60 @@
-import React, { useState, Suspense } from "react";
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera, Float, MeshDistortMaterial, Sphere, Icosahedron, Line, Stars, Html, Text } from "@react-three/drei";
-import { motion, AnimatePresence, useSpring } from "framer-motion";
-import { Shield, Zap, Lock, AlertTriangle, Play, RefreshCcw, Binary } from "lucide-react";
-import Sidebar from "@/components/Sidebar";
+import React, { useState, Suspense, useRef, useMemo } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { OrbitControls, PerspectiveCamera, Float, MeshDistortMaterial, Sphere, Icosahedron, Line, Stars, Text, Trail } from "@react-three/drei";
+import * as THREE from "three";
+import { motion, AnimatePresence } from "framer-motion";
 
 // --- sub-components ---
 
+const AttackParticles = ({ start, end, active }: any) => {
+  const points = useMemo(() => {
+    const p = [];
+    for (let i = 0; i <= 20; i++) {
+      p.push(new THREE.Vector3().lerpVectors(new THREE.Vector3(...start), new THREE.Vector3(...end), i / 20));
+    }
+    return p;
+  }, [start, end]);
+
+  const [pos, setPos] = useState(0);
+  
+  useFrame((state, delta) => {
+    if (!active) return;
+    setPos((prev) => (prev + delta * 2) % 1);
+  });
+
+  const currentPos = useMemo(() => {
+    return new THREE.Vector3().lerpVectors(new THREE.Vector3(...start), new THREE.Vector3(...end), pos);
+  }, [pos, start, end]);
+
+  if (!active) return null;
+
+  return (
+    <mesh position={currentPos}>
+      <sphereGeometry args={[0.1, 8, 8]} />
+      <meshBasicMaterial color="#6C63FF" />
+      <pointLight color="#6C63FF" intensity={2} distance={2} />
+    </mesh>
+  );
+};
+
 const TopologyNode = ({ position, label, isTargeted }: any) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  useFrame((state) => {
+    if (isTargeted && meshRef.current) {
+      meshRef.current.position.x = position[0] + Math.sin(state.clock.elapsedTime * 20) * 0.05;
+      meshRef.current.position.y = position[1] + Math.cos(state.clock.elapsedTime * 23) * 0.05;
+    }
+  });
+
   return (
     <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
       <group position={position}>
-        <Icosahedron args={[0.5, 1]} onPointerOver={(e) => (e.stopPropagation())}>
+        <Icosahedron ref={meshRef} args={[0.5, 1]} onPointerOver={(e) => (e.stopPropagation())}>
           <meshStandardMaterial 
             color={isTargeted ? "#6C63FF" : "#00C2CB"} 
             emissive={isTargeted ? "#6C63FF" : "#00C2CB"} 
-            emissiveIntensity={isTargeted ? 10 : 2} 
+            emissiveIntensity={isTargeted ? 15 : 2} 
             wireframe 
           />
         </Icosahedron>
