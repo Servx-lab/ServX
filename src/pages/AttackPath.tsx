@@ -327,29 +327,45 @@ const MasterOverride = ({ onClick, active }: any) => {
   const [coverOpen, setCoverOpen] = useState(false);
 
   return (
-    <div className="relative group flex flex-col items-center gap-4">
+    <div className="relative group flex flex-col items-center gap-6">
       <div 
-        className="relative w-32 h-32 flex items-center justify-center cursor-pointer"
+        className="relative w-40 h-40 flex items-center justify-center cursor-pointer perspective-1000"
         onMouseEnter={() => setCoverOpen(true)}
         onMouseLeave={() => setCoverOpen(false)}
         onClick={() => coverOpen && onClick()}
       >
+        {/* Glow Background */}
+        <div className={`absolute inset-0 rounded-full blur-3xl opacity-20 transition-all duration-1000 ${active ? 'bg-[#6C63FF] opacity-40' : 'bg-[#00C2CB]'}`} />
+
         {/* Under Button */}
-        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${active ? 'bg-[#6C63FF] shadow-[0_0_40px_#6C63FF]' : 'bg-[#181C25] border-2 border-[#6C63FF]/30'}`}>
-          <Lock className={`w-10 h-10 ${active ? 'text-white' : 'text-[#6C63FF]/50'}`} />
+        <div className={`relative z-0 w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 shadow-2xl ${active ? 'bg-[#6C63FF] shadow-[0_0_50px_#6C63FF]' : 'bg-[#181C25] border-2 border-[#6C63FF]/50'}`}>
+          <motion.div
+            animate={{ scale: active ? [1, 1.2, 1] : 1 }}
+            transition={{ repeat: Infinity, duration: 2 }}
+          >
+            {active ? <Shield className="w-12 h-12 text-white" /> : <Lock className="w-12 h-12 text-[#6C63FF]/50" />}
+          </motion.div>
         </div>
 
         {/* Glass Cover */}
         <motion.div 
-          animate={{ rotateX: coverOpen ? -110 : 0 }}
-          transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          style={{ transformOrigin: "top" }}
-          className="absolute inset-0 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center pointer-events-none"
+          animate={{ rotateX: coverOpen ? -130 : 0, y: coverOpen ? -20 : 0 }}
+          transition={{ type: "spring", stiffness: 150, damping: 15 }}
+          style={{ transformOrigin: "top", transformStyle: "preserve-3d" }}
+          className="absolute inset-x-0 top-0 h-40 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl flex flex-col items-center justify-center pointer-events-none z-10 shadow-2xl"
         >
-          <p className="text-[10px] font-black italic text-white/50 uppercase tracking-[0.2em] transform -rotate-12">Security Cover</p>
+          <div className="w-12 h-1 bg-white/20 rounded-full mb-4" />
+          <p className="text-[10px] font-black italic text-white/40 uppercase tracking-[0.4em] mb-2">Level 4 Clearance</p>
+          <div className="flex gap-1">
+             {[1,2,3].map(i => <div key={i} className="w-1 h-1 bg-[#6C63FF] rounded-full animate-pulse" />)}
+          </div>
         </motion.div>
       </div>
-      <p className="text-[10px] text-gray-500 font-mono italic">Lift cover to engage override</p>
+      <div className="text-center">
+        <p className={`text-[10px] font-mono tracking-widest transition-colors ${coverOpen ? 'text-[#6C63FF]' : 'text-gray-600'}`}>
+          {coverOpen ? "ENGAGE MASTER OVERRIDE" : "RESTRICTED ACCESS"}
+        </p>
+      </div>
     </div>
   );
 };
