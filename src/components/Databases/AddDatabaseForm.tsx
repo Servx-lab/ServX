@@ -80,13 +80,43 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   };
 
   const handleSaveConnection = async () => {
-       // In a real app, this would post to the backend
-       // const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-       // await fetch(...)
+       try {
+           setIsTesting(true);
+           setError(null);
+           
+           if (!connectionName) {
+               setError("Please provide a name for this connection.");
+               setIsTesting(false);
+               return;
+           }
 
-       // Simulate API call
-       await new Promise(resolve => setTimeout(resolve, 1000));
-       if (onSuccess) onSuccess();
+           const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+           const response = await fetch(`${API_URL}/api/connections`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: connectionName,
+                    provider: selectedProvider,
+                    config: formData
+                }),
+           });
+
+           if (!response.ok) {
+               const err = await response.json();
+               throw new Error(err.message || 'Failed to save');
+           }
+           
+           // Small delay for UX
+           await new Promise(resolve => setTimeout(resolve, 500));
+           
+           if (onSuccess) onSuccess();
+       } catch (err: any) {
+           setError(err.message || "An error occurred while saving.");
+       } finally {
+           setIsTesting(false);
+       }
   }
 
   const handleTestConnection = async () => {
@@ -298,8 +328,24 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
 
                     {/* Dynamic Fields */}
                     <div className="grid gap-4 mb-6">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Connection Name</label>
+                            <input
+                                type="text"
+                                value={connectionName}
+                                onChange={(e) => setConnectionName(e.target.value)}
+                                placeholder="e.g. Production Cluster"
+                                className="w-full bg-[#0B0E14] border border-[#1f2937] text-gray-200 text-sm rounded-lg px-4 py-3 focus:outline-none focus:border-[#00C2CB] focus:ring-1 focus:ring-[#00C2CB] transition-all placeholder:text-gray-600"
+                            />
+                        </div>
                         {renderFields()}
                     </div>
+
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs p-3 rounded-lg mb-4">
+                            {error}
+                        </div>
+                    )}
 
                     {/* 3. Action Buttons */}
                     <div className="flex justify-end gap-3 pt-4 border-t border-white/5">

@@ -80,7 +80,9 @@ const GitHubDashboard = () => {
           >
             <div>
               <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-primary truncate max-w-[80%]">{repo.name}</h3>
+                <h3 className="font-bold text-primary truncate max-w-[80%] hover:underline" title={repo.full_name || repo.name}>
+                    {repo.owner?.login ? `${repo.owner.login}/${repo.name}` : repo.name}
+                </h3>
                 <span className="text-[10px] opacity-50">{new Date(repo.updated_at).toLocaleDateString()}</span>
               </div>
               <p className="opacity-70 line-clamp-2 text-[11px] leading-relaxed h-8 mb-4">

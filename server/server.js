@@ -8,23 +8,12 @@ const User = require('./models/User');
 const UserConnection = require('./models/UserConnection');
 const authRoutes = require('./routes/authRoutes');
 const githubRoutes = require('./routes/githubRoutes');
+const databaseExplorerRoutes = require('./routes/databaseExplorerRoutes');
 const autoMedicMiddleware = require('./middleware/autoMedicMiddleware');
+const { encrypt } = require('./utils/encryption');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-// Encryption Configuration
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex'); // 32 bytes for AES-256
-const IV_LENGTH = 16; // AES block size
-
-// Helper: Encrypt
-function encrypt(text) {
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
-  let encrypted = cipher.update(text);
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return { iv: iv.toString('hex'), content: encrypted.toString('hex') };
-}
 
 // Middleware
 // Allow requests from your frontend (adjust origin as needed for production)
@@ -37,6 +26,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/github', githubRoutes);
+app.use('/api/db', databaseExplorerRoutes);
 
 // Database Connection
 const connectDB = async () => {

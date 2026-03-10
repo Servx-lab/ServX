@@ -8,6 +8,11 @@ export interface Commit {
 export interface Repository {
   id: number;
   name: string;
+  full_name: string; 
+  owner: {
+      login: string;
+      avatar_url: string;
+  };
   description: string | null;
   html_url: string;
   language: string | null;
