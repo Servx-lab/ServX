@@ -25,6 +25,7 @@ import AddDatabaseForm from './AddDatabaseForm';
 import { DatabaseLogo } from './DatabaseLogo';
 import DataGrid from './DataGrid';
 import { FirebaseUserManager } from './FirebaseUserManager';
+import apiClient from '@/lib/apiClient';
 
 const MOCK_DATA: UniversalRecord[] = [
   {
@@ -182,12 +183,7 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       if (!deleteTarget || !confirmDelete) return;
       setIsDeleting(true);
       try {
-          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-          const res = await fetch(`${API_URL}/api/connections/${deleteTarget.id}`, {
-              method: 'DELETE'
-          });
-          
-          if (!res.ok) throw new Error('Failed to delete');
+          await apiClient.delete(`/connections/${deleteTarget.id}`);
           
           toast({ title: "Connection Deleted", description: "The database connection has been removed." });
           fetchConnections();
@@ -225,11 +221,8 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
               setExplorerDocuments([]);
 
               try {
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                const res = await fetch(`${API_URL}/api/db/explore/databases?connectionId=${option.id}`);
-                if (!res.ok) throw new Error('Failed to fetch databases');
-                const data = await res.json();
-                setDatabases(data.databases || []);
+                const res = await apiClient.get(`/db/explore/databases?connectionId=${option.id}`);
+                setDatabases(res.data.databases || []);
               } catch(err) {
                   console.error(err);
               } finally {
@@ -254,11 +247,8 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       setExplorerDocuments([]);
       setLoadingCollections(true);
       try {
-          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-          const res = await fetch(`${API_URL}/api/db/explore/collections?connectionId=${selectedSource}&dbName=${encodeURIComponent(dbName)}`);
-          if (!res.ok) throw new Error('Failed to fetch collections');
-          const data = await res.json();
-          setCollections(data.collections || []);
+          const res = await apiClient.get(`/db/explore/collections?connectionId=${selectedSource}&dbName=${encodeURIComponent(dbName)}`);
+          setCollections(res.data.collections || []);
       } catch(err) {
           console.error(err);
       } finally {
@@ -272,19 +262,12 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       setSelectedCollection(colName);
       setLoadingExplorer(true);
       try {
-          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-          const res = await fetch(`${API_URL}/api/db/explore/documents`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                  connectionId: selectedSource,
-                  dbName: selectedDatabase, 
-                  collectionName: colName 
-              })
+          const res = await apiClient.post(`/db/explore/documents`, { 
+              connectionId: selectedSource,
+              dbName: selectedDatabase, 
+              collectionName: colName 
           });
-          if (!res.ok) throw new Error('Failed to fetch documents');
-          const data = await res.json();
-          setExplorerDocuments(data.documents || []);
+          setExplorerDocuments(res.data.documents || []);
       } catch(err) {
           console.error(err);
       } finally {
@@ -295,12 +278,8 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
   const fetchConnections = async () => {
     try {
         setLoadingConnections(true);
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const res = await fetch(`${API_URL}/api/connections`);
-        if (res.ok) {
-            const data = await res.json();
-            setConnections(data);
-        }
+        const res = await apiClient.get('/connections');
+        setConnections(res.data);
     } catch (err) {
         console.error("Failed to fetch connections", err);
     } finally {

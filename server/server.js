@@ -100,13 +100,6 @@ app.post('/api/connections', requireAuth, async (req, res) => {
       }
     }
 
-    // Vercel-specific: validate Client ID and Secret
-    if (provider === 'Vercel') {
-      if (!config.clientId || !config.clientSecret) {
-        return res.status(400).json({ message: 'Vercel Client ID and Client Secret are required.' });
-      }
-    }
-
     // Encrypt the configuration object
     const configString = JSON.stringify(config);
     const encrypted = encrypt(configString);
@@ -164,6 +157,91 @@ app.delete('/api/connections/:id', requireAuth, async (req, res) => {
     res.json({ message: 'Connection deleted successfully' });
   } catch (error) {
     console.error('Error deleting connection:', error);
+    res.status(500).json({ message: 'Server Error: ' + error.message });
+  }
+});
+
+// GET /api/connections/vercel/status - Check if Vercel is connected + fetch projects & deployments
+app.get('/api/connections/vercel/status', requireAuth, async (req, res) => {
+  try {
+    const connection = await UserConnection.findOne({
+      ownerUid: req.user.uid,
+      provider: 'Vercel'
+    });
+
+    if (!connection) {
+      return res.json({ connected: false });
+    }
+
+    const { decrypt } = require('./utils/encryption');
+    let vercelToken;
+    try {
+      const decrypted = decrypt({ iv: connection.iv, content: connection.encryptedConfig });
+      const parsed = JSON.parse(decrypted);
+      vercelToken = parsed.token;
+    } catch {
+      return res.json({ connected: true, connectionId: connection._id, createdAt: connection.createdAt, projects: [], deployments: [], error: 'Failed to decrypt token' });
+    }
+
+    const axios = require('axios');
+    const headers = { Authorization: `Bearer ${vercelToken}` };
+
+    let projects = [];
+    let deployments = [];
+    let user = null;
+
+    try {
+      const [userRes, projRes, deplRes] = await Promise.all([
+        axios.get('https://api.vercel.com/v2/user', { headers }).catch(() => null),
+        axios.get('https://api.vercel.com/v9/projects?limit=20', { headers }).catch(() => null),
+        axios.get('https://api.vercel.com/v6/deployments?limit=15', { headers }).catch(() => null),
+      ]);
+
+      if (userRes?.data?.user) {
+        user = {
+          username: userRes.data.user.username,
+          name: userRes.data.user.name,
+          email: userRes.data.user.email,
+          avatar: userRes.data.user.avatar,
+        };
+      }
+
+      if (projRes?.data?.projects) {
+        projects = projRes.data.projects.map(p => ({
+          id: p.id,
+          name: p.name,
+          framework: p.framework,
+          updatedAt: p.updatedAt,
+          latestDeploymentStatus: p.latestDeployments?.[0]?.readyState || 'unknown',
+          url: p.alias?.[0] ? `https://${p.alias[0]}` : null,
+        }));
+      }
+
+      if (deplRes?.data?.deployments) {
+        deployments = deplRes.data.deployments.map(d => ({
+          uid: d.uid,
+          name: d.name,
+          url: d.url ? `https://${d.url}` : null,
+          state: d.state || d.readyState,
+          created: d.created || d.createdAt,
+          source: d.source,
+          meta: d.meta ? { githubCommitMessage: d.meta.githubCommitMessage, githubCommitRef: d.meta.githubCommitRef } : null,
+        }));
+      }
+    } catch (apiErr) {
+      console.error('Vercel API fetch error:', apiErr.message);
+    }
+
+    res.json({
+      connected: true,
+      connectionId: connection._id,
+      createdAt: connection.createdAt,
+      user,
+      projects,
+      deployments,
+    });
+  } catch (error) {
+    console.error('Error checking Vercel status:', error);
     res.status(500).json({ message: 'Server Error: ' + error.message });
   }
 });

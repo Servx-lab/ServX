@@ -10,7 +10,10 @@ import {
   CloudLightning,
   Train,
   Box,
-  Server
+  Server,
+  Eye,
+  EyeOff,
+  HelpCircle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +72,8 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
   const [connections, setConnections] = useState(MOCK_CONNECTIONS);
   const [savedConnections, setSavedConnections] = useState<any[]>([]);
   const [apiKeys, setApiKeys] = useState({ render: '', fly: '' });
+  const [vercelToken, setVercelToken] = useState('');
+  const [showVercelToken, setShowVercelToken] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -120,9 +125,25 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
     }
   }, [searchParams, setSearchParams]);
 
-  const handleOAuthLogin = (provider: 'vercel' | 'digitalocean' | 'railway') => {
-    // Redirect to backend OAuth initiation route
+  const handleOAuthLogin = (provider: 'digitalocean' | 'railway') => {
     window.location.href = `/api/oauth/${provider}`;
+  };
+
+  const handleSaveVercelToken = async () => {
+    if (!vercelToken.trim()) return;
+    setLoading('vercel');
+    try {
+      await apiClient.post('/connections/vercel', {
+        name: 'Vercel Hosting',
+        token: vercelToken.trim(),
+      });
+      setConnections(prev => ({ ...prev, vercel: true }));
+      setVercelToken('');
+    } catch (err) {
+      console.error('Failed to save Vercel token:', err);
+    } finally {
+      setLoading(null);
+    }
   };
 
   const handleSaveApiKey = async (provider: 'render' | 'fly') => {
@@ -198,32 +219,6 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Vercel Card */}
-                <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-lg hover:border-cyan-500/30 hover:shadow-cyan-500/10 transition-all duration-300">
-                    <CardHeader className="flex flex-row items-start justify-between pb-2">
-                        <VercelLogo />
-                        <ConnectionStatusBadge isConnected={connections.vercel} />
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <CardTitle className="text-lg text-white">Vercel</CardTitle>
-                            <CardDescription className="mt-1.5 text-white/50">
-                                Connect securely via OAuth 2.0 to sync deployments and domains.
-                            </CardDescription>
-                        </div>
-                    </CardContent>
-                    <CardFooter>
-                        <Button 
-                            className="w-full bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-500/50 transition-all shadow-[0_0_15px_-3px_rgba(6,182,212,0.1)] hover:shadow-[0_0_20px_-3px_rgba(6,182,212,0.3)]"
-                            onClick={() => handleOAuthLogin('vercel')}
-                            disabled={loading === 'vercel'}
-                        >
-                            {loading === 'vercel' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                            {connections.vercel ? 'Reconnect Vercel' : 'Sign in with Vercel'}
-                        </Button>
-                    </CardFooter>
-                </Card>
-
                 {/* DigitalOcean Card */}
                 <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-lg hover:border-blue-500/30 hover:shadow-blue-500/10 transition-all duration-300">
                     <CardHeader className="flex flex-row items-start justify-between pb-2">
@@ -287,6 +282,71 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
+                {/* Vercel Card (Personal Access Token) */}
+                <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-lg hover:border-cyan-500/30 hover:shadow-cyan-500/10 transition-all duration-300">
+                    <CardHeader className="flex flex-row items-start justify-between pb-2">
+                        <VercelLogo />
+                        <ConnectionStatusBadge isConnected={connections.vercel} />
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div>
+                            <div className="flex justify-between items-center">
+                                <CardTitle className="text-lg text-white">Vercel</CardTitle>
+                                <a 
+                                    href="https://vercel.com/account/tokens"
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                                >
+                                    Generate token <ExternalLink className="w-3 h-3" />
+                                </a>
+                            </div>
+                            <CardDescription className="mt-1.5 text-white/50">
+                                Enter your Personal Access Token to sync deployments and domains.
+                            </CardDescription>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            <div className="relative">
+                                <Input 
+                                    type={showVercelToken ? 'text' : 'password'}
+                                    placeholder="vk1_xxxxxxxxxxxxxxxx" 
+                                    className="bg-black/50 border-white/10 text-white placeholder:text-white/20 focus:border-cyan-500/50 focus:ring-cyan-500/20 pr-10"
+                                    value={vercelToken}
+                                    onChange={(e) => setVercelToken(e.target.value)}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowVercelToken(!showVercelToken)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                                >
+                                    {showVercelToken ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
+                            <div className="bg-white/5 border border-white/10 rounded-lg p-2.5 space-y-1">
+                                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1">
+                                    <HelpCircle size={10} className="text-cyan-400" /> How to get your token
+                                </p>
+                                <div className="text-[11px] text-[#A4ADB3] leading-relaxed space-y-0.5">
+                                    <p>1. Click your profile picture → <span className="text-white/70">Account Settings</span></p>
+                                    <p>2. Click <span className="text-white/70">Tokens</span> in the left sidebar</p>
+                                    <p>3. Click <span className="text-white/70">Create</span>, name it "Orizon Dashboard"</p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        <Button 
+                            className="w-full bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-500/50 transition-all shadow-[0_0_15px_-3px_rgba(6,182,212,0.1)] hover:shadow-[0_0_20px_-3px_rgba(6,182,212,0.3)]"
+                            onClick={handleSaveVercelToken}
+                            disabled={loading === 'vercel' || !vercelToken.trim()}
+                        >
+                            {loading === 'vercel' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                            {connections.vercel ? 'Reconnect Vercel' : 'Connect Vercel'}
+                        </Button>
+                    </CardFooter>
+                </Card>
+
                 {/* Render Card */}
                 <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-lg hover:border-indigo-500/30 hover:shadow-indigo-500/10 transition-all duration-300">
                     <CardHeader className="flex flex-row items-start justify-between pb-2">

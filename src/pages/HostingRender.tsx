@@ -50,9 +50,8 @@ const HostingRender = () => {
                                 </div>
                             </header>
 
-                            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            <div className={providerName === 'Vercel' ? '' : 'grid gap-6 md:grid-cols-2 lg:grid-cols-3'}>
                                 <HostingIntegrationCard provider={providerName} onConnect={handleConnect} />
-                                {/* Placeholder for other providers */}
                             </div>
                         </div>
                     </div>
