@@ -29,7 +29,7 @@ function encrypt(text) {
 // Middleware
 // Allow requests from your frontend (adjust origin as needed for production)
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173', 
+  origin: [process.env.FRONTEND_URL, 'http://localhost:8080', 'http://localhost:5173'].filter(Boolean),
   credentials: true
 }));
 app.use(express.json());

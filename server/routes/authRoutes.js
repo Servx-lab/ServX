@@ -13,24 +13,13 @@ const USER_AGENT = 'Orizon-App'; // Good practice for GitHub API
 // Redirects user to GitHub for authorization or app installation
 router.get('/github', (req, res) => {
   const appName = process.env.GITHUB_APP_NAME;
-  const clientId = process.env.GITHUB_CLIENT_ID; // Read dynamically to ensure env is loaded
+  const clientId = process.env.GITHUB_CLIENT_ID; 
 
   console.log('GitHub Auth Start:', { appName, clientId: clientId ? 'Exists' : 'Missing' });
   
-  // If App Name is provided, use the App Installation flow (Install & Authorize)
-  // This prompts the user to install the app on repositories
-  if (appName) {
-    const installUrl = `https://github.com/apps/${appName}/installations/new`;
-    console.log('Redirecting to App Install:', installUrl);
-    return res.redirect(installUrl);
-  }
-
-  if (!clientId) {
-    console.error('Missing GITHUB_CLIENT_ID');
-    return res.status(500).send('Server Error: Missing GITHUB_CLIENT_ID');
-  }
-
-  // Fallback to standard OAuth flow (Authorize only) if no App Name
+  // Always use the OAuth flow for "Connecting" existing users or simple auth
+  // The App Install flow is only needed if you specifically want to trigger a new installation
+  // Standard OAuth will ask for permissions on installed repos anyway
   const redirectUri = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,read:user`;
   console.log('Redirecting to OAuth:', redirectUri);
   res.redirect(redirectUri);
@@ -39,10 +28,18 @@ router.get('/github', (req, res) => {
 // GET /api/auth/github/callback
 // Handles the callback, exchanges code for token
 router.get('/github/callback', async (req, res) => {
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
   const { code } = req.query;
 
+  console.log('GitHub Callback Received. Code:', code ? 'Present' : 'Missing');
+  console.log('Using Credentials:', { 
+    clientId: CLIENT_ID, 
+    clientSecretHeader: CLIENT_SECRET ? `...${CLIENT_SECRET.slice(-4)}` : 'Missing' 
+  });
+
   if (!code) {
-    return res.status(400).send('No code provided');
+    // Redirect to frontend with error instead of sending 400 text
+    return res.redirect(`${FRONTEND_URL}/github?error=no_code_provided`);
   }
 
   try {
@@ -64,7 +61,8 @@ router.get('/github/callback', async (req, res) => {
     const accessToken = tokenResponse.data.access_token;
 
     if (!accessToken) {
-      throw new Error('Failed to obtain access token from GitHub');
+      console.error('GitHub Token Exchange Failed. Response:', tokenResponse.data);
+      throw new Error(`Failed to obtain access token from GitHub: ${tokenResponse.data.error_description || tokenResponse.data.error || 'Unknown error'}`);
     }
 
     // 2. Initial fetch of user profile to identify them in our DB
@@ -75,6 +73,7 @@ router.get('/github/callback', async (req, res) => {
     });
 
     const profile = userProfileResponse.data;
+    console.log('GitHub Profile Fetched:', { id: profile.id, login: profile.login, email: profile.email });
 
     // 3. Find or Create User in DB
     let user = await User.findOne({ githubId: profile.id.toString() });
@@ -87,16 +86,18 @@ router.get('/github/callback', async (req, res) => {
     }
 
     if (user) {
+      console.log('Updating existing user:', user._id);
       // Update access token
       user.githubAccessToken = accessToken;
       if (!user.githubId) user.githubId = profile.id.toString(); // Link if found by email
       await user.save();
     } else {
+      console.log('Creating new user for:', profile.login);
       // Create new user
       user = await User.create({
         githubId: profile.id.toString(),
         name: profile.name || profile.login,
-        email: profile.email || `${profile.login}@github.placeholder.com`, // Email might be private
+        email: profile.email || `${profile.login}@users.noreply.github.com`, // Use standard GitHub no-reply format
         avatarUrl: profile.avatar_url,
         githubAccessToken: accessToken,
       });
@@ -111,8 +112,14 @@ router.get('/github/callback', async (req, res) => {
     res.redirect(`${FRONTEND_URL}/github?token=${sessionToken}`);
 
   } catch (error) {
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
     console.error('GitHub Auth Error:', error.message);
-    res.redirect(`${FRONTEND_URL}/github?error=auth_failed`);
+    if (error.response) {
+       console.error('Data:', error.response.data);
+       console.error('Status:', error.response.status);
+    }
+    // Pass error details to frontend for debugging
+    res.redirect(`${FRONTEND_URL}/github?error=auth_failed&details=${encodeURIComponent(error.message)}`);
   }
 });
 
