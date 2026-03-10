@@ -253,21 +253,54 @@ const AttackPath = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-50 flex items-center justify-center bg-[#6C63FF]/10 backdrop-blur-md pointer-events-none"
+              className="absolute inset-0 z-50 flex items-center justify-center bg-[#6C63FF]/5 backdrop-blur-md pointer-events-none overflow-hidden"
             >
-              <div className="relative">
-                <div className="absolute inset-0 bg-[#6C63FF] blur-[100px] opacity-20 animate-pulse" />
-                <div className="border-4 border-[#6C63FF] p-12 relative flex flex-col items-center gap-6">
-                  <div className="absolute -top-4 -left-4 w-8 h-8 border-t-4 border-l-4 border-[#6C63FF]" />
-                  <div className="absolute -top-4 -right-4 w-8 h-8 border-t-4 border-r-4 border-[#6C63FF]" />
-                  <div className="absolute -bottom-4 -left-4 w-8 h-8 border-b-4 border-l-4 border-[#6C63FF]" />
-                  <div className="absolute -bottom-4 -right-4 w-8 h-8 border-b-4 border-r-4 border-[#6C63FF]" />
+              {/* Hexagonal Grid Overlay */}
+              <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ 
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill-rule='evenodd' stroke='%236C63FF' fill='none'/%3E%3C/svg%3E")`,
+                backgroundSize: '60px 60px'
+              }} />
+
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="relative"
+              >
+                <div className="absolute inset-0 bg-[#6C63FF] blur-[120px] opacity-30 animate-pulse" />
+                <div className="border border-[#6C63FF]/50 p-16 relative flex flex-col items-center gap-8 bg-[#0B0E14]/80 backdrop-blur-3xl shadow-[0_0_100px_rgba(108,99,255,0.2)]">
+                  {/* Corners */}
+                  <div className="absolute -top-1 -left-1 w-10 h-10 border-t-2 border-l-2 border-[#6C63FF] shadow-[0_0_15px_#6C63FF]" />
+                  <div className="absolute -top-1 -right-1 w-10 h-10 border-t-2 border-r-2 border-[#6C63FF] shadow-[0_0_15px_#6C63FF]" />
+                  <div className="absolute -bottom-1 -left-1 w-10 h-10 border-b-2 border-l-2 border-[#6C63FF] shadow-[0_0_15px_#6C63FF]" />
+                  <div className="absolute -bottom-1 -right-1 w-10 h-10 border-b-2 border-r-2 border-[#6C63FF] shadow-[0_0_15px_#6C63FF]" />
                   
-                  <Shield className="w-20 h-20 text-[#6C63FF] animate-bounce" />
-                  <h1 className="text-6xl font-black text-[#6C63FF] tracking-[0.2em] italic">SYSTEM LOCKDOWN</h1>
-                  <p className="text-[#6C63FF] text-xl font-mono animate-pulse">PROTOCOL L-03 ACTIVE // ALL NODES ISOLATED</p>
+                  <div className="relative">
+                    <Shield className="w-24 h-24 text-[#6C63FF] animate-pulse" />
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0 border-2 border-dashed border-[#6C63FF]/30 rounded-full scale-150"
+                    />
+                  </div>
+
+                  <div className="text-center">
+                    <h1 className="text-7xl font-black text-white tracking-[0.3em] mb-4 drop-shadow-[0_0_20px_#6C63FF]">LOCKDOWN</h1>
+                    <div className="h-px w-full bg-gradient-to-r from-transparent via-[#6C63FF] to-transparent mb-4" />
+                    <p className="text-[#6C63FF] text-sm font-mono tracking-[0.5em] animate-pulse">ENCRYPTING ALL NETWORK NODES // LEVEL 4 PROTOCOL</p>
+                  </div>
+
+                  <div className="flex gap-8 text-[10px] font-mono text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <span>NODES ISOLATED</span>
+                      <span className="text-white font-bold">14/14</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span>DATA SHIELD</span>
+                      <span className="text-[#6C63FF] font-bold">MAXIMUM</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
