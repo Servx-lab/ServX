@@ -50,6 +50,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
   onConnect 
 }) => {
   const [apiKey, setApiKey] = useState('');
+  const [vercelConfig, setVercelConfig] = useState({ clientId: '', clientSecret: '' });
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
 
   // Determine if the provider uses OAuth flow
@@ -67,15 +68,48 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
   };
 
   const getDescription = () => {
+    if (provider === 'Vercel') {
+        return "Enter your Vercel OAuth App Credentials (Client ID & Secret) to enable deployment monitoring.";
+    }
     if (isOAuthProvider) {
         return `Connect securely via OAuth 2.0 to sync ${provider} services and deployments.`;
     }
     return `To fetch live CPU and Memory metrics, generate a Personal API Key in your ${provider} Account Settings.`;
   };
 
-  const handleOAuthLogin = () => {
+  const handleOAuthLogin = async () => {
+    if (provider === 'Vercel') {
+      if (!vercelConfig.clientId || !vercelConfig.clientSecret) {
+        setStatus('error');
+        return;
+      }
+      
+      setStatus('connecting');
+      try {
+        // Save the credentials to backend first
+        const response = await fetch('/api/connections', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: `${provider} Personal`,
+            provider: 'Vercel',
+            config: vercelConfig
+          })
+        });
+
+        if (!response.ok) throw new Error('Failed to save credentials');
+        
+        // Redirect to Vercel OAuth flow
+        window.location.href = `/api/oauth/vercel?userId=mock-user-123`;
+      } catch (err) {
+        console.error('Vercel Config Error:', err);
+        setStatus('error');
+      }
+      return;
+    }
+
     setStatus('connecting');
-    // Simulate redirect for demo
+    // Simulate redirect for other OAuth providers
     setTimeout(() => {
         window.location.href = `/api/oauth/${provider.toLowerCase()}`;
     }, 800);
@@ -138,8 +172,27 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
 
         <div className="w-full max-w-sm space-y-4">
           
-          {/* Render Input Field Only for Non-OAuth Providers */}
-          {!isOAuthProvider && (
+          {/* Vercel Specific Inputs */}
+          {provider === 'Vercel' && (
+            <div className="space-y-3">
+              <Input 
+                placeholder="Vercel Client ID"
+                value={vercelConfig.clientId}
+                onChange={(e) => setVercelConfig(prev => ({ ...prev, clientId: e.target.value }))}
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-cyan-500/50"
+              />
+              <Input 
+                type="password"
+                placeholder="Vercel Client Secret"
+                value={vercelConfig.clientSecret}
+                onChange={(e) => setVercelConfig(prev => ({ ...prev, clientSecret: e.target.value }))}
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-cyan-500/50"
+              />
+            </div>
+          )}
+
+          {/* Render Input Field Only for Non-OAuth Providers and Non-Vercel */}
+          {!isOAuthProvider && provider !== 'Vercel' && (
               <div className="relative">
                 <Input 
                   type="password" 

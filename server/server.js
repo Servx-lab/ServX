@@ -72,6 +72,13 @@ app.post('/api/connections', async (req, res) => {
       }
     }
 
+    // Vercel-specific: validate Client ID and Secret
+    if (provider === 'Vercel') {
+      if (!config.clientId || !config.clientSecret) {
+        return res.status(400).json({ message: 'Vercel Client ID and Client Secret are required.' });
+      }
+    }
+
     // Encrypt the configuration object
     const configString = JSON.stringify(config);
     const encrypted = encrypt(configString);
@@ -81,7 +88,8 @@ app.post('/api/connections', async (req, res) => {
       provider,
       encryptedConfig: encrypted.content,
       iv: encrypted.iv,
-      isEncrypted: true
+      isEncrypted: true,
+      userId: req.user?.uid || 'mock-user-123' // Fallback for demo/mock if auth not fully integrated
     });
 
     await newConnection.save();
