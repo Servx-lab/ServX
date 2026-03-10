@@ -142,6 +142,45 @@ app.delete('/api/connections/:id', requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/connections/vercel - Save a Vercel Personal Access Token
+app.post('/api/connections/vercel', requireAuth, async (req, res) => {
+  try {
+    const { name, token } = req.body;
+    const ownerUid = req.user.uid;
+
+    if (!name || !token) {
+      return res.status(400).json({ message: 'Connection name and Vercel PAT are required.' });
+    }
+
+    // Encrypt the token
+    const encrypted = encrypt(JSON.stringify({ token }));
+
+    const newConnection = new UserConnection({
+      name,
+      provider: 'Vercel',
+      encryptedConfig: encrypted.content,
+      iv: encrypted.iv,
+      isEncrypted: true,
+      ownerUid
+    });
+
+    await newConnection.save();
+
+    res.status(201).json({ 
+      message: 'Vercel connection saved successfully',
+      connection: {
+        _id: newConnection._id,
+        name: newConnection.name,
+        provider: 'Vercel',
+        createdAt: newConnection.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error saving Vercel connection:', error);
+    res.status(500).json({ message: 'Server Error: ' + error.message });
+  }
+});
+
 // GET /api/databases/mongodb/users
 app.get('/api/databases/mongodb/users', async (req, res) => {
   try {

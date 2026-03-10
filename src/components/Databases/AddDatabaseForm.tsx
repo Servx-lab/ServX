@@ -15,8 +15,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DatabaseLogo } from './DatabaseLogo';
+import apiClient from '@/lib/apiClient';
 
-type Provider = 'Firebase' | 'MongoDB' | 'Supabase' | 'MySQL' | 'PostgreSQL' | 'AWS RDS' | 'Oracle' | 'Redis' | 'MariaDB';
+type Provider = 'Firebase' | 'MongoDB' | 'Supabase' | 'MySQL' | 'PostgreSQL' | 'AWS RDS' | 'Oracle' | 'Redis' | 'MariaDB' | 'Vercel';
 
 interface DatabaseConfig {
   apiKey?: string;
@@ -34,6 +35,7 @@ interface DatabaseConfig {
   host?: string;
   serviceName?: string;
   serviceAccountJson?: string;
+  token?: string; // For Vercel PAT
 }
 
 const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
@@ -57,6 +59,7 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     { id: 'Oracle', icon: HardDrive },
     { id: 'Redis', icon: Server },
     { id: 'MariaDB', icon: Database },
+    { id: 'Vercel', icon: Cloud },
   ];
 
   const handleInputChange = (field: keyof DatabaseConfig, value: string) => {
@@ -82,66 +85,70 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   };
 
   const handleSaveConnection = async () => {
-       try {
-           setIsTesting(true);
-           setError(null);
-           
-           if (!connectionName) {
-               setError("Please provide a name for this connection.");
-               setIsTesting(false);
-               return;
-           }
+        try {
+            setIsTesting(true);
+            setError(null);
+            
+            if (!connectionName) {
+                setError("Please provide a name for this connection.");
+                setIsTesting(false);
+                return;
+            }
 
-           // Firebase-specific: validate the pasted JSON before sending
-           if (selectedProvider === 'Firebase') {
-               const raw = formData.serviceAccountJson;
-               if (!raw) {
-                   setError('Please paste your Service Account JSON.');
-                   setIsTesting(false);
-                   return;
-               }
-               try {
-                   const parsed = JSON.parse(raw);
-                   if (!parsed.project_id || !parsed.private_key || !parsed.client_email) {
-                       setError('Service Account JSON is missing required fields: project_id, private_key, or client_email.');
-                       setIsTesting(false);
-                       return;
-                   }
-               } catch {
-                   setError('Invalid JSON format. Please paste the raw JSON from Firebase.');
-                   setIsTesting(false);
-                   return;
-               }
-           }
+            // Firebase-specific: validate the pasted JSON before sending
+            if (selectedProvider === 'Firebase') {
+                const raw = formData.serviceAccountJson;
+                if (!raw) {
+                    setError('Please paste your Service Account JSON.');
+                    setIsTesting(false);
+                    return;
+                }
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (!parsed.project_id || !parsed.private_key || !parsed.client_email) {
+                        setError('Service Account JSON is missing required fields: project_id, private_key, or client_email.');
+                        setIsTesting(false);
+                        return;
+                    }
+                } catch {
+                    setError('Invalid JSON format. Please paste the raw JSON from Firebase.');
+                    setIsTesting(false);
+                    return;
+                }
+            }
 
-           const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-           const response = await fetch(`${API_URL}/api/connections`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
+            let endpoint = '/connections';
+            let payload: any = {
+                name: connectionName,
+                provider: selectedProvider,
+                config: formData
+            };
+
+            // Custom handling for Vercel
+            if (selectedProvider === 'Vercel') {
+                endpoint = '/connections/vercel';
+                payload = {
                     name: connectionName,
-                    provider: selectedProvider,
-                    config: formData
-                }),
-           });
+                    token: formData.token
+                };
+            }
 
-           if (!response.ok) {
-               const err = await response.json();
-               throw new Error(err.message || 'Failed to save');
-           }
-           
-           // Small delay for UX
-           await new Promise(resolve => setTimeout(resolve, 500));
-           
-           if (onSuccess) onSuccess();
-       } catch (err: any) {
-           setError(err.message || "An error occurred while saving.");
-       } finally {
-           setIsTesting(false);
-       }
-  }
+            const res = await apiClient.post(endpoint, payload);
+            
+            if (res.status !== 201) {
+                throw new Error('Failed to save');
+            }
+            
+            // Small delay for UX
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            if (onSuccess) onSuccess();
+        } catch (err: any) {
+            setError(err.response?.data?.message || err.message || "An error occurred while saving.");
+        } finally {
+            setIsTesting(false);
+        }
+  };
 
   const handleTestConnection = async () => {
     if (!validateInput()) {
@@ -273,6 +280,28 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
             } 
             type="password"
           />
+        );
+      case 'Vercel':
+        return (
+          <div className="space-y-4">
+            <InputField 
+                label="Vercel Personal Access Token" 
+                field="token" 
+                type="password" 
+                placeholder="vk1_..." 
+            />
+            <div className="bg-[#181C25] border border-white/5 rounded-lg p-4 space-y-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                   <HelpCircle size={12} className="text-[#00C2CB]" /> 
+                   How to get your token
+                </p>
+                <div className="text-[11px] text-[#A4ADB3] leading-relaxed space-y-1.5 list-decimal list-inside pl-1">
+                    <p>1. Click your profile picture in the top right of Vercel and select <span className="text-gray-300">Account Settings</span>.</p>
+                    <p>2. Click <span className="text-gray-300">Tokens</span> in the left sidebar menu.</p>
+                    <p>3. Click <span className="text-gray-300">Create</span>, name it "Orizon Dashboard", and it will give you a single long token (e.g., vk1_...).</p>
+                </div>
+            </div>
+          </div>
         );
       default:
         return null;

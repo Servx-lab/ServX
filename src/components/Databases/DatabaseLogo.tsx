@@ -88,6 +88,12 @@ export const DatabaseLogo: React.FC<DatabaseLogoProps> = ({ type, className = "w
                 <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12.7 18.1C10.5 18.6 8.5 17.5 7.6 15.4C6.7 13.3 7.3 10.9 9.1 9.6L12.5 5.5L16.2 8.7L14.4 13.6L16.8 17.5L12.7 18.1Z" fill="#336791"/>
              </svg>
         );
+    case 'Vercel':
+        return (
+             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={className} fill="none">
+                <path d="M12 2L2 21H22L12 2Z" fill="white"/>
+             </svg>
+        );
     default:
       // Fallback to Lucide icons
       switch (type) {
