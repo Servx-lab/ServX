@@ -53,4 +53,5 @@ export interface RepositorySummary {
   html_url: string;
   language: string | null;
   updated_at: string;
+  owner?: { login: string; avatar_url?: string };
 }

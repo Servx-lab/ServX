@@ -4,37 +4,57 @@ const router = express.Router();
 const UserConnection = require('../models/UserConnection');
 const { decrypt } = require('../utils/encryption');
 
-// 1. GET /api/db/explore/collections
-router.get('/explore/collections', async (req, res) => {
+// Helper: get connection string from a saved connection
+async function getConnectionString(connectionId) {
+    const connection = await UserConnection.findById(connectionId);
+    if (!connection) throw new Error('Connection not found');
+    const decryptedConfig = decrypt({ content: connection.encryptedConfig, iv: connection.iv });
+    const config = JSON.parse(decryptedConfig);
+    if (!config.connectionUri) throw new Error('Invalid connection configuration');
+    return config.connectionUri;
+}
+
+// 1. GET /api/db/explore/databases - List all databases on the cluster
+router.get('/explore/databases', async (req, res) => {
   let client;
   try {
     const { connectionId } = req.query;
+    if (!connectionId) return res.status(400).json({ message: 'Connection ID is required' });
 
-    if (!connectionId) {
-      return res.status(400).json({ message: 'Connection ID is required' });
-    }
-
-    const connection = await UserConnection.findById(connectionId);
-    if (!connection) {
-        return res.status(404).json({ message: 'Connection not found' });
-    }
-    
-    // Decrypt config
-    const decryptedConfig = decrypt({ content: connection.encryptedConfig, iv: connection.iv });
-    const config = JSON.parse(decryptedConfig);
-    const connectionString = config.connectionUri;
-
-    if (!connectionString) {
-        return res.status(400).json({ message: 'Invalid connection configuration' });
-    }
-
+    const connectionString = await getConnectionString(connectionId);
     client = new MongoClient(connectionString);
     await client.connect();
 
-    const db = client.db(); // Connects to the database specified in the URI
-    const collections = await db.listCollections().toArray();
+    const adminDb = client.db().admin();
+    const result = await adminDb.listDatabases();
+    const databases = result.databases
+      .map(db => ({ name: db.name, sizeOnDisk: db.sizeOnDisk }))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-    // extract just names for the sidebar? or return full info
+    res.json({ databases });
+  } catch (error) {
+    console.error('Error fetching databases:', error);
+    res.status(500).json({ message: 'Failed to fetch databases', error: error.message });
+  } finally {
+    if (client) await client.close();
+  }
+});
+
+// 2. GET /api/db/explore/collections?connectionId=...&dbName=...
+router.get('/explore/collections', async (req, res) => {
+  let client;
+  try {
+    const { connectionId, dbName } = req.query;
+    if (!connectionId || !dbName) {
+      return res.status(400).json({ message: 'Connection ID and database name are required' });
+    }
+
+    const connectionString = await getConnectionString(connectionId);
+    client = new MongoClient(connectionString);
+    await client.connect();
+
+    const db = client.db(dbName);
+    const collections = await db.listCollections().toArray();
     const collectionNames = collections.map(c => c.name).sort();
 
     res.json({ collections: collectionNames });
@@ -46,35 +66,22 @@ router.get('/explore/collections', async (req, res) => {
   }
 });
 
-// 2. POST /api/db/explore/documents
+// 3. POST /api/db/explore/documents
 router.post('/explore/documents', async (req, res) => {
   let client;
   try {
-    const { connectionId, collectionName } = req.body;
-
-    if (!connectionId || !collectionName) {
-      return res.status(400).json({ message: 'Connection ID and collection name are required' });
+    const { connectionId, dbName, collectionName } = req.body;
+    if (!connectionId || !dbName || !collectionName) {
+      return res.status(400).json({ message: 'Connection ID, database name, and collection name are required' });
     }
 
-    const connection = await UserConnection.findById(connectionId);
-    if (!connection) {
-        return res.status(404).json({ message: 'Connection not found' });
-    }
-    
-    // Decrypt config
-    const decryptedConfig = decrypt({ content: connection.encryptedConfig, iv: connection.iv });
-    const config = JSON.parse(decryptedConfig);
-    const connectionString = config.connectionUri;
-
+    const connectionString = await getConnectionString(connectionId);
     client = new MongoClient(connectionString);
     await client.connect();
 
-    const db = client.db();
+    const db = client.db(dbName);
     const collection = db.collection(collectionName);
-
-    const documents = await collection.find({})
-      .limit(50)
-      .toArray();
+    const documents = await collection.find({}).limit(50).toArray();
 
     res.json({ documents });
   } catch (error) {

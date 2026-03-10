@@ -216,7 +216,12 @@ const GitHubIntegration = () => {
                     <h4 className={`text-sm font-medium truncate ${selectedRepoId === repo.id ? "text-primary" : "text-foreground"}`}>
                         {repo.name}
                     </h4>
-                    <p className="text-xs text-muted-foreground truncate opacity-70">
+                    {repo.owner && (
+                        <p className="text-[10px] text-muted-foreground truncate opacity-60">
+                           {repo.owner.login}
+                        </p>
+                    )}
+                    <p className="text-xs text-muted-foreground truncate opacity-70 mt-0.5">
                          Updated {format(new Date(repo.updated_at), 'MMM dd')}
                     </p>
                 </div>

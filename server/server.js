@@ -95,6 +95,21 @@ app.get('/api/connections', async (req, res) => {
   }
 });
 
+// DELETE /api/connections/:id - Delete a connection
+app.delete('/api/connections/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await UserConnection.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ message: 'Connection not found' });
+    }
+    res.json({ message: 'Connection deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting connection:', error);
+    res.status(500).json({ message: 'Server Error: ' + error.message });
+  }
+});
+
 // GET /api/databases/mongodb/users
 app.get('/api/databases/mongodb/users', async (req, res) => {
   try {

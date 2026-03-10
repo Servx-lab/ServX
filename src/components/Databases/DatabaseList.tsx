@@ -5,7 +5,20 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Search, Filter, Eye, Plus, Database, RefreshCw, Table as TableIcon, Loader2 } from 'lucide-react';
+import { 
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Search, Filter, Eye, Plus, Database, RefreshCw, Table as TableIcon, Loader2, Trash2, AlertTriangle, ChevronDown, HardDrive } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 import { QuickViewDrawer } from './QuickViewDrawer';
 import { FileUpload } from './FileUpload';
 import AddDatabaseForm from './AddDatabaseForm';
@@ -143,10 +156,50 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
 
   // Explorer State
   const [explorerMode, setExplorerMode] = useState(false);
+  const [databases, setDatabases] = useState<{name: string; sizeOnDisk: number}[]>([]);
+  const [selectedDatabase, setSelectedDatabase] = useState<string | null>(null);
   const [collections, setCollections] = useState<string[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [explorerDocuments, setExplorerDocuments] = useState<any[]>([]);
   const [loadingExplorer, setLoadingExplorer] = useState(false);
+  const [loadingCollections, setLoadingCollections] = useState(false);
+
+  // Delete Connection State
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { toast } = useToast();
+
+  const initiateDelete = (e: React.MouseEvent, option: any) => {
+      e.stopPropagation(); 
+      setDeleteTarget(option);
+      setConfirmDelete(false);
+  };
+
+  const executeDelete = async () => {
+      if (!deleteTarget || !confirmDelete) return;
+      setIsDeleting(true);
+      try {
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+          const res = await fetch(`${API_URL}/api/connections/${deleteTarget.id}`, {
+              method: 'DELETE'
+          });
+          
+          if (!res.ok) throw new Error('Failed to delete');
+          
+          toast({ title: "Connection Deleted", description: "The database connection has been removed." });
+          fetchConnections();
+          if (selectedSource === deleteTarget.id) {
+              setSelectedSource('All');
+              setExplorerMode(false);
+          }
+          setDeleteTarget(null);
+      } catch (err) {
+          toast({ title: "Error", description: "Failed to delete connection.", variant: "destructive" });
+      } finally {
+          setIsDeleting(false);
+      }
+  };
 
   const handleSourceSelect = async (option: any) => {
       setSelectedSource(option.id);
@@ -157,16 +210,18 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       if (isRealConnection && isMongoDB) {
           setExplorerMode(true);
           setLoadingExplorer(true);
+          setDatabases([]);
+          setSelectedDatabase(null);
           setCollections([]); 
           setSelectedCollection(null);
           setExplorerDocuments([]);
 
           try {
              const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-             const res = await fetch(`${API_URL}/api/db/explore/collections?connectionId=${option.id}`);
-             if (!res.ok) throw new Error('Failed to fetch collections');
+             const res = await fetch(`${API_URL}/api/db/explore/databases?connectionId=${option.id}`);
+             if (!res.ok) throw new Error('Failed to fetch databases');
              const data = await res.json();
-             setCollections(data.collections || []);
+             setDatabases(data.databases || []);
           } catch(err) {
               console.error(err);
           } finally {
@@ -183,8 +238,27 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       }
   };
 
+  const handleDatabaseSelect = async (dbName: string) => {
+      setSelectedDatabase(dbName);
+      setCollections([]);
+      setSelectedCollection(null);
+      setExplorerDocuments([]);
+      setLoadingCollections(true);
+      try {
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+          const res = await fetch(`${API_URL}/api/db/explore/collections?connectionId=${selectedSource}&dbName=${encodeURIComponent(dbName)}`);
+          if (!res.ok) throw new Error('Failed to fetch collections');
+          const data = await res.json();
+          setCollections(data.collections || []);
+      } catch(err) {
+          console.error(err);
+      } finally {
+          setLoadingCollections(false);
+      }
+  };
+
   const handleCollectionSelect = async (colName: string) => {
-      if (!selectedSource || typeof selectedSource !== 'string') return;
+      if (!selectedSource || !selectedDatabase) return;
       
       setSelectedCollection(colName);
       setLoadingExplorer(true);
@@ -194,7 +268,8 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
-                  connectionId: selectedSource, 
+                  connectionId: selectedSource,
+                  dbName: selectedDatabase, 
                   collectionName: colName 
               })
           });
@@ -285,12 +360,6 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
               });
           });
       }
-
-      // Add specific mock/demo sources if they aren't covered
-      const demoSources = ['Firebase', 'MongoDB', 'Supabase', 'MySQL', 'AWS RDS', 'PostgreSQL', 'Oracle', 'Redis', 'MariaDB'];
-      demoSources.forEach(src => {
-           options.push({ id: src, label: `${src} (Demo)`, provider: src, group: 'Demo Databases' });
-      });
       
       options.push({ id: 'Google Sheets', label: 'Google Sheets', provider: 'Google Sheets', group: 'Uploads' });
 
@@ -335,93 +404,78 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
             </Dialog>
       </div>
 
-     {/* Main Content Area with Left Sidebar */}
+     {/* Main Content Area with sidebar on the RIGHT */}
      <div className="flex flex-1 gap-6 overflow-hidden">
-         {/* Left Sidebar: Database Selection */}
-         <div className="w-64 flex-none border-r pr-6 pt-1 hidden md:block overflow-y-auto no-scrollbar">
-             <div className="flex items-center justify-between mb-4 pr-2">
-                 <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                     Databases
-                 </div>
-                 <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                    onClick={fetchConnections}
-                    disabled={loadingConnections}
-                 >
-                    <RefreshCw className={`h-3 w-3 ${loadingConnections ? 'animate-spin' : ''}`} />
-                 </Button>
-             </div>
-             <div className="flex flex-col gap-1">
-                {currentDatabaseOptions.map((option, index) => {
-                    const isFirstInGroup = index > 0 && option.group !== currentDatabaseOptions[index - 1].group;
-                    return (
-                    <div key={option.id}>
-                        {isFirstInGroup && (
-                            <div className="text-[10px] font-bold text-muted-foreground/60 mb-2 mt-4 px-2 uppercase tracking-wider">
-                                {option.group}
-                            </div>
-                        )}
-                        <Button
-                            variant={selectedSource === option.id ? "secondary" : "ghost"}
-                            className={`w-full justify-start gap-3 h-auto py-2 px-3 ${selectedSource === option.id ? 'bg-secondary font-medium shadow-sm' : 'text-muted-foreground'}`}
-                            onClick={() => handleSourceSelect(option)}
-                        >
-                            <div className="flex-shrink-0">
-                                <DatabaseLogo type={option.provider || option.id} className="w-5 h-5" />
-                            </div>
-                            <span className="truncate text-sm">{option.label}</span>
-                        </Button>
-                    </div>
-                )})}
-            </div>
-         </div>
-
-         {/* Right: Scrollable Content - Table */}
          {/* Right: Scrollable Content - Table or Explorer */}
          <div className="flex-1 overflow-hidden h-full pr-2">
             {explorerMode ? (
-                 <div className="flex h-full gap-4">
-                     {/* Collections Sidebar */}
-                     <div className="w-48 border-r pr-2 overflow-y-auto no-scrollbar pt-2">
-                         <div className="text-xs font-semibold text-muted-foreground mb-3 px-2 uppercase tracking-wider flex items-center justify-between">
-                            <span>Collections</span>
+                 <div className="flex flex-col h-full gap-0">
+                     {/* Database Tabs - horizontal bar at top */}
+                     <div className="flex items-center gap-1 px-2 py-2 border-b border-border/50 overflow-x-auto flex-none">
+                         <div className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mr-2 flex-shrink-0 flex items-center gap-1.5">
+                            <HardDrive className="w-3 h-3" /> Databases
                             {loadingExplorer && <Loader2 className="h-3 w-3 animate-spin"/>}
                          </div>
-                         <div className="flex flex-col gap-1">
-                             {collections.map(col => (
-                                 <Button 
-                                    key={col} 
-                                    variant={selectedCollection === col ? "secondary" : "ghost"} 
-                                    size="sm" 
-                                    className={`justify-start h-8 px-2 text-xs truncate ${selectedCollection === col ? 'bg-secondary font-medium' : 'text-muted-foreground'}`}
-                                    onClick={() => handleCollectionSelect(col)}
-                                 >
-                                     <TableIcon className="w-3 h-3 mr-2 opacity-70" />
-                                     <span className="truncate" title={col}>{col}</span>
-                                 </Button>
-                             ))}
-                             {collections.length === 0 && !loadingExplorer && (
-                                 <div className="text-xs text-muted-foreground p-2">No collections found.</div>
+                         {databases.map(db => (
+                             <Button 
+                                key={db.name} 
+                                variant={selectedDatabase === db.name ? "secondary" : "outline"} 
+                                size="sm" 
+                                className={`h-7 px-3 text-xs flex-shrink-0 ${selectedDatabase === db.name ? 'bg-secondary font-medium shadow-sm' : 'text-muted-foreground border-border/50'}`}
+                                onClick={() => handleDatabaseSelect(db.name)}
+                             >
+                                 {db.name}
+                             </Button>
+                         ))}
+                         {databases.length === 0 && !loadingExplorer && (
+                             <span className="text-[11px] text-muted-foreground">No databases found.</span>
+                         )}
+                     </div>
+
+                     {/* Collections sidebar + Documents area */}
+                     <div className="flex flex-1 overflow-hidden">
+                         {/* Documents Explorer */}
+                         <div className="flex-1 overflow-hidden h-full rounded-md border bg-card/50 mr-2">
+                             {selectedCollection ? (
+                                 loadingExplorer ? (
+                                     <div className="flex items-center justify-center h-full text-muted-foreground gap-2">
+                                         <Loader2 className="h-4 w-4 animate-spin"/> Loading data...
+                                     </div>
+                                 ) : (
+                                     <DataGrid data={explorerDocuments} collectionName={selectedCollection} />
+                                 )
+                             ) : (
+                                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
+                                     <Database className="h-12 w-12 opacity-20 mb-4" />
+                                     <p className="text-sm">{!selectedDatabase ? 'Select a database to get started' : 'Select a collection to browse documents'}</p>
+                                 </div>
                              )}
                          </div>
-                     </div>
-                     
-                     {/* Documents Explorer */}
-                     <div className="flex-1 overflow-hidden h-full rounded-md border bg-card/50">
-                         {selectedCollection ? (
-                             loadingExplorer ? (
-                                 <div className="flex items-center justify-center h-full text-muted-foreground gap-2">
-                                     <Loader2 className="h-4 w-4 animate-spin"/> Loading data...
+
+                         {/* Collections Sidebar */}
+                         {selectedDatabase && (
+                             <div className="w-48 border-l overflow-y-auto pt-3 px-2 flex-none">
+                                 <div className="text-[10px] font-bold text-muted-foreground/60 mb-2 px-1 uppercase tracking-wider flex items-center justify-between">
+                                    <span>Collections</span>
+                                    {loadingCollections && <Loader2 className="h-3 w-3 animate-spin"/>}
                                  </div>
-                             ) : (
-                                 <DataGrid data={explorerDocuments} collectionName={selectedCollection} />
-                             )
-                         ) : (
-                             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
-                                 <Database className="h-12 w-12 opacity-20 mb-4" />
-                                 <p>Select a collection to browse documents</p>
+                                 <div className="flex flex-col gap-0.5">
+                                     {collections.map(col => (
+                                         <Button 
+                                            key={col} 
+                                            variant={selectedCollection === col ? "secondary" : "ghost"} 
+                                            size="sm" 
+                                            className={`justify-start h-7 px-2 text-xs ${selectedCollection === col ? 'bg-secondary font-medium' : 'text-muted-foreground'}`}
+                                            onClick={() => handleCollectionSelect(col)}
+                                         >
+                                             <TableIcon className="w-3 h-3 mr-2 opacity-70 flex-shrink-0" />
+                                             <span className="truncate" title={col}>{col}</span>
+                                         </Button>
+                                     ))}
+                                     {collections.length === 0 && !loadingCollections && (
+                                         <div className="text-[11px] text-muted-foreground px-2 py-1">No collections.</div>
+                                     )}
+                                 </div>
                              </div>
                          )}
                      </div>
@@ -496,6 +550,59 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
             )}
          </div>
 
+         {/* Right Sidebar: Connection Selection - always visible now but on the right */}
+         <div className="w-64 flex-none border-l pl-6 pt-1 hidden md:block overflow-y-auto no-scrollbar">
+             <div className="flex items-center justify-between mb-4 pr-2">
+                 <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                     Databases
+                 </div>
+                 <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                    onClick={fetchConnections}
+                    disabled={loadingConnections}
+                 >
+                    <RefreshCw className={`h-3 w-3 ${loadingConnections ? 'animate-spin' : ''}`} />
+                 </Button>
+             </div>
+             <div className="flex flex-col gap-1">
+                {currentDatabaseOptions.map((option, index) => {
+                    const isFirstInGroup = index > 0 && option.group !== currentDatabaseOptions[index - 1].group;
+                    return (
+                    <div key={option.id}>
+                        {isFirstInGroup && (
+                            <div className="text-[10px] font-bold text-muted-foreground/60 mb-2 mt-4 px-2 uppercase tracking-wider">
+                                {option.group}
+                            </div>
+                        )}
+                        <div className="relative group/item">
+                            <Button
+                                variant={selectedSource === option.id ? "secondary" : "ghost"}
+                                className={`w-full justify-start gap-3 h-auto py-2 px-3 pr-8 ${selectedSource === option.id ? 'bg-secondary font-medium shadow-sm' : 'text-muted-foreground'}`}
+                                onClick={() => handleSourceSelect(option)}
+                            >
+                                <div className="flex-shrink-0">
+                                    <DatabaseLogo type={option.provider || option.id} className="w-5 h-5" />
+                                </div>
+                                <span className="truncate text-sm">{option.label}</span>
+                            </Button>
+                            
+                            {option.group === 'Your Connections' && (
+                                <Button
+                                    variant="ghost" 
+                                    size="icon"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover/item:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={(e) => initiateDelete(e, option)}
+                                >
+                                    <Trash2 className="h-3 w-3" />
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                )})}
+            </div>
+         </div>
      </div>
 
       <QuickViewDrawer 
@@ -503,6 +610,41 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
         isOpen={!!selectedRecord} 
         onClose={() => setSelectedRecord(null)} 
       />
+
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+            <AlertDialogContent className="sm:max-w-[425px]">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle className="h-5 w-5" />
+                        Delete Connection?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will permanently delete the connection "<strong>{deleteTarget?.label}</strong>" and its configuration. This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                
+                <div className="flex items-start space-x-2 py-4">
+                    <Checkbox id="confirm-delete" checked={confirmDelete} onCheckedChange={(c) => setConfirmDelete(c as boolean)} />
+                    <div className="grid gap-1.5 leading-none">
+                         <Label htmlFor="confirm-delete" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            I understand that this action is permanent.
+                         </Label>
+                    </div>
+                </div>
+
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={(e) => { e.preventDefault(); executeDelete(); }} 
+                        disabled={!confirmDelete || isDeleting}
+                        className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                    >
+                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                        Delete Connection
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 };
