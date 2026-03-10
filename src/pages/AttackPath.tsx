@@ -1,23 +1,43 @@
 import React, { useState, Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera, Float, MeshDistortMaterial, Sphere, Icosahedron, Line, Stars } from "@react-three/drei";
-import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Zap, Lock, AlertTriangle, Play, RefreshCcw } from "lucide-react";
+import { OrbitControls, PerspectiveCamera, Float, MeshDistortMaterial, Sphere, Icosahedron, Line, Stars, Html, Text } from "@react-three/drei";
+import { motion, AnimatePresence, useSpring } from "framer-motion";
+import { Shield, Zap, Lock, AlertTriangle, Play, RefreshCcw, Binary } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 
 // --- sub-components ---
 
-const TopologyNode = ({ position, label, isTargeted, type }: any) => {
+const TopologyNode = ({ position, label, isTargeted }: any) => {
   return (
     <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
-      <mesh position={position}>
-        <icosahedronGeometry args={[0.5, 1]} />
-        <meshStandardMaterial 
-          color={isTargeted ? "#6C63FF" : "#00C2CB"} 
-          emissive={isTargeted ? "#6C63FF" : "#00C2CB"} 
-          emissiveIntensity={isTargeted ? 5 : 2} 
-          wireframe 
-        />
+      <group position={position}>
+        <Icosahedron args={[0.5, 1]} onPointerOver={(e) => (e.stopPropagation())}>
+          <meshStandardMaterial 
+            color={isTargeted ? "#6C63FF" : "#00C2CB"} 
+            emissive={isTargeted ? "#6C63FF" : "#00C2CB"} 
+            emissiveIntensity={isTargeted ? 10 : 2} 
+            wireframe 
+          />
+        </Icosahedron>
+        
+        {/* Pulsing Aura */}
+        <Sphere args={[0.5, 16, 16]}>
+          <meshBasicMaterial 
+            color={isTargeted ? "#6C63FF" : "#00C2CB"} 
+            transparent 
+            opacity={0.1} 
+          />
+        </Sphere>
+
+        <Text
+          position={[0, 0.8, 0]}
+          fontSize={0.2}
+          color="#00C2CB"
+          font="https://fonts.gstatic.com/s/orbitron/v30/y97pyXG9LrxS4lTz68l6_GfN.woff"
+        >
+          {label}
+        </Text>
+
         {isTargeted && (
           <Sphere args={[0.6, 16, 16]}>
             <MeshDistortMaterial
@@ -30,7 +50,7 @@ const TopologyNode = ({ position, label, isTargeted, type }: any) => {
             />
           </Sphere>
         )}
-      </mesh>
+      </group>
     </Float>
   );
 };
@@ -66,20 +86,39 @@ const AttackPath = () => {
 
             <Suspense fallback={null}>
               <group rotation={[0.2, 0, 0]}>
-                <TopologyNode position={[-4, 0, 0]} label="Frontend" isTargeted={false} />
-                <TopologyNode position={[0, 2, 0]} label="Backend" isTargeted={isAttackActive} />
-                <TopologyNode position={[4, 0, 0]} label="Database" isTargeted={false} />
+                <TopologyNode position={[-4, 0, 0]} label="FRONTEND_GATEWAY" isTargeted={false} />
+                <TopologyNode position={[0, 2, 0]} label="API_CORE_V2" isTargeted={isAttackActive} />
+                <TopologyNode position={[4, 0, 0]} label="DB_PERSISTENCE" isTargeted={false} />
+                <TopologyNode position={[0, -2, 0]} label="AUTH_AUTHZ" isTargeted={false} />
 
-                {/* Flow Paths */}
+                {/* Holographic Flow Paths */}
                 <Line
                   points={[[-4, 0, 0], [0, 2, 0]]}
                   color={isAttackActive ? "#6C63FF" : "#00C2CB"}
-                  lineWidth={1}
+                  lineWidth={1.5}
+                  transparent
+                  opacity={0.5}
+                />
+                <Line
+                  points={[[-4, 0, 0], [0, -2, 0]]}
+                  color="#00C2CB"
+                  lineWidth={1.5}
+                  transparent
+                  opacity={0.5}
                 />
                 <Line
                   points={[[0, 2, 0], [4, 0, 0]]}
                   color="#00C2CB"
-                  lineWidth={1}
+                  lineWidth={1.5}
+                  transparent
+                  opacity={0.5}
+                />
+                <Line
+                  points={[[0, -2, 0], [4, 0, 0]]}
+                  color="#00C2CB"
+                  lineWidth={1.5}
+                  transparent
+                  opacity={0.5}
                 />
               </group>
             </Suspense>
