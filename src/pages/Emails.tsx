@@ -239,7 +239,7 @@ const Emails = () => {
                             <div className="flex items-start justify-between gap-4 mb-1">
                               <h4 className="font-medium text-white truncate pr-4">{senderName}</h4>
                               <span className="text-xs text-[#A4ADB3] whitespace-nowrap flex-shrink-0">
-                                {new Date(email.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                {new Date(email.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
                             <h5 className="text-sm text-white/90 font-medium mb-1 truncate">{email.subject}</h5>
