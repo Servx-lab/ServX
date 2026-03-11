@@ -19,7 +19,8 @@ import {
   Stethoscope,
   Activity,
   LogOut,
-  User as UserIcon
+  User as UserIcon,
+  Mail
 } from "lucide-react";
 import {
   Collapsible,
@@ -45,7 +46,7 @@ const navItems = [
   { icon: Search, label: "Exposure Analysis", to: "/exposure" },
   { icon: Route, label: "Attack Paths", to: "/attack-paths" },
   { icon: PenTool, label: "Scenario Designer", to: "/scenarios" },
-  { icon: Calendar, label: "Events", to: "/events" },
+  { icon: Mail, label: "Emails", to: "/emails" },
   { icon: Shield, label: "Administration", to: "/admin" },
   { icon: FileText, label: "Report Center", to: "/reports" },
 ];

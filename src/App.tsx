@@ -18,6 +18,7 @@ import Onboarding from "./pages/Onboarding";
 import Administrator from "./pages/Administrator";
 import AttackPath from "./pages/AttackPath";
 import ComingSoon from "./pages/ComingSoon";
+import Emails from "./pages/Emails";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "@/components/RequireAuth";
 
@@ -133,10 +134,10 @@ const App = () => (
               }
             />
             <Route
-              path="/events"
+              path="/emails"
               element={
                 <RequireAuth>
-                  <ComingSoon />
+                  <Emails />
                 </RequireAuth>
               }
             />
