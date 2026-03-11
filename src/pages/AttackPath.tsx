@@ -550,9 +550,24 @@ function generateVulnerabilities(repo: RepoSummary): Vulnerability[] {
 }
 
 const AttackPath = () => {
+  const navigate = useNavigate();
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [repos, setRepos] = useState<RepoSummary[]>([]);
+  const [selectedRepo, setSelectedRepo] = useState<RepoSummary | null>(null);
+  const [repoDropdownOpen, setRepoDropdownOpen] = useState(false);
+
   const [isAttackActive, setIsAttackActive] = useState(false);
+  const [activeAttackType, setActiveAttackType] = useState<AttackType>(null);
   const [isLockdown, setIsLockdown] = useState(false);
   const [glitch, setGlitch] = useState(false);
+
+  const [scanPhase, setScanPhase] = useState<ScanPhase>("idle");
+  const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
+  const [showReport, setShowReport] = useState(false);
+  const [scanLog, setScanLog] = useState<string[]>([]);
+
+  const deviceUUID = useMemo(() => getDeviceUUID(), []);
 
   const toggleLockdown = () => {
     setGlitch(true);
