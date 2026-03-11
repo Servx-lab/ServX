@@ -13,6 +13,27 @@ import Sidebar from "@/components/Sidebar";
 import apiClient from "@/lib/apiClient";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
+// ─── Types ──────────────────────────────────────────────────────
+
+interface RepoSummary {
+  id: number;
+  name: string;
+  full_name: string;
+  language: string | null;
+  owner?: { login: string };
+}
+
+interface Vulnerability {
+  id: string;
+  severity: "critical" | "medium" | "low";
+  title: string;
+  detail: string;
+  file?: string;
+}
+
+type AttackType = "ddos" | "injection" | null;
+type ScanPhase = "idle" | "scanning" | "attacking" | "reporting";
+
 // --- sub-components ---
 
 const SolarSystemBackground = () => {
