@@ -545,22 +545,34 @@ const GitHubIntegration = () => {
             </div>
         )}
 
-        {/* Sliding Access Panel */}
+        {/* Sliding Access Panel Overlay & Panel */}
         <AnimatePresence>
             {isAccessPanelOpen && repoDetails && (
-                <motion.div 
-                    initial={{ x: '100%' }}
-                    animate={{ x: 0 }}
-                    exit={{ x: '100%' }}
-                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                    className="absolute right-0 top-0 bottom-0 w-96 border-l border-white/10 z-50 shadow-2xl bg-[#181C25]"
-                >
-                    <RepositoryAccess 
-                        repoName={repoDetails.full_name} 
-                        contributors={repoDetails.contributors || []} 
-                        onClose={() => setIsAccessPanelOpen(false)}
+                <>
+                    {/* Backdrop to detect clicks outside */}
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsAccessPanelOpen(false)}
+                        className="absolute inset-0 bg-black/20 backdrop-blur-[2px] z-40"
                     />
-                </motion.div>
+                    
+                    {/* Sliding Panel */}
+                    <motion.div 
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        className="absolute right-0 top-0 bottom-0 w-96 border-l border-white/10 z-50 shadow-2xl bg-[#181C25]"
+                    >
+                        <RepositoryAccess 
+                            repoName={repoDetails.full_name} 
+                            contributors={repoDetails.contributors || []} 
+                            onClose={() => setIsAccessPanelOpen(false)}
+                        />
+                    </motion.div>
+                </>
             )}
         </AnimatePresence>
       </div>
