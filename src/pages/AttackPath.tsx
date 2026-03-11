@@ -238,6 +238,14 @@ const ScanLineAnimation = ({ repoName, phase }: { repoName: string; phase: ScanP
   );
 };
 
+// ─── Severity Config ────────────────────────────────────────────
+
+const SEVERITY_CONFIG = {
+  critical: { color: "#6C63FF", bg: "bg-[#6C63FF]/10", border: "border-[#6C63FF]/30", badge: "bg-[#6C63FF]", label: "CRITICAL" },
+  medium:   { color: "#00C2CB", bg: "bg-[#00C2CB]/10", border: "border-[#00C2CB]/30", badge: "bg-[#00C2CB]", label: "MEDIUM" },
+  low:      { color: "#F59E0B", bg: "bg-[#F59E0B]/10", border: "border-[#F59E0B]/30", badge: "bg-[#F59E0B]", label: "LOW" },
+};
+
 const AttackPath = () => {
   const [isAttackActive, setIsAttackActive] = useState(false);
   const [isLockdown, setIsLockdown] = useState(false);
