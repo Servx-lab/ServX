@@ -11,6 +11,7 @@ const githubRoutes = require('./routes/githubRoutes');
 const oauthRoutes = require('./routes/oauthRoutes');
 const databaseExplorerRoutes = require('./routes/databaseExplorerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const gmailRoutes = require('./routes/gmailRoutes');
 const requireAuth = require('./middleware/requireAuth');
 const autoMedicMiddleware = require('./middleware/autoMedicMiddleware');
 const { encrypt } = require('./utils/encryption');
@@ -68,6 +69,7 @@ const connectDB = async () => {
 };
 
 // Routes
+app.use('/api', gmailRoutes);
 
 // Health Check
 app.get('/', (req, res) => {
