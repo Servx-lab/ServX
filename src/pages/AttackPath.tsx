@@ -1,10 +1,17 @@
-import React, { useState, Suspense, useRef, useMemo } from "react";
+import React, { useState, useEffect, Suspense, useRef, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera, Float, MeshDistortMaterial, Sphere, Icosahedron, Line, Stars, Text, Trail, useTexture } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera, Float, MeshDistortMaterial, Sphere, Icosahedron, Line, Stars, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Zap, Lock, AlertTriangle, Play, RefreshCcw, Binary } from "lucide-react";
+import {
+  Shield, Zap, Lock, AlertTriangle, ChevronDown,
+  Crosshair, Bug, FileWarning, ArrowRight, Cpu, X,
+  Loader2, Target, RadioTower, Scan
+} from "lucide-react";
 import Sidebar from "@/components/Sidebar";
+import apiClient from "@/lib/apiClient";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 // --- sub-components ---
 
