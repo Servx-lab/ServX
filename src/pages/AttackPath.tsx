@@ -210,6 +210,34 @@ const TopologyNode = React.memo(({ position, label, isTargeted, isRepoNode }: {
   );
 });
 
+// ─── Scanning Animation Overlay ─────────────────────────────────
+
+const ScanLineAnimation = ({ repoName, phase }: { repoName: string; phase: ScanPhase }) => {
+  if (phase !== "scanning" && phase !== "attacking") return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute top-0 left-0 right-0 z-[70] pointer-events-none"
+    >
+      <div className="relative h-8 bg-[#0B0E14]/90 border-b border-[#00C2CB]/30 flex items-center justify-center overflow-hidden">
+        <motion.div
+          animate={{ x: ["-100%", "100%"] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          className="absolute inset-y-0 w-1/3"
+          style={{
+            background: "linear-gradient(90deg, transparent, rgba(0,194,203,0.4), transparent)"
+          }}
+        />
+        <span className="relative z-10 text-[10px] font-mono text-[#00C2CB] tracking-[0.3em] uppercase">
+          {phase === "scanning" ? `Scanning ${repoName}` : `Attacking ${repoName}`}
+        </span>
+      </div>
+    </motion.div>
+  );
+};
+
 const AttackPath = () => {
   const [isAttackActive, setIsAttackActive] = useState(false);
   const [isLockdown, setIsLockdown] = useState(false);
