@@ -34,6 +34,18 @@ interface Vulnerability {
 type AttackType = "ddos" | "injection" | null;
 type ScanPhase = "idle" | "scanning" | "attacking" | "reporting";
 
+// ─── Device UUID (persistent per browser) ───────────────────────
+
+function getDeviceUUID(): string {
+  const KEY = "orizon_device_uuid";
+  let uuid = localStorage.getItem(KEY);
+  if (!uuid) {
+    uuid = crypto.randomUUID();
+    localStorage.setItem(KEY, uuid);
+  }
+  return uuid;
+}
+
 // --- sub-components ---
 
 const SolarSystemBackground = () => {
