@@ -135,3 +135,16 @@
     scrollbar-width: none;  /* Firefox */
   }
 }
+
+/* Checkbox light-theme override — must be outside @layer to win over Radix defaults */
+[data-radix-collection-item][data-state],
+button[role="checkbox"] {
+  border-color: rgb(209 213 219) !important; /* gray-300 */
+  background-color: white !important;
+}
+
+button[role="checkbox"][data-state="checked"] {
+  background-color: rgb(59 130 246) !important; /* blue-500 */
+  border-color: rgb(59 130 246) !important;
+  color: white !important;
+}

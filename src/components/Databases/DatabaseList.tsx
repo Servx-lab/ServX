@@ -27,6 +27,17 @@ import DataGrid from './DataGrid';
 import { FirebaseUserManager } from './FirebaseUserManager';
 import apiClient from '@/lib/apiClient';
 
+const SOURCE_COLORS: Record<string, string> = {
+    MongoDB: '#00EC65',
+    Firebase: '#FEA001',
+    Supabase: '#3ECE8F',
+    PostgreSQL: '#326691',
+    MySQL: '#01748F',
+    'AWS RDS': '#FE9901',
+    Oracle: '#F80101',
+    MariaDB: '#C0775B',
+};
+
 const MOCK_DATA: UniversalRecord[] = [
   {
     id: '1',
@@ -506,7 +517,10 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
                                 <TableRow key={record.id} className="group cursor-pointer hover:bg-muted/50" onClick={() => setSelectedRecord(record)}>
                                     <TableCell className="font-mono text-xs text-muted-foreground">{record.id}</TableCell>
                                     <TableCell>
-                                        <Badge variant="secondary" className="font-normal border-primary/20 bg-primary/10 text-primary-foreground/90">
+                                        <Badge 
+                                            className="font-normal text-white px-2 py-0.5 rounded-full text-xs"
+                                            style={{ backgroundColor: SOURCE_COLORS[record.source] || '#6B7280' }}
+                                        >
                                             {record.source}
                                         </Badge>
                                     </TableCell>

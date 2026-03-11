@@ -108,13 +108,30 @@ router.get('/repos/:owner/:repo/details', requireAuth, authenticate, async (req,
       params: { per_page: 6 },
     });
 
-    const [repoResponse, commitsResponse, contributorsResponse, languagesResponse, deploymentsResponse] = await Promise.all([
+    const results = await Promise.allSettled([
         repoDetailsPromise,
         commitsPromise,
         contributorsPromise,
         languagesPromise,
         deploymentsPromise
     ]);
+
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error(`GitHub API Error for ${repoFullName} at index ${index}:`, result.reason?.response?.data || result.reason?.message);
+      }
+    });
+
+    const repoResponse = results[0].status === 'fulfilled' ? results[0].value : null;
+    const commitsResponse = results[1].status === 'fulfilled' ? results[1].value : { data: [] };
+    const contributorsResponse = results[2].status === 'fulfilled' ? results[2].value : { data: [] };
+    const languagesResponse = results[3].status === 'fulfilled' ? results[3].value : { data: {} };
+    const deploymentsResponse = results[4].status === 'fulfilled' ? results[4].value : { data: [] };
+
+    if (!repoResponse) {
+      const status = results[0].reason?.response?.status || 404;
+      return res.status(status).json({ error: 'Repository not found or access denied', details: results[0].reason?.response?.data });
+    }
 
     // Format Data
     const formattedCommits = commitsResponse.data.map(commit => ({
