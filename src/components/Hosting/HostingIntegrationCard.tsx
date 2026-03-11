@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, ExternalLink, ArrowRight, Shield, Zap, Globe, Trash2, RefreshCw, Box, GitBranch, Clock, Server } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, ExternalLink, ArrowRight, Shield, Zap, Globe, Trash2, RefreshCw, Box, GitBranch, Clock, Server, Activity } from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import apiClient from '@/lib/apiClient';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 // --- Types ---
 interface ServiceItem {
@@ -207,6 +209,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
   provider = 'Render',
 }) => {
   const config = PROVIDER_CONFIGS[provider];
+  const navigate = useNavigate();
   const [tokenInput, setTokenInput] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'error' | 'loading'>('loading');
@@ -603,6 +606,27 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
                         <td className="px-5 py-3 text-[#A4ADB3] text-xs">{timeAgo(dep.created)}</td>
                         <td className="px-5 py-3 text-right">
                           <div className="flex items-center justify-end gap-3">
+                            {['ERROR', 'FAILED', 'CRASHED'].includes((dep.state || '').toUpperCase()) && (
+                              <motion.button
+                                onClick={() => navigate(`/auto-medic?deploymentId=${dep.id}`)}
+                                title="Run Auto-Medic"
+                                animate={{
+                                  boxShadow: [
+                                    "0 0 0 0 rgba(108, 99, 255, 0)",
+                                    "0 0 0 4px rgba(108, 99, 255, 0.3)",
+                                    "0 0 0 8px rgba(108, 99, 255, 0)"
+                                  ]
+                                }}
+                                transition={{
+                                  duration: 2,
+                                  repeat: Infinity,
+                                  ease: "easeInOut"
+                                }}
+                                className="w-7 h-7 rounded-full bg-[#181C25] border border-[#6C63FF] flex items-center justify-center text-[#6C63FF] hover:bg-[#6C63FF]/10 transition-colors"
+                              >
+                                <Activity size={12} />
+                              </motion.button>
+                            )}
                             <Badge variant="outline" className={`text-[10px] ${getStateColor(dep.state)}`}>{dep.state}</Badge>
                             {dep.url ? (
                               <a href={dep.url} target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-white transition-colors">

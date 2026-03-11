@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Terminal, 
   Activity, 
@@ -19,11 +20,19 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Sidebar from "@/components/Sidebar";
 
 const AutoMedic = () => {
+  const [searchParams] = useSearchParams();
+  const deploymentId = searchParams.get('deploymentId');
+  
   const [activeStep, setActiveStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
 
   // Simulate the pipeline progression
   useEffect(() => {
+    if (deploymentId) {
+        // Here is where you would normally call fetchErrorLogs(deploymentId)
+        console.log(`Auto-Medic triggered for deployment ID: ${deploymentId}`);
+    }
+
     if (activeStep < 4) {
       const timer = setTimeout(() => {
         setActiveStep(prev => prev + 1);
