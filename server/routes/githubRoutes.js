@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
+const { Octokit } = require('@octokit/rest');
 const User = require('../models/User');
 
 const router = express.Router();
@@ -188,6 +189,38 @@ router.get('/repos/:owner/:repo/details', requireAuth, authenticate, async (req,
   } catch (error) {
     console.error(`GitHub Details Error for ${repoFullName}:`, error.response?.data || error.message);
     res.status(error.response?.status || 500).json({ error: 'Failed to fetch repository details' });
+  }
+});
+
+// POST /api/github/collaborator/role
+// Updates a collaborator's permission (locked = read, unlocked = push)
+router.post('/collaborator/role', requireAuth, authenticate, async (req, res) => {
+  const { repoName, githubUsername, status } = req.body;
+
+  if (!repoName || !githubUsername || !status) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const [owner, repo] = repoName.split('/');
+  if (!owner || !repo) {
+    return res.status(400).json({ error: 'Invalid repoName format. Expected owner/repo' });
+  }
+
+  try {
+    const octokit = new Octokit({ auth: req.githubToken });
+    const permission = status === 'locked' ? 'read' : 'push';
+
+    await octokit.rest.repos.addCollaborator({
+      owner,
+      repo,
+      username: githubUsername,
+      permission,
+    });
+
+    res.json({ success: true, message: `Successfully updated ${githubUsername} to ${permission} access.` });
+  } catch (error) {
+    console.error('GitHub Collaborator Role Error:', error.response?.data || error.message);
+    res.status(error.status || 500).json({ error: 'Failed to update collaborator role' });
   }
 });
 

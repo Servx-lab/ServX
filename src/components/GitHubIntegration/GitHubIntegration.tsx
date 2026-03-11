@@ -12,7 +12,8 @@ import {
   Code,
   Activity,
   Calendar,
-  Rocket
+  Rocket,
+  Shield
 } from "lucide-react";
 import {
   LineChart,
@@ -43,6 +44,8 @@ import apiClient from "@/lib/apiClient";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
 
+import { RepositoryAccess } from "./RepositoryAccess";
+
 const GitHubIntegration = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -53,6 +56,7 @@ const GitHubIntegration = () => {
   const [repoDetails, setRepoDetails] = useState<RepoDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isAccessPanelOpen, setIsAccessPanelOpen] = useState(false);
 
   const { linkGitHub, signInWithGitHub, isGitHubLinked } = useAuth();
 
@@ -121,6 +125,7 @@ const GitHubIntegration = () => {
     const fetchDetails = async () => {
       setLoadingDetails(true);
       setRepoDetails(null); 
+      setIsAccessPanelOpen(false); // Close panel when changing repos
       try {
         const [owner, name] = repo.full_name.split("/");
         const res = await apiClient.get(`/github/repos/${owner}/${name}/details`);
@@ -267,6 +272,7 @@ const GitHubIntegration = () => {
                   setError(null);
                   setLoadingDetails(true);
                   setSelectedRepoId(repo.id);
+                  setIsAccessPanelOpen(false);
                 }}
                 className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 transition-all duration-200 group ${
                   selectedRepoId === repo.id
@@ -321,7 +327,13 @@ const GitHubIntegration = () => {
                             {repoDetails.description || "No description provided."}
                         </p>
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 items-center">
+                        <button 
+                            onClick={() => setIsAccessPanelOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00C2CB]/10 text-[#00C2CB] hover:bg-[#00C2CB]/20 border border-[#00C2CB]/20 transition-colors text-sm font-medium"
+                        >
+                            <Shield className="w-4 h-4" /> Manage Access
+                        </button>
                         <a href={repoDetails.html_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#181C25] hover:bg-[#181C25]/80 border border-white/10 transition-colors text-sm font-medium text-white">
                             <ExternalLink className="w-4 h-4" /> View on GitHub
                         </a>
@@ -532,6 +544,25 @@ const GitHubIntegration = () => {
                 <p>Select a repository to view analytics</p>
             </div>
         )}
+
+        {/* Sliding Access Panel */}
+        <AnimatePresence>
+            {isAccessPanelOpen && repoDetails && (
+                <motion.div 
+                    initial={{ x: '100%' }}
+                    animate={{ x: 0 }}
+                    exit={{ x: '100%' }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                    className="absolute right-0 top-0 bottom-0 w-96 border-l border-white/10 z-50 shadow-2xl bg-[#181C25]"
+                >
+                    <RepositoryAccess 
+                        repoName={repoDetails.full_name} 
+                        contributors={repoDetails.contributors || []} 
+                        onClose={() => setIsAccessPanelOpen(false)}
+                    />
+                </motion.div>
+            )}
+        </AnimatePresence>
       </div>
     </div>
   );
