@@ -33,7 +33,7 @@ const FlowVisualization = () => {
   };
 
   // Right-side output paths
-  const generateOutputPath = (endY: number, color: "red" | "blue") => {
+  const generateOutputPath = (endY: number, color: "red" | "blue" | "green" | "yellow") => {
     const startX = centerX;
     const endX = 1400;
     const cp1x = centerX + 100;
@@ -43,11 +43,11 @@ const FlowVisualization = () => {
 
   const outputPaths = [
     { endY: 100, color: "red" as const, width: 8 },
-    { endY: 180, color: "red" as const, width: 5 },
-    { endY: 250, color: "red" as const, width: 3 },
+    { endY: 180, color: "yellow" as const, width: 5 },
+    { endY: 250, color: "green" as const, width: 3 },
     { endY: 370, color: "blue" as const, width: 6 },
-    { endY: 440, color: "blue" as const, width: 4 },
-    { endY: 510, color: "blue" as const, width: 3 },
+    { endY: 440, color: "red" as const, width: 4 },
+    { endY: 510, color: "yellow" as const, width: 3 },
   ];
 
   return (
@@ -98,6 +98,16 @@ const FlowVisualization = () => {
             <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
             <stop offset="40%" stopColor="#60A5FA" stopOpacity="0.6" />
             <stop offset="100%" stopColor="#60A5FA" stopOpacity="0.8" />
+          </linearGradient>
+          <linearGradient id="outputGreen" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
+            <stop offset="40%" stopColor="#10B981" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#10B981" stopOpacity="0.8" />
+          </linearGradient>
+          <linearGradient id="outputYellow" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
+            <stop offset="40%" stopColor="#F59E0B" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.8" />
           </linearGradient>
         </defs>
 
@@ -155,7 +165,7 @@ const FlowVisualization = () => {
             <motion.path
               d={generateOutputPath(op.endY, op.color)}
               fill="none"
-              stroke={`url(#output${op.color === "red" ? "Red" : "Blue"})`}
+              stroke={`url(#output${op.color.charAt(0).toUpperCase() + op.color.slice(1)})`}
               strokeWidth={op.width}
               strokeLinecap="round"
               initial={{ pathLength: 0 }}
@@ -220,7 +230,7 @@ const FlowVisualization = () => {
           x={centerX}
           y={centerY - 10}
           textAnchor="middle"
-          fill="#F8FAFC"
+          fill="#000000"
           fontSize="52"
           fontFamily="Geist Mono, monospace"
           fontWeight="700"

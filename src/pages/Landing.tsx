@@ -20,15 +20,15 @@ const Navbar = () => (
                 <div className="h-8 w-8 bg-gradient-to-br from-orizons-teal to-orizons-purple rounded-lg flex items-center justify-center">
                     <Zap className="h-5 w-5 text-white fill-white" />
                 </div>
-                <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+                <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-black to-black/60">
                     ORIZONS
                 </span>
             </div>
             <div className="hidden md:flex items-center gap-8">
-                <a href="#features" className="text-sm text-orizons-text-low hover:text-white transition-colors">Features</a>
-                <a href="#pricing" className="text-sm text-orizons-text-low hover:text-white transition-colors">Pricing</a>
-                <a href="#docs" className="text-sm text-orizons-text-low hover:text-white transition-colors">Documentation</a>
-                <Button variant="ghost" className="text-white hover:text-orizons-teal hover:bg-white/5">
+                <a href="#features" className="text-sm text-orizons-text-low hover:text-black transition-colors">Features</a>
+                <a href="#pricing" className="text-sm text-orizons-text-low hover:text-black transition-colors">Pricing</a>
+                <a href="#docs" className="text-sm text-orizons-text-low hover:text-black transition-colors">Documentation</a>
+                <Button variant="ghost" className="text-black hover:text-orizons-teal hover:bg-black/5">
                     Sign In
                 </Button>
             </div>
@@ -59,7 +59,7 @@ const Hero = () => (
                         <span className="text-xs font-medium text-orizons-mint tracking-wide uppercase">v2.0 is live</span>
                     </div>
                     
-                    <h1 className="text-5xl lg:text-7xl font-bold tracking-tight text-white leading-[1.1] mb-6">
+                    <h1 className="text-5xl lg:text-7xl font-bold tracking-tight text-black leading-[1.1] mb-6">
                         Command Your <br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-orizons-teal via-orizons-mint to-orizons-purple">
                             Infrastructure
@@ -152,7 +152,7 @@ const Features = () => {
                             <div className="h-12 w-12 rounded-xl bg-orizons-card border border-orizons-border-inactive flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                                 {feature.icon}
                             </div>
-                            <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
+                            <h3 className="text-xl font-bold text-black mb-3">{feature.title}</h3>
                             <p className="text-orizons-text-low leading-relaxed">{feature.description}</p>
                         </motion.div>
                     ))}
@@ -169,36 +169,36 @@ const Footer = () => (
                 <div className="col-span-2">
                     <div className="flex items-center gap-2 mb-4">
                         <Zap className="h-6 w-6 text-orizons-teal" />
-                        <span className="text-xl font-bold text-white">ORIZONS</span>
+                        <span className="text-xl font-bold text-black">ORIZONS</span>
                     </div>
                     <p className="text-orizons-text-low max-w-sm">
                         The next-generation infrastructure platform for builders who move fast.
                     </p>
                 </div>
                 <div>
-                    <h4 className="text-white font-semibold mb-4">Product</h4>
+                    <h4 className="text-black font-semibold mb-4">Product</h4>
                     <ul className="space-y-2 text-sm text-orizons-text-low/70">
-                        <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
-                        <li><a href="#" className="hover:text-white transition-colors">Pricing</a></li>
-                        <li><a href="#" className="hover:text-white transition-colors">Changelog</a></li>
-                        <li><a href="#" className="hover:text-white transition-colors">Docs</a></li>
+                        <li><a href="#" className="hover:text-black transition-colors">Features</a></li>
+                        <li><a href="#" className="hover:text-black transition-colors">Pricing</a></li>
+                        <li><a href="#" className="hover:text-black transition-colors">Changelog</a></li>
+                        <li><a href="#" className="hover:text-black transition-colors">Docs</a></li>
                     </ul>
                 </div>
                 <div>
-                    <h4 className="text-white font-semibold mb-4">Legal</h4>
+                    <h4 className="text-black font-semibold mb-4">Legal</h4>
                     <ul className="space-y-2 text-sm text-orizons-text-low/70">
-                        <li><a href="#" className="hover:text-white transition-colors">Privacy</a></li>
-                        <li><a href="#" className="hover:text-white transition-colors">Terms</a></li>
-                        <li><a href="#" className="hover:text-white transition-colors">Security</a></li>
+                        <li><a href="#" className="hover:text-black transition-colors">Privacy</a></li>
+                        <li><a href="#" className="hover:text-black transition-colors">Terms</a></li>
+                        <li><a href="#" className="hover:text-black transition-colors">Security</a></li>
                     </ul>
                 </div>
             </div>
             <div className="border-t border-orizons-border-inactive pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
                 <p className="text-xs text-orizons-text-low/50">© 2026 Orizons Inc. All rights reserved.</p>
                 <div className="flex gap-4">
-                    <a href="#" className="text-orizons-text-low/50 hover:text-white transition-colors"><span className="sr-only">Twitter</span>𝕏</a>
-                    <a href="#" className="text-orizons-text-low/50 hover:text-white transition-colors">GitHub</a>
-                    <a href="#" className="text-orizons-text-low/50 hover:text-white transition-colors">Discord</a>
+                    <a href="#" className="text-orizons-text-low/50 hover:text-black transition-colors"><span className="sr-only">Twitter</span>𝕏</a>
+                    <a href="#" className="text-orizons-text-low/50 hover:text-black transition-colors">GitHub</a>
+                    <a href="#" className="text-orizons-text-low/50 hover:text-black transition-colors">Discord</a>
                 </div>
             </div>
         </div>
@@ -209,7 +209,7 @@ const Footer = () => (
 
 const Landing = () => {
     return (
-        <div className="min-h-screen bg-orizons-void text-orizons-text-high selection:bg-orizons-teal/30 selection:text-white">
+        <div className="min-h-screen bg-orizons-void text-orizons-text-high selection:bg-orizons-teal/30 selection:text-black">
             <Navbar />
             <Hero />
             <Features />

@@ -363,9 +363,9 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
   // --- Loading ---
   if (status === 'loading') {
     return (
-      <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#181C25] min-h-[calc(100vh-12rem)] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-white/40">
-          <Loader2 className="h-8 w-8 animate-spin text-[#00C2CB]" />
+      <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white min-h-[calc(100vh-12rem)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-gray-500">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
           <p className="text-sm">Loading {config.label} status...</p>
         </div>
       </div>
@@ -378,31 +378,31 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     const errorCount = [...services, ...deployments].filter(i => ['ERROR','FAILED','CRASHED'].includes((('state' in i ? (i as DeploymentItem).state : (i as ServiceItem).status) || '').toUpperCase())).length;
 
     return (
-      <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#181C25] min-h-[calc(100vh-12rem)]">
+      <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white min-h-[calc(100vh-12rem)]">
         <div className="absolute -top-32 -right-32 h-64 w-64 rounded-full bg-green-500/5 blur-[100px]" />
         <div className="relative z-10 p-6 lg:p-8 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-white/5 border border-white/10">{config.logoSmall}</div>
+              <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200">{config.logoSmall}</div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-white">{config.label}</h3>
-                  <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-400 text-[10px]">
+                  <h3 className="text-lg font-semibold text-black">{config.label}</h3>
+                  <Badge variant="outline" className="border-green-500/30 bg-green-50 text-green-600 text-[10px]">
                     <span className="relative flex h-1.5 w-1.5 mr-1"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span></span>
                     Connected
                   </Badge>
                 </div>
                 {providerUser && (
-                  <p className="text-xs text-white/40">{providerUser.name || providerUser.username}{providerUser.email ? ` · ${providerUser.email}` : ''}</p>
+                  <p className="text-xs text-gray-500">{providerUser.name || providerUser.username}{providerUser.email ? ` · ${providerUser.email}` : ''}</p>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing} className="text-white/40 hover:text-white hover:bg-white/5">
+              <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing} className="text-gray-500 hover:text-black hover:bg-gray-100">
                 <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleDisconnect} disabled={disconnecting} className="text-red-400/60 hover:text-red-400 hover:bg-red-500/10">
+              <Button variant="ghost" size="sm" onClick={handleDisconnect} disabled={disconnecting} className="text-red-500 hover:text-red-600 hover:bg-red-50">
                 {disconnecting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                 <span className="ml-1.5 text-xs">Disconnect</span>
               </Button>
@@ -412,66 +412,66 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
           {/* Charts Row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
              {/* Chart 1: Deployments Over Time */}
-             <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+             <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
-                   <h4 className="text-sm font-semibold text-white">Deployments Over Time</h4>
-                   <span className="text-[10px] text-white/40 uppercase tracking-widest">Total: {deployments.length}</span>
+                   <h4 className="text-sm font-semibold text-black">Deployments Over Time</h4>
+                   <span className="text-[10px] text-gray-500 uppercase tracking-widest">Total: {deployments.length}</span>
                 </div>
                 <div className="h-[140px] w-full">
                    {deploymentTimeline.length > 0 ? (
                        <ResponsiveContainer width="100%" height="100%">
                            <AreaChart data={deploymentTimeline} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                                <defs>
-                                   <linearGradient id="colorTeal" x1="0" y1="0" x2="0" y2="1">
-                                       <stop offset="5%" stopColor="#00C2CB" stopOpacity={0.3}/>
-                                       <stop offset="95%" stopColor="#00C2CB" stopOpacity={0}/>
+                                   <linearGradient id="colorBlue" x1="0" y1="0" x2="0" y2="1">
+                                       <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
+                                       <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
                                    </linearGradient>
                                </defs>
-                               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0a" vertical={false} />
-                               <XAxis dataKey="date" stroke="#A4ADB3" fontSize={10} tickLine={false} axisLine={false} />
-                               <YAxis stroke="#A4ADB3" fontSize={10} tickLine={false} axisLine={false} />
-                               <Tooltip contentStyle={{ backgroundColor: '#0B0E14', border: '1px solid #ffffff10', borderRadius: '8px' }} itemStyle={{ color: '#fff' }} />
-                               <Area type="monotone" dataKey="count" stroke="#00C2CB" strokeWidth={2} fillOpacity={1} fill="url(#colorTeal)" />
+                               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                               <XAxis dataKey="date" stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                               <YAxis stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                               <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} itemStyle={{ color: '#000' }} />
+                               <Area type="monotone" dataKey="count" stroke="#3B82F6" strokeWidth={2} fillOpacity={1} fill="url(#colorBlue)" />
                            </AreaChart>
                        </ResponsiveContainer>
                    ) : (
-                       <div className="flex h-full items-center justify-center text-[#A4ADB3] text-xs opacity-60">No data</div>
+                       <div className="flex h-full items-center justify-center text-gray-400 text-xs">No data</div>
                    )}
                 </div>
              </div>
 
              {/* Chart 2: Service Status */}
-             <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+             <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
-                   <h4 className="text-sm font-semibold text-white">Service Status</h4>
-                   <span className="text-[10px] text-white/40 uppercase tracking-widest">Total: {services.length}</span>
+                   <h4 className="text-sm font-semibold text-black">Service Status</h4>
+                   <span className="text-[10px] text-gray-500 uppercase tracking-widest">Total: {services.length}</span>
                 </div>
                 <div className="h-[140px] w-full">
                    {serviceStatusData.length > 0 ? (
                        <ResponsiveContainer width="100%" height="100%">
                            <BarChart data={serviceStatusData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0a" vertical={false} />
-                               <XAxis dataKey="name" stroke="#A4ADB3" fontSize={10} tickLine={false} axisLine={false} />
-                               <YAxis stroke="#A4ADB3" fontSize={10} tickLine={false} axisLine={false} />
-                               <Tooltip cursor={{ fill: '#ffffff05' }} contentStyle={{ backgroundColor: '#0B0E14', border: '1px solid #ffffff10', borderRadius: '8px' }} itemStyle={{ color: '#fff' }} />
+                               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                               <XAxis dataKey="name" stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                               <YAxis stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                               <Tooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} itemStyle={{ color: '#000' }} />
                                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                                    {serviceStatusData.map((entry, index) => (
-                                       <Cell key={`cell-${index}`} fill={['READY','ACTIVE','RUNNING'].includes(entry.name.toUpperCase()) ? '#00C2CB' : '#2A303C'} />
+                                       <Cell key={`cell-${index}`} fill={['READY','ACTIVE','RUNNING'].includes(entry.name.toUpperCase()) ? '#10B981' : '#F59E0B'} />
                                    ))}
                                </Bar>
                            </BarChart>
                        </ResponsiveContainer>
                    ) : (
-                       <div className="flex h-full items-center justify-center text-[#A4ADB3] text-xs opacity-60">No data</div>
+                       <div className="flex h-full items-center justify-center text-gray-400 text-xs">No data</div>
                    )}
                 </div>
              </div>
 
              {/* Chart 3: Health Overview */}
-             <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+             <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
-                   <h4 className="text-sm font-semibold text-white">Health Overview</h4>
-                   <span className="text-[10px] text-white/40 uppercase tracking-widest">Healthy vs Errors</span>
+                   <h4 className="text-sm font-semibold text-black">Health Overview</h4>
+                   <span className="text-[10px] text-gray-500 uppercase tracking-widest">Healthy vs Errors</span>
                 </div>
                 <div className="h-[140px] w-full flex items-center justify-center relative">
                     <ResponsiveContainer width="100%" height="100%">
@@ -495,15 +495,15 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
                                     { name: 'Errors', value: errorCount },
                                     { name: 'Other', value: services.length + deployments.length - readyCount - errorCount }
                                 ].filter(d => d.value > 0).map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.name === 'Healthy' ? '#00C2CB' : entry.name === 'Errors' ? '#ef4444' : '#2A303C'} />
+                                    <Cell key={`cell-${index}`} fill={entry.name === 'Healthy' ? '#10B981' : entry.name === 'Errors' ? '#EF4444' : '#F59E0B'} />
                                 ))}
                             </Pie>
-                            <Tooltip contentStyle={{ backgroundColor: '#0B0E14', border: '1px solid #ffffff10', borderRadius: '8px' }} itemStyle={{ color: '#fff' }} />
+                            <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} itemStyle={{ color: '#000' }} />
                         </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-xl font-bold text-white">{readyCount}</span>
-                        <span className="text-[9px] text-[#A4ADB3]">Healthy</span>
+                        <span className="text-xl font-bold text-black">{readyCount}</span>
+                        <span className="text-[9px] text-gray-500">Healthy</span>
                     </div>
                 </div>
              </div>
@@ -512,18 +512,18 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
           {/* Services + Deployments Tables */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Services Table */}
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden flex flex-col">
-              <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Box size={14} className="text-[#00C2CB]" /> Services / Projects
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col shadow-sm">
+              <div className="p-5 border-b border-gray-200 flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-black flex items-center gap-2">
+                  <Box size={14} className="text-blue-500" /> Services / Projects
                 </h4>
-                <button className="text-xs text-[#A4ADB3] hover:text-white transition-colors flex items-center gap-1">
+                <button className="text-xs text-gray-500 hover:text-black transition-colors flex items-center gap-1">
                   Show all <ArrowRight size={12} />
                 </button>
               </div>
               <div className="flex-1 overflow-auto max-h-[400px]">
                 <table className="w-full text-left text-sm">
-                  <thead className="text-[10px] uppercase tracking-widest text-white/30 bg-white/[0.01]">
+                  <thead className="text-[10px] uppercase tracking-widest text-gray-400 bg-gray-50">
                     <tr>
                       <th className="px-5 py-3 font-medium">Service Name</th>
                       <th className="px-5 py-3 font-medium">Type</th>
@@ -531,25 +531,25 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
                       <th className="px-5 py-3 font-medium text-right">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/[0.06]">
+                  <tbody className="divide-y divide-gray-100">
                     {services.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-5 py-8 text-center text-xs text-white/30">No services found</td>
+                        <td colSpan={4} className="px-5 py-8 text-center text-xs text-gray-400">No services found</td>
                       </tr>
                     ) : services.map(svc => (
-                      <tr key={svc.id} className="hover:bg-white/[0.02] transition-colors group">
+                      <tr key={svc.id} className="hover:bg-gray-50 transition-colors group">
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-white truncate max-w-[150px]">{svc.name}</span>
+                            <span className="font-medium text-black truncate max-w-[150px]">{svc.name}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-[#A4ADB3] text-xs capitalize">{svc.type || 'Unknown'}</td>
-                        <td className="px-5 py-3 text-[#A4ADB3] text-xs">{timeAgo(svc.updatedAt)}</td>
+                        <td className="px-5 py-3 text-gray-500 text-xs capitalize">{svc.type || 'Unknown'}</td>
+                        <td className="px-5 py-3 text-gray-500 text-xs">{timeAgo(svc.updatedAt)}</td>
                         <td className="px-5 py-3 text-right">
                           <div className="flex items-center justify-end gap-3">
                             <Badge variant="outline" className={`text-[10px] ${getStateColor(svc.status)}`}>{svc.status}</Badge>
                             {svc.url ? (
-                              <a href={svc.url} target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-white transition-colors">
+                              <a href={svc.url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-black transition-colors">
                                 <ArrowRight size={14} />
                               </a>
                             ) : (
@@ -565,18 +565,18 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
             </div>
 
             {/* Deployments Table */}
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden flex flex-col">
-              <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Zap size={14} className="text-[#00C2CB]" /> Recent Deployments
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col shadow-sm">
+              <div className="p-5 border-b border-gray-200 flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-black flex items-center gap-2">
+                  <Zap size={14} className="text-yellow-500" /> Recent Deployments
                 </h4>
-                <button className="text-xs text-[#A4ADB3] hover:text-white transition-colors flex items-center gap-1">
+                <button className="text-xs text-gray-500 hover:text-black transition-colors flex items-center gap-1">
                   Show all <ArrowRight size={12} />
                 </button>
               </div>
               <div className="flex-1 overflow-auto max-h-[400px]">
                 <table className="w-full text-left text-sm">
-                  <thead className="text-[10px] uppercase tracking-widest text-white/30 bg-white/[0.01]">
+                  <thead className="text-[10px] uppercase tracking-widest text-gray-400 bg-gray-50">
                     <tr>
                       <th className="px-5 py-3 font-medium">Deployment</th>
                       <th className="px-5 py-3 font-medium">Commit</th>
@@ -584,26 +584,26 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
                       <th className="px-5 py-3 font-medium text-right">State</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/[0.06]">
+                  <tbody className="divide-y divide-gray-100">
                     {deployments.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-5 py-8 text-center text-xs text-white/30">No deployments found</td>
+                        <td colSpan={4} className="px-5 py-8 text-center text-xs text-gray-400">No deployments found</td>
                       </tr>
                     ) : deployments.map(dep => (
-                      <tr key={dep.id} className="hover:bg-white/[0.02] transition-colors group">
+                      <tr key={dep.id} className="hover:bg-gray-50 transition-colors group">
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-white truncate max-w-[120px]">{dep.name}</span>
+                            <span className="font-medium text-black truncate max-w-[120px]">{dep.name}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-[#A4ADB3] text-xs">
+                        <td className="px-5 py-3 text-gray-500 text-xs">
                           {dep.commit ? (
                             <div className="flex items-center gap-1 truncate max-w-[100px]">
-                              <GitBranch size={10} className="text-white/20 flex-shrink-0" /> <span className="truncate">{dep.commit}</span>
+                              <GitBranch size={10} className="text-gray-400 flex-shrink-0" /> <span className="truncate">{dep.commit}</span>
                             </div>
                           ) : '-'}
                         </td>
-                        <td className="px-5 py-3 text-[#A4ADB3] text-xs">{timeAgo(dep.created)}</td>
+                        <td className="px-5 py-3 text-gray-500 text-xs">{timeAgo(dep.created)}</td>
                         <td className="px-5 py-3 text-right">
                           <div className="flex items-center justify-end gap-3">
                             {['ERROR', 'FAILED', 'CRASHED'].includes((dep.state || '').toUpperCase()) && (
@@ -612,9 +612,9 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
                                 title="Run Auto-Medic"
                                 animate={{
                                   boxShadow: [
-                                    "0 0 0 0 rgba(108, 99, 255, 0)",
-                                    "0 0 0 4px rgba(108, 99, 255, 0.3)",
-                                    "0 0 0 8px rgba(108, 99, 255, 0)"
+                                    "0 0 0 0 rgba(239, 68, 68, 0)",
+                                    "0 0 0 4px rgba(239, 68, 68, 0.3)",
+                                    "0 0 0 8px rgba(239, 68, 68, 0)"
                                   ]
                                 }}
                                 transition={{
@@ -622,14 +622,14 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
                                   repeat: Infinity,
                                   ease: "easeInOut"
                                 }}
-                                className="w-7 h-7 rounded-full bg-[#181C25] border border-[#6C63FF] flex items-center justify-center text-[#6C63FF] hover:bg-[#6C63FF]/10 transition-colors"
+                                className="w-7 h-7 rounded-full bg-white border border-red-500 flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors"
                               >
                                 <Activity size={12} />
                               </motion.button>
                             )}
                             <Badge variant="outline" className={`text-[10px] ${getStateColor(dep.state)}`}>{dep.state}</Badge>
                             {dep.url ? (
-                              <a href={dep.url} target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-white transition-colors">
+                              <a href={dep.url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-black transition-colors">
                                 <ArrowRight size={14} />
                               </a>
                             ) : (
@@ -651,33 +651,33 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
 
   // --- Not Connected: 1/3 + 2/3 Setup Form ---
   return (
-    <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#181C25] min-h-[calc(100vh-12rem)]">
-      <div className="absolute -top-32 -right-32 h-64 w-64 rounded-full bg-cyan-500/10 blur-[100px]" />
-      <div className="absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-cyan-500/5 blur-[100px]" />
+    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white min-h-[calc(100vh-12rem)]">
+      <div className="absolute -top-32 -right-32 h-64 w-64 rounded-full bg-blue-500/10 blur-[100px]" />
+      <div className="absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-blue-500/5 blur-[100px]" />
 
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 h-full min-h-[calc(100vh-12rem)]">
         {/* LEFT: 1/3 — Token input */}
-        <div className="lg:col-span-1 flex flex-col justify-center p-8 lg:p-10 border-b lg:border-b-0 lg:border-r border-white/10">
+        <div className="lg:col-span-1 flex flex-col justify-center p-8 lg:p-10 border-b lg:border-b-0 lg:border-r border-gray-200">
           <div className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-white/5 border border-white/10">{config.logoSmall}</div>
+              <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200">{config.logoSmall}</div>
               <div>
-                <h3 className="text-lg font-semibold text-white">Connect {config.label}</h3>
-                <p className="text-xs text-white/40">{config.tokenLabel}</p>
+                <h3 className="text-lg font-semibold text-black">Connect {config.label}</h3>
+                <p className="text-xs text-gray-500">{config.tokenLabel}</p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-white/50 uppercase tracking-wider">{config.tokenLabel}</label>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">{config.tokenLabel}</label>
               <div className="relative">
                 <Input
                   type={showToken ? 'text' : 'password'}
                   placeholder={config.placeholder}
                   value={tokenInput}
                   onChange={(e) => { setTokenInput(e.target.value); if (status === 'error') setStatus('idle'); }}
-                  className="bg-[#0B0E14] border-white/10 text-white placeholder:text-white/20 focus:border-[#00C2CB]/50 focus:ring-[#00C2CB]/20 pr-10 h-11"
+                  className="bg-white border-gray-200 text-black placeholder:text-gray-400 focus:border-blue-500/50 focus:ring-blue-500/20 pr-10 h-11"
                 />
-                <button type="button" onClick={() => setShowToken(!showToken)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
+                <button type="button" onClick={() => setShowToken(!showToken)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition-colors">
                   {showToken ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
@@ -686,33 +686,33 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
             <Button
               onClick={handleConnect}
               disabled={status === 'connecting'}
-              className="w-full h-11 relative overflow-hidden transition-all duration-300 bg-[#00C2CB] hover:bg-[#00C2CB]/90 text-black font-semibold shadow-[0_0_20px_-3px_rgba(0,194,203,0.3)] hover:shadow-[0_0_30px_-3px_rgba(0,194,203,0.5)]"
+              className="w-full h-11 relative overflow-hidden transition-all duration-300 bg-blue-500 hover:bg-blue-600 text-white font-semibold shadow-sm"
             >
               {status === 'connecting' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Connect {config.label}
             </Button>
 
-            {errorMsg && status === 'error' && <p className="text-xs text-red-400">{errorMsg}</p>}
+            {errorMsg && status === 'error' && <p className="text-xs text-red-500">{errorMsg}</p>}
 
             <div className="flex items-center justify-center pt-1">
               {status === 'idle' && (
-                <Badge variant="outline" className="border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20">
+                <Badge variant="outline" className="border-red-500/20 bg-red-50 text-red-500 hover:bg-red-100">
                   <AlertCircle className="mr-1 h-3 w-3" /> Not Connected
                 </Badge>
               )}
               {status === 'error' && (
-                <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20">
+                <Badge variant="outline" className="border-red-500/30 bg-red-50 text-red-500 hover:bg-red-100">
                   <AlertCircle className="mr-1 h-3 w-3" /> Connection Failed
                 </Badge>
               )}
               {status === 'connecting' && (
-                <Badge variant="outline" className="border-[#00C2CB]/30 bg-[#00C2CB]/10 text-[#00C2CB]">
+                <Badge variant="outline" className="border-blue-500/30 bg-blue-50 text-blue-500">
                   <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Saving Token...
                 </Badge>
               )}
             </div>
 
-            <div className="flex items-center gap-2 pt-2 text-white/20">
+            <div className="flex items-center gap-2 pt-2 text-gray-400">
               <Shield size={12} />
               <p className="text-[10px]">Token is encrypted before storage. Only you can access it.</p>
             </div>
@@ -723,33 +723,33 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
         <div className="lg:col-span-2 flex flex-col justify-center p-8 lg:p-12">
           <div className="space-y-8">
             <div>
-              <p className="text-xs font-semibold text-[#00C2CB] uppercase tracking-widest mb-2">Setup Guide</p>
-              <h2 className="text-2xl font-bold text-white tracking-tight">{config.guideTitle}</h2>
-              <p className="text-sm text-white/40 mt-2 max-w-lg">{config.guideSubtitle}</p>
+              <p className="text-xs font-semibold text-blue-500 uppercase tracking-widest mb-2">Setup Guide</p>
+              <h2 className="text-2xl font-bold text-black tracking-tight">{config.guideTitle}</h2>
+              <p className="text-sm text-gray-500 mt-2 max-w-lg">{config.guideSubtitle}</p>
             </div>
 
             <div className="space-y-4">
               {config.steps.map((step, i) => (
-                <div key={i} className="group flex items-start gap-4 p-4 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:border-[#00C2CB]/20 transition-all">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-[#00C2CB]/10 border border-[#00C2CB]/20 flex items-center justify-center text-[#00C2CB] text-sm font-bold">{i + 1}</div>
+                <div key={i} className="group flex items-start gap-4 p-4 rounded-lg bg-gray-50 border border-gray-200 hover:border-blue-500/20 transition-all">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-500 text-sm font-bold">{i + 1}</div>
                   <div>
-                    <p className="text-sm font-medium text-white">{step.title}</p>
-                    <p className="text-xs text-[#A4ADB3] mt-1">{step.detail}</p>
+                    <p className="text-sm font-medium text-black">{step.title}</p>
+                    <p className="text-xs text-gray-500 mt-1">{step.detail}</p>
                   </div>
                 </div>
               ))}
             </div>
 
             <div className="flex flex-wrap items-center gap-3 pt-2">
-              <a href={config.tokenPageUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white/70 hover:text-white hover:border-[#00C2CB]/30 hover:bg-[#00C2CB]/5 transition-all">
-                <ExternalLink size={14} /> {config.tokenPageLabel} <ArrowRight size={12} className="text-white/30" />
+              <a href={config.tokenPageUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-600 hover:text-black hover:border-blue-500/30 hover:bg-blue-50 transition-all">
+                <ExternalLink size={14} /> {config.tokenPageLabel} <ArrowRight size={12} className="text-gray-400" />
               </a>
             </div>
 
-            <div className="flex flex-wrap gap-6 pt-4 border-t border-white/[0.06]">
+            <div className="flex flex-wrap gap-6 pt-4 border-t border-gray-200">
               {config.features.map((f, i) => (
-                <div key={i} className="flex items-center gap-2 text-white/30">
-                  {i === 0 ? <Shield size={14} className="text-[#00C2CB]/50" /> : i === 1 ? <Zap size={14} className="text-[#00C2CB]/50" /> : <Globe size={14} className="text-[#00C2CB]/50" />}
+                <div key={i} className="flex items-center gap-2 text-gray-500">
+                  {i === 0 ? <Shield size={14} className="text-blue-500/50" /> : i === 1 ? <Zap size={14} className="text-blue-500/50" /> : <Globe size={14} className="text-blue-500/50" />}
                   <span className="text-xs">{f}</span>
                 </div>
               ))}

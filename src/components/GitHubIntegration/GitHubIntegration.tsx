@@ -227,34 +227,34 @@ const GitHubIntegration = () => {
   }
 
   return (
-    <div className="flex h-full w-full bg-[#0B0E14] rounded-xl overflow-hidden shadow-2xl border border-white/5">
+    <div className="flex h-full w-full bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200">
       {/* Sidebar List */}
-      <div className="w-80 border-r border-white/10 flex flex-col bg-[#181C25] relative">
-        <div className="px-5 py-5 border-b border-white/10 bg-[#181C25]">
-            <h1 className="text-xl font-bold tracking-tight text-white/90">
+      <div className="w-80 border-r border-gray-200 flex flex-col bg-gray-50 relative">
+        <div className="px-5 py-5 border-b border-gray-200 bg-gray-50">
+            <h1 className="text-xl font-bold tracking-tight text-black">
                 GitHub Analytics
             </h1>
-            <p className="text-[#A4ADB3] mt-1 text-xs">
+            <p className="text-gray-500 mt-1 text-xs">
                 Manage and analyze your repositories.
             </p>
         </div>
 
-        <div className="p-4 border-b border-white/10 space-y-3">
-          <h3 className="font-semibold text-sm uppercase tracking-wider text-[#A4ADB3] flex items-center justify-between">
+        <div className="p-4 border-b border-gray-200 space-y-3">
+          <h3 className="font-semibold text-sm uppercase tracking-wider text-gray-500 flex items-center justify-between">
             <span className="flex items-center gap-2"><Box className="w-4 h-4" /> Repositories</span>
             <button 
                 onClick={handleDisconnectGitHub}
-                className="text-xs text-red-400/60 hover:text-red-400 transition-colors uppercase tracking-tight font-medium"
+                className="text-xs text-red-500 hover:text-red-600 transition-colors uppercase tracking-tight font-medium"
             >
                 Disconnect
             </button>
           </h3>
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-[#A4ADB3]" />
+            <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search repositories..."
-              className="w-full bg-[#0B0E14] border border-white/5 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#00C2CB]/50 transition-all text-white placeholder:text-[#A4ADB3]/50"
+              className="w-full bg-white border border-gray-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all text-black placeholder:text-gray-400"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -276,28 +276,28 @@ const GitHubIntegration = () => {
                 }}
                 className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 transition-all duration-200 group ${
                   selectedRepoId === repo.id
-                    ? "bg-[#00C2CB]/10 border border-[#00C2CB]/20"
-                    : "hover:bg-[#0B0E14] border border-transparent"
+                    ? "bg-blue-50 border border-blue-200"
+                    : "hover:bg-gray-100 border border-transparent"
                 }`}
               >
-                <div className={`p-2 rounded-md ${selectedRepoId === repo.id ? "bg-[#00C2CB]/20 text-[#00C2CB]" : "bg-[#0B0E14] text-[#A4ADB3] group-hover:text-white"}`}>
+                <div className={`p-2 rounded-md ${selectedRepoId === repo.id ? "bg-blue-100 text-blue-600" : "bg-white text-gray-400 group-hover:text-black border border-gray-200"}`}>
                    <Github className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <h4 className={`text-sm font-medium truncate ${selectedRepoId === repo.id ? "text-[#00C2CB]" : "text-white"}`}>
+                    <h4 className={`text-sm font-medium truncate ${selectedRepoId === repo.id ? "text-blue-600" : "text-black"}`}>
                         {repo.name}
                     </h4>
                     {repo.owner && (
-                        <p className="text-[10px] text-[#A4ADB3] truncate opacity-60">
+                        <p className="text-[10px] text-gray-500 truncate opacity-80">
                            {repo.owner.login}
                         </p>
                     )}
-                    <p className="text-xs text-[#A4ADB3] truncate opacity-70 mt-0.5">
+                    <p className="text-xs text-gray-500 truncate opacity-80 mt-0.5">
                          Updated {format(new Date(repo.updated_at), 'MMM dd')}
                     </p>
                 </div>
                 {selectedRepoId === repo.id && (
-                    <motion.div layoutId="active-indicator" className="w-1.5 h-1.5 rounded-full bg-[#00C2CB] shadow-[0_0_8px_rgba(0,194,203,0.8)]" />
+                    <motion.div layoutId="active-indicator" className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm" />
                 )}
               </button>
             ))}
@@ -306,10 +306,10 @@ const GitHubIntegration = () => {
       </div>
 
       {/* Main Dashboard */}
-      <div className="flex-1 flex flex-col bg-[#0B0E14] overflow-hidden relative">
+      <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
         {loadingDetails ? (
            <div className="flex-1 flex items-center justify-center">
-             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
+             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-500"></div>
            </div>
         ) : repoDetails ? (
           <ScrollArea className="flex-1">
@@ -317,24 +317,24 @@ const GitHubIntegration = () => {
                 {/* Header Section */}
                 <div className="flex items-start justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-3 text-white">
+                        <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-3 text-black">
                             {repoDetails.name} 
-                            <Badge variant="outline" className="text-xs font-normal bg-[#181C25] border-white/10 text-[#A4ADB3]">
+                            <Badge variant="outline" className="text-xs font-normal bg-gray-50 border-gray-200 text-gray-500">
                                 {repoDetails.private ? "Private" : "Public"}
                             </Badge>
                         </h1>
-                        <p className="text-[#A4ADB3] max-w-2xl leading-relaxed">
+                        <p className="text-gray-500 max-w-2xl leading-relaxed">
                             {repoDetails.description || "No description provided."}
                         </p>
                     </div>
                     <div className="flex gap-4 items-center">
                         <button 
                             onClick={() => setIsAccessPanelOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00C2CB]/10 text-[#00C2CB] hover:bg-[#00C2CB]/20 border border-[#00C2CB]/20 transition-colors text-sm font-medium"
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition-colors text-sm font-medium"
                         >
                             <Shield className="w-4 h-4" /> Manage Access
                         </button>
-                        <a href={repoDetails.html_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#181C25] hover:bg-[#181C25]/80 border border-white/10 transition-colors text-sm font-medium text-white">
+                        <a href={repoDetails.html_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors text-sm font-medium text-black">
                             <ExternalLink className="w-4 h-4" /> View on GitHub
                         </a>
                     </div>
@@ -342,45 +342,42 @@ const GitHubIntegration = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Commits Bar Chart (Compute Activity style) */}
-                    <div className="lg:col-span-2 glass-panel p-6 rounded-xl border border-white/5 bg-[#181C25]">
-                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-white">
-                            <GitCommit className="w-5 h-5 text-[#00C2CB]" /> Commit Activity
+                    <div className="lg:col-span-2 glass-panel p-6 rounded-xl border border-gray-200 bg-white shadow-sm">
+                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-black">
+                            <GitCommit className="w-5 h-5 text-blue-500" /> Commit Activity
                         </h3>
                         <div className="h-[300px] w-full">
                             {commitData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={commitData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                                    <XAxis dataKey="date" stroke="#A4ADB3" fontSize={12} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#A4ADB3" fontSize={12} tickLine={false} axisLine={false} />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                                    <XAxis dataKey="date" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
                                     <Tooltip 
-                                        cursor={{ fill: '#ffffff05' }}
-                                        contentStyle={{ backgroundColor: '#0B0E14', border: '1px solid #ffffff10', borderRadius: '8px' }}
-                                        itemStyle={{ color: '#fff' }}
+                                        cursor={{ fill: '#f3f4f6' }}
+                                        contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                                        itemStyle={{ color: '#000' }}
                                     />
                                     <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                                         {commitData.map((entry, index) => (
                                             <Cell 
                                                 key={`cell-${index}`} 
-                                                fill={entry.count === maxCommitCount ? '#00C2CB' : '#2A303C'} 
-                                                style={{
-                                                    filter: entry.count === maxCommitCount ? 'drop-shadow(0 0 8px rgba(0, 194, 203, 0.5))' : 'none'
-                                                }}
+                                                fill={entry.count === maxCommitCount ? '#3B82F6' : '#9CA3AF'} 
                                             />
                                         ))}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                             ) : (
-                                <div className="flex h-full items-center justify-center text-[#A4ADB3] opacity-60">No commit data available</div>
+                                <div className="flex h-full items-center justify-center text-gray-400">No commit data available</div>
                             )}
                         </div>
                     </div>
 
                     {/* Languages Pie Chart (Job Statistics style) */}
-                    <div className="glass-panel p-6 rounded-xl border border-white/5 bg-[#181C25]">
-                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-white">
-                            <Code className="w-5 h-5 text-[#00C2CB]" /> Language Statistics
+                    <div className="glass-panel p-6 rounded-xl border border-gray-200 bg-white shadow-sm">
+                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-black">
+                            <Code className="w-5 h-5 text-green-500" /> Language Statistics
                         </h3>
                         <div className="h-[300px] w-full flex flex-col items-center justify-center relative">
                             {languageData.length > 0 ? (
@@ -400,58 +397,58 @@ const GitHubIntegration = () => {
                                                 {languageData.map((entry, index) => (
                                                     <Cell 
                                                         key={`cell-${index}`} 
-                                                        fill={index === 0 ? '#00C2CB' : `rgba(164, 173, 179, ${1 - index * 0.15})`} 
+                                                        fill={index === 0 ? '#10B981' : index === 1 ? '#3B82F6' : index === 2 ? '#F59E0B' : index === 3 ? '#EF4444' : '#9CA3AF'} 
                                                     />
                                                 ))}
                                             </Pie>
                                             <Tooltip 
-                                                contentStyle={{ backgroundColor: '#0B0E14', border: '1px solid #ffffff10', borderRadius: '8px' }}
-                                                itemStyle={{ color: '#fff' }}
+                                                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                                                itemStyle={{ color: '#000' }}
                                             />
                                         </PieChart>
                                     </ResponsiveContainer>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                        <span className="text-3xl font-bold text-white">{languageData[0]?.name}</span>
-                                        <span className="text-xs text-[#A4ADB3]">Top Language</span>
+                                        <span className="text-3xl font-bold text-black">{languageData[0]?.name}</span>
+                                        <span className="text-xs text-gray-500">Top Language</span>
                                     </div>
                                 </>
                             ) : (
-                                <div className="flex h-full items-center justify-center text-[#A4ADB3] opacity-60">No language data</div>
+                                <div className="flex h-full items-center justify-center text-gray-400">No language data</div>
                             )}
                         </div>
                     </div>
 
                     {/* Deployments Section (stacked cards) */}
-                    <div className="glass-panel p-6 rounded-xl border border-white/5 bg-[#181C25] min-h-[300px]">
-                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-white">
-                            <Rocket className="w-5 h-5 text-[#00C2CB]" /> Recent Deployments
+                    <div className="glass-panel p-6 rounded-xl border border-gray-200 bg-white shadow-sm min-h-[300px]">
+                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-black">
+                            <Rocket className="w-5 h-5 text-yellow-500" /> Recent Deployments
                         </h3>
                         <ScrollArea className="h-[300px] pr-4">
                             <div className="space-y-3">
                                 {repoDetails.deployments && repoDetails.deployments.length > 0 ? (
                                     repoDetails.deployments.map(dep => (
-                                        <div key={dep.id} className="p-3 bg-[#0B0E14] rounded-lg border border-white/5 flex items-center justify-between group hover:border-[#00C2CB]/30 transition-colors">
+                                        <div key={dep.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between group hover:border-yellow-300 transition-colors">
                                             <div className="flex items-center gap-2.5 min-w-0">
                                                 {dep.creator_avatar && (
                                                     <img src={dep.creator_avatar} alt={dep.creator || ''} className="w-6 h-6 rounded-full flex-shrink-0" />
                                                 )}
                                                 <div className="min-w-0">
-                                                    <p className="text-sm font-medium capitalize flex items-center gap-2 text-white">
-                                                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dep.state === 'success' ? 'bg-[#00C2CB]' : 'bg-yellow-400'}`} />
+                                                    <p className="text-sm font-medium capitalize flex items-center gap-2 text-black">
+                                                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dep.state === 'success' ? 'bg-green-500' : 'bg-yellow-500'}`} />
                                                         {dep.environment}
                                                     </p>
-                                                    <p className="text-xs text-[#A4ADB3] mt-0.5 truncate">
+                                                    <p className="text-xs text-gray-500 mt-0.5 truncate">
                                                         {format(new Date(dep.created_at), 'MMM dd, HH:mm')} by {dep.creator || 'bot'}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <a href={dep.url} target="_blank" className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-white/10 rounded-md flex-shrink-0 text-white">
+                                            <a href={dep.url} target="_blank" className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-gray-200 rounded-md flex-shrink-0 text-gray-600">
                                                 <ExternalLink className="w-3.5 h-3.5" />
                                             </a>
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center h-40 text-[#A4ADB3] text-sm opacity-60 bg-[#0B0E14] rounded-lg border-dashed border border-white/10">
+                                    <div className="flex flex-col items-center justify-center h-40 text-gray-400 text-sm bg-gray-50 rounded-lg border-dashed border border-gray-200">
                                         <p>No deployments found</p>
                                     </div>
                                 )}
@@ -460,86 +457,86 @@ const GitHubIntegration = () => {
                     </div>
 
                     {/* Contributors Step Area Chart (Pipeline Activity style) */}
-                    <div className="lg:col-span-2 glass-panel p-6 rounded-xl border border-white/5 bg-[#181C25]">
-                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-white">
-                            <Users className="w-5 h-5 text-[#00C2CB]" /> Contributor Activity
+                    <div className="lg:col-span-2 glass-panel p-6 rounded-xl border border-gray-200 bg-white shadow-sm">
+                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-black">
+                            <Users className="w-5 h-5 text-red-500" /> Contributor Activity
                         </h3>
                         <div className="h-[300px] w-full">
                              {contributorData.length > 0 ? (
                              <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={contributorData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                     <defs>
-                                        <linearGradient id="colorTeal" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#00C2CB" stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor="#00C2CB" stopOpacity={0}/>
+                                        <linearGradient id="colorRed" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#EF4444" stopOpacity={0}/>
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                                    <XAxis dataKey="name" stroke="#A4ADB3" fontSize={12} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#A4ADB3" fontSize={12} tickLine={false} axisLine={false} />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                                    <XAxis dataKey="name" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
                                     <Tooltip 
-                                        contentStyle={{ backgroundColor: '#0B0E14', border: '1px solid #ffffff10', borderRadius: '8px' }}
-                                        itemStyle={{ color: '#fff' }}
+                                        contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                                        itemStyle={{ color: '#000' }}
                                     />
                                     <Area 
                                         type="stepAfter" 
                                         dataKey="contributions" 
-                                        stroke="#00C2CB" 
+                                        stroke="#EF4444" 
                                         strokeWidth={2}
                                         fillOpacity={1} 
-                                        fill="url(#colorTeal)" 
+                                        fill="url(#colorRed)" 
                                     />
                                 </AreaChart>
                             </ResponsiveContainer>
                             ) : (
-                                <div className="flex h-full items-center justify-center text-[#A4ADB3] opacity-60">No contributor data</div>
+                                <div className="flex h-full items-center justify-center text-gray-400">No contributor data</div>
                             )}
                         </div>
                     </div>
                 </div>
 
                 {/* KPI Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-white/5">
-                    <KpiCard icon={Star} label="Stars" value={repoDetails.stargazers_count} color="text-yellow-400" />
-                    <KpiCard icon={GitPullRequest} label="Forks" value={repoDetails.forks || 0} color="text-purple-400" />
-                    <KpiCard icon={Activity} label="Open Issues" value={repoDetails.open_issues || 0} color="text-red-400" />
-                    <KpiCard icon={Calendar} label="Created" value={format(new Date(repoDetails.created_at || new Date()), 'MMM yyyy')} color="text-blue-400" isText />
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
+                    <KpiCard icon={Star} label="Stars" value={repoDetails.stargazers_count} color="text-yellow-500" />
+                    <KpiCard icon={GitPullRequest} label="Forks" value={repoDetails.forks || 0} color="text-purple-500" />
+                    <KpiCard icon={Activity} label="Open Issues" value={repoDetails.open_issues || 0} color="text-red-500" />
+                    <KpiCard icon={Calendar} label="Created" value={format(new Date(repoDetails.created_at || new Date()), 'MMM yyyy')} color="text-blue-500" isText />
                 </div>
              </div>
           </ScrollArea>
         ) : error ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-200">
-                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
                     <Activity className="w-8 h-8 text-red-500" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Error Loading Analysis</h3>
-                <p className="text-[#A4ADB3] max-w-sm mb-6">{error}</p>
+                <h3 className="text-xl font-semibold mb-2 text-black">Error Loading Analysis</h3>
+                <p className="text-gray-500 max-w-sm mb-6">{error}</p>
                 <div className="flex gap-3">
                     {error.includes("not connected") ? (
                         <button 
                             onClick={handleConnectGitHub}
-                            className="px-6 py-2 bg-primary hover:opacity-90 text-primary-foreground rounded-lg text-sm transition-all font-medium"
+                            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-all font-medium shadow-sm"
                         >
                             Connect GitHub
                         </button>
                     ) : (
                         <button 
                             onClick={() => window.location.reload()}
-                            className="px-6 py-2 bg-[#181C25] hover:bg-[#181C25]/80 border border-white/10 rounded-lg text-sm transition-all text-white"
+                            className="px-6 py-2 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg text-sm transition-all text-black shadow-sm"
                         >
                             Retry
                         </button>
                     )}
                     <button 
                         onClick={handleDisconnectGitHub}
-                        className="px-6 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg text-sm transition-all"
+                        className="px-6 py-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-lg text-sm transition-all"
                     >
                         Reset Connection
                     </button>
                 </div>
             </div>
         ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-[#A4ADB3] opacity-50">
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
                 <Search className="w-16 h-16 mb-4 opacity-20" />
                 <p>Select a repository to view analytics</p>
             </div>
@@ -564,7 +561,7 @@ const GitHubIntegration = () => {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="absolute right-0 top-0 bottom-0 w-96 border-l border-white/10 z-50 shadow-2xl bg-[#181C25]"
+                        className="absolute right-0 top-0 bottom-0 w-96 border-l border-gray-200 z-50 shadow-2xl bg-white"
                     >
                         <RepositoryAccess 
                             repoName={repoDetails.full_name} 
@@ -582,13 +579,13 @@ const GitHubIntegration = () => {
 
 // Helper Components
 const KpiCard = ({ icon: Icon, label, value, color, isText }: any) => (
-    <div className="glass-panel bg-[#181C25] border border-white/5 p-4 rounded-xl flex items-center gap-4 hover:border-[#00C2CB]/30 transition-colors">
-        <div className={`p-3 rounded-lg bg-[#0B0E14] border border-white/5 ${color}`}>
+    <div className="glass-panel bg-white border border-gray-200 p-4 rounded-xl flex items-center gap-4 hover:border-blue-200 transition-colors shadow-sm">
+        <div className={`p-3 rounded-lg bg-gray-50 border border-gray-100 ${color}`}>
             <Icon className="w-5 h-5" />
         </div>
         <div>
-            <p className="text-xs font-medium text-[#A4ADB3] uppercase tracking-wide">{label}</p>
-            <p className="text-xl font-bold tracking-tight text-white">{value}</p>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+            <p className="text-xl font-bold tracking-tight text-black">{value}</p>
         </div>
     </div>
 );

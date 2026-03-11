@@ -6,58 +6,66 @@
 
 @layer base {
   :root {
-    --background: 220 30% 6%;
-    --foreground: 210 40% 95%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
 
-    --card: 220 25% 10%;
-    --card-foreground: 210 40% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
 
-    --popover: 220 25% 10%;
-    --popover-foreground: 210 40% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 220 30% 6%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 16%;
-    --secondary-foreground: 210 40% 95%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 220 20% 14%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 217 91% 70%;
-    --accent-foreground: 220 30% 6%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 220 20% 18%;
-    --input: 220 20% 18%;
-    --ring: 217 91% 60%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221 83% 53%;
 
     --radius: 0.75rem;
 
-    /* CyberX custom tokens */
-    --cyber-bg-start: 220 30% 5%;
-    --cyber-bg-end: 225 35% 8%;
-    --cyber-glass: 220 25% 12%;
-    --cyber-glass-border: 0 0% 100% / 0.08;
+    /* Custom tokens based on inspiration */
+    --cyber-bg-start: 0 0% 100%;
+    --cyber-bg-end: 210 40% 98%;
+    --cyber-glass: 0 0% 100%;
+    --cyber-glass-border: 0 0% 0% / 0.08;
+    
+    /* Colorful accents */
     --cyber-blue: 217 91% 60%;
-    --cyber-blue-glow: 217 91% 70%;
-    --cyber-blue-soft: 213 94% 69%;
     --cyber-red: 0 84% 60%;
-    --cyber-red-glow: 0 84% 65%;
     --cyber-green: 142 71% 45%;
-    --cyber-sidebar: 220 30% 8%;
+    --cyber-yellow: 45 93% 47%;
+    
+    --cyber-sidebar: 0 0% 0%;
     --cyber-active: 217 91% 60%;
 
-    --sidebar-background: 220 30% 8%;
-    --sidebar-foreground: 215 15% 55%;
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 220 25% 14%;
-    --sidebar-accent-foreground: 210 40% 95%;
-    --sidebar-border: 220 20% 15%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 15%;
     --sidebar-ring: 217 91% 60%;
+    
+    /* Chart Colors */
+    --chart-1: 0 84% 60%; /* Red */
+    --chart-2: 217 91% 60%; /* Blue */
+    --chart-3: 142 71% 45%; /* Green */
+    --chart-4: 45 93% 47%; /* Yellow */
+    --chart-5: 27 96% 61%; /* Orange */
   }
 }
 
@@ -94,7 +102,7 @@
   }
 
   .cyber-gradient-bg {
-    background: linear-gradient(135deg, hsl(220 30% 5%) 0%, hsl(225 35% 8%) 50%, hsl(220 30% 6%) 100%);
+    background: var(--background);
   }
 
   .cyber-radial-glow {

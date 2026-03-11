@@ -41,10 +41,10 @@ const HostingRender = () => {
                         <div className="max-w-[1600px] mx-auto space-y-6 animate-fade-in pb-10">
                             <header className="flex justify-between items-center mb-0 sticky top-0 bg-background/80 backdrop-blur-md z-40 py-4">
                                 <div>
-                                    <h1 className="text-3xl font-bold tracking-tight text-white/90">
+                                    <h1 className="text-3xl font-bold tracking-tight text-black">
                                         Hosting Integration
                                     </h1>
-                                    <p className="text-muted-foreground mt-1 text-sm">
+                                    <p className="text-gray-500 mt-1 text-sm">
                                         Connect your cloud hosting providers to manage deployments.
                                     </p>
                                 </div>

@@ -13,9 +13,9 @@ const providers = [
 
 const HostingSidebar = () => {
     return (
-        <div className="w-64 h-full border-r border-white/10 bg-black/20 backdrop-blur-sm flex flex-col pt-6 pb-4">
+        <div className="w-64 h-full border-r border-gray-200 bg-gray-50 flex flex-col pt-6 pb-4">
             <div className="px-6 mb-6">
-                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Providers</h2>
+                <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Providers</h2>
             </div>
             <nav className="flex-1 space-y-1 px-3">
                 {providers.map((provider) => (
@@ -25,8 +25,8 @@ const HostingSidebar = () => {
                         className={({ isActive }) => `
                             flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200
                             ${isActive 
-                                ? 'bg-primary/10 text-primary font-medium' 
-                                : 'text-muted-foreground hover:bg-white/5 hover:text-white'
+                                ? 'bg-blue-50 text-blue-600 font-medium' 
+                                : 'text-gray-500 hover:bg-gray-100 hover:text-black'
                             }
                         `}
                     >

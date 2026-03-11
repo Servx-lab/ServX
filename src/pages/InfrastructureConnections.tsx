@@ -199,43 +199,43 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
   );
 
   return (
-    <div className="min-h-screen bg-[#0B0E14] text-foreground p-6 md:p-8 space-y-8 animate-in fade-in duration-500">
+    <div className="min-h-screen bg-white text-black p-6 md:p-8 space-y-8 animate-in fade-in duration-500">
         
         {/* Header */}
         <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold tracking-tight text-black">
                 Infrastructure Connections
             </h1>
-            <p className="text-muted-foreground max-w-2xl">
+            <p className="text-gray-500 max-w-2xl">
                 Manage your cloud provider integrations. Connect your infrastructure to enable automated deployments, monitoring, and scaling.
             </p>
         </div>
 
         {/* 1-Click OAuth Section */}
         <section className="space-y-4">
-            <div className="flex items-center gap-2 text-cyan-400">
+            <div className="flex items-center gap-2 text-blue-500">
                 <CloudLightning className="w-5 h-5" />
-                <h2 className="text-xl font-semibold tracking-tight text-white">OAuth Integrations (1-Click)</h2>
+                <h2 className="text-xl font-semibold tracking-tight text-black">OAuth Integrations (1-Click)</h2>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* DigitalOcean Card */}
-                <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-lg hover:border-blue-500/30 hover:shadow-blue-500/10 transition-all duration-300">
+                <Card className="bg-white border-gray-200 shadow-sm hover:border-blue-500/30 hover:shadow-md transition-all duration-300">
                     <CardHeader className="flex flex-row items-start justify-between pb-2">
                         <DigitalOceanLogo />
                         <ConnectionStatusBadge isConnected={connections.digitalocean} />
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>
-                            <CardTitle className="text-lg text-white">DigitalOcean</CardTitle>
-                            <CardDescription className="mt-1.5 text-white/50">
+                            <CardTitle className="text-lg text-black">DigitalOcean</CardTitle>
+                            <CardDescription className="mt-1.5 text-gray-500">
                                 Manage droplets and Kubernetes clusters via OAuth integration.
                             </CardDescription>
                         </div>
                     </CardContent>
                     <CardFooter>
                         <Button 
-                             className="w-full bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_-3px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_-5px_rgba(37,99,235,0.5)] transition-all border border-blue-500/50"
+                             className="w-full bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-all border border-blue-500/50"
                              onClick={() => handleOAuthLogin('digitalocean')}
                              disabled={loading === 'digitalocean'}
                         >
@@ -246,22 +246,22 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
                 </Card>
 
                 {/* Railway Card (Moved to OAuth) */}
-                <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-lg hover:border-purple-500/30 hover:shadow-purple-500/10 transition-all duration-300">
+                <Card className="bg-white border-gray-200 shadow-sm hover:border-purple-500/30 hover:shadow-md transition-all duration-300">
                     <CardHeader className="flex flex-row items-start justify-between pb-2">
                         <RailwayLogo />
                         <ConnectionStatusBadge isConnected={connections.railway} />
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>
-                            <CardTitle className="text-lg text-white">Railway</CardTitle>
-                            <CardDescription className="mt-1.5 text-white/50">
+                            <CardTitle className="text-lg text-black">Railway</CardTitle>
+                            <CardDescription className="mt-1.5 text-gray-500">
                                 Connect securely via OAuth 2.0 to sync infrastructure services.
                             </CardDescription>
                         </div>
                     </CardContent>
                     <CardFooter>
                         <Button 
-                            className="w-full bg-purple-600 hover:bg-purple-500 text-white shadow-[0_0_15px_-3px_rgba(147,51,234,0.3)] hover:shadow-[0_0_25px_-5px_rgba(147,51,234,0.5)] transition-all border border-purple-500/50"
+                            className="w-full bg-purple-600 hover:bg-purple-500 text-white shadow-sm transition-all border border-purple-500/50"
                             onClick={() => handleOAuthLogin('railway')}
                             disabled={loading === 'railway'}
                         >
@@ -275,15 +275,15 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
 
         {/* Manual API Key Section */}
         <section className="space-y-4 pt-4">
-            <div className="flex items-center gap-2 text-indigo-400">
+            <div className="flex items-center gap-2 text-indigo-500">
                 <Key className="w-5 h-5" />
-                <h2 className="text-xl font-semibold tracking-tight text-white">Manual API Connections</h2>
+                <h2 className="text-xl font-semibold tracking-tight text-black">Manual API Connections</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
                 {/* Vercel Card (Personal Access Token) */}
-                <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-lg hover:border-cyan-500/30 hover:shadow-cyan-500/10 transition-all duration-300">
+                <Card className="bg-white border-gray-200 shadow-sm hover:border-blue-500/30 hover:shadow-md transition-all duration-300">
                     <CardHeader className="flex flex-row items-start justify-between pb-2">
                         <VercelLogo />
                         <ConnectionStatusBadge isConnected={connections.vercel} />
@@ -291,17 +291,17 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
                     <CardContent className="space-y-4">
                         <div>
                             <div className="flex justify-between items-center">
-                                <CardTitle className="text-lg text-white">Vercel</CardTitle>
+                                <CardTitle className="text-lg text-black">Vercel</CardTitle>
                                 <a 
                                     href="https://vercel.com/account/tokens"
                                     target="_blank" 
                                     rel="noopener noreferrer" 
-                                    className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                                    className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 transition-colors"
                                 >
                                     Generate token <ExternalLink className="w-3 h-3" />
                                 </a>
                             </div>
-                            <CardDescription className="mt-1.5 text-white/50">
+                            <CardDescription className="mt-1.5 text-gray-500">
                                 Enter your Personal Access Token to sync deployments and domains.
                             </CardDescription>
                         </div>
@@ -311,33 +311,33 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
                                 <Input 
                                     type={showVercelToken ? 'text' : 'password'}
                                     placeholder="vk1_xxxxxxxxxxxxxxxx" 
-                                    className="bg-black/50 border-white/10 text-white placeholder:text-white/20 focus:border-cyan-500/50 focus:ring-cyan-500/20 pr-10"
+                                    className="bg-white border-gray-200 text-black placeholder:text-gray-400 focus:border-blue-500/50 focus:ring-blue-500/20 pr-10"
                                     value={vercelToken}
                                     onChange={(e) => setVercelToken(e.target.value)}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowVercelToken(!showVercelToken)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition-colors"
                                 >
                                     {showVercelToken ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
-                            <div className="bg-white/5 border border-white/10 rounded-lg p-2.5 space-y-1">
-                                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1">
-                                    <HelpCircle size={10} className="text-cyan-400" /> How to get your token
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-2.5 space-y-1">
+                                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                                    <HelpCircle size={10} className="text-blue-500" /> How to get your token
                                 </p>
-                                <div className="text-[11px] text-[#A4ADB3] leading-relaxed space-y-0.5">
-                                    <p>1. Click your profile picture → <span className="text-white/70">Account Settings</span></p>
-                                    <p>2. Click <span className="text-white/70">Tokens</span> in the left sidebar</p>
-                                    <p>3. Click <span className="text-white/70">Create</span>, name it "Orizon Dashboard"</p>
+                                <div className="text-[11px] text-gray-500 leading-relaxed space-y-0.5">
+                                    <p>1. Click your profile picture → <span className="text-black">Account Settings</span></p>
+                                    <p>2. Click <span className="text-black">Tokens</span> in the left sidebar</p>
+                                    <p>3. Click <span className="text-black">Create</span>, name it "Orizon Dashboard"</p>
                                 </div>
                             </div>
                         </div>
                     </CardContent>
                     <CardFooter>
                         <Button 
-                            className="w-full bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-500/50 transition-all shadow-[0_0_15px_-3px_rgba(6,182,212,0.1)] hover:shadow-[0_0_20px_-3px_rgba(6,182,212,0.3)]"
+                            className="w-full bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 hover:border-blue-300 transition-all shadow-sm"
                             onClick={handleSaveVercelToken}
                             disabled={loading === 'vercel' || !vercelToken.trim()}
                         >
@@ -348,7 +348,7 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
                 </Card>
 
                 {/* Render Card */}
-                <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-lg hover:border-indigo-500/30 hover:shadow-indigo-500/10 transition-all duration-300">
+                <Card className="bg-white border-gray-200 shadow-sm hover:border-indigo-500/30 hover:shadow-md transition-all duration-300">
                     <CardHeader className="flex flex-row items-start justify-between pb-2">
                         <RenderLogo />
                         <ConnectionStatusBadge isConnected={connections.render} />
@@ -356,17 +356,17 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
                     <CardContent className="space-y-4">
                         <div>
                             <div className="flex justify-between items-center">
-                                <CardTitle className="text-lg text-white">Render</CardTitle>
+                                <CardTitle className="text-lg text-black">Render</CardTitle>
                                 <a 
                                     href="https://dashboard.render.com/user/settings#api-keys" 
                                     target="_blank" 
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                                    className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-600 transition-colors"
                                 >
                                     Generate token <ExternalLink className="w-3 h-3" />
                                 </a>
                             </div>
-                            <CardDescription className="mt-1.5 text-white/50">
+                            <CardDescription className="mt-1.5 text-gray-500">
                                 Enter your API key.
                             </CardDescription>
                         </div>
@@ -375,7 +375,7 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
                              <Input 
                                 type="password" 
                                 placeholder="rnd_QK9..." 
-                                className="bg-black/50 border-white/10 text-white placeholder:text-white/20 focus:border-indigo-500/50 focus:ring-indigo-500/20"
+                                className="bg-white border-gray-200 text-black placeholder:text-gray-400 focus:border-indigo-500/50 focus:ring-indigo-500/20"
                                 value={apiKeys.render}
                                 onChange={(e) => handleInputChange('render', e.target.value)}
                              />
@@ -383,7 +383,7 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
                     </CardContent>
                     <CardFooter>
                         <Button 
-                            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_15px_-3px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_-5px_rgba(79,70,229,0.5)] transition-all border border-indigo-500/50"
+                            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-all border border-indigo-500/50"
                             onClick={() => handleSaveApiKey('render')}
                             disabled={loading === 'render' || !apiKeys.render}
                         >
@@ -394,7 +394,7 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
                 </Card>
 
                  {/* Fly.io Card (New) */}
-                 <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-lg hover:border-indigo-400/30 hover:shadow-indigo-400/10 transition-all duration-300">
+                 <Card className="bg-white border-gray-200 shadow-sm hover:border-indigo-400/30 hover:shadow-md transition-all duration-300">
                     <CardHeader className="flex flex-row items-start justify-between pb-2">
                         <FlyLogo />
                         <ConnectionStatusBadge isConnected={connections.fly} />
@@ -402,17 +402,17 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
                     <CardContent className="space-y-4">
                         <div>
                             <div className="flex justify-between items-center">
-                                <CardTitle className="text-lg text-white">Fly.io</CardTitle>
+                                <CardTitle className="text-lg text-black">Fly.io</CardTitle>
                                 <a 
                                     href="https://fly.io/user/personal_access_tokens"
                                     target="_blank" 
                                     rel="noopener noreferrer" 
-                                    className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                                    className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-600 transition-colors"
                                 >
                                     Generate token <ExternalLink className="w-3 h-3" />
                                 </a>
                             </div>
-                             <CardDescription className="mt-1.5 text-white/50">
+                             <CardDescription className="mt-1.5 text-gray-500">
                                 Enter your Personal Access Token.
                             </CardDescription>
                         </div>
@@ -421,7 +421,7 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
                              <Input 
                                 type="password" 
                                 placeholder="fly_token..." 
-                                className="bg-black/50 border-white/10 text-white placeholder:text-white/20 focus:border-indigo-400/50 focus:ring-indigo-400/20"
+                                className="bg-white border-gray-200 text-black placeholder:text-gray-400 focus:border-indigo-400/50 focus:ring-indigo-400/20"
                                 value={apiKeys.fly}
                                 onChange={(e) => handleInputChange('fly', e.target.value)}
                              />
@@ -429,7 +429,7 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
                     </CardContent>
                     <CardFooter>
                         <Button 
-                            className="w-full bg-indigo-500 hover:bg-indigo-400 text-white shadow-[0_0_15px_-3px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_-5px_rgba(99,102,241,0.5)] transition-all border border-indigo-400/50"
+                            className="w-full bg-indigo-500 hover:bg-indigo-400 text-white shadow-sm transition-all border border-indigo-400/50"
                             onClick={() => handleSaveApiKey('fly')}
                             disabled={loading === 'fly' || !apiKeys.fly}
                         >
