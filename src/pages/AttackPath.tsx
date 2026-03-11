@@ -706,10 +706,10 @@ const AttackPath = () => {
             <Suspense fallback={null}>
               <SolarSystemBackground />
               <group rotation={[0.2, 0, 0]}>
-                <TopologyNode position={[-4, 0, 0]} label="G-FRONTEND-01" isTargeted={false} />
-                <TopologyNode position={[0, 2.5, 0]} label="G-CORE-API-07" isTargeted={isAttackActive} />
-                <TopologyNode position={[4, 0, 0]} label="G-PERSIST-09" isTargeted={false} />
-                <TopologyNode position={[0, -2.5, 0]} label="G-AUTH-SYS-04" isTargeted={false} />
+                <TopologyNode position={[-4, 0, 0]} label={nodeLabels[0]} isTargeted={false} isRepoNode={!!selectedRepo} />
+                <TopologyNode position={[0, 2.5, 0]} label={nodeLabels[1]} isTargeted={isAttackActive} isRepoNode={!!selectedRepo} />
+                <TopologyNode position={[4, 0, 0]} label={nodeLabels[2]} isTargeted={false} isRepoNode={!!selectedRepo} />
+                <TopologyNode position={[0, -2.5, 0]} label={nodeLabels[3]} isTargeted={false} isRepoNode={!!selectedRepo} />
 
                 {/* Attack Animation */}
                 <AttackParticles start={[-4, 0, 0]} end={[0, 2, 0]} active={isAttackActive} />
