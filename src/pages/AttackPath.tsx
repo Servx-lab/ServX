@@ -598,14 +598,81 @@ const AttackPath = () => {
     return ["G-FRONTEND-01", "G-CORE-API-07", "G-PERSIST-09", "G-AUTH-SYS-04"];
   }, [selectedRepo]);
 
+  // Simulate attack sequence
+  const runAttack = useCallback((type: AttackType) => {
+    if (!selectedRepo || scanPhase !== "idle") return;
+
+    setActiveAttackType(type);
+    setScanPhase("scanning");
+    setIsAttackActive(false);
+    setVulnerabilities([]);
+    setShowReport(false);
+
+    const logs: string[] = [];
+    logs.push(`[${new Date().toISOString()}] DEVICE ${deviceUUID.slice(0, 8)}... initiated ${type} scan`);
+    logs.push(`[TARGET] ${selectedRepo.full_name}`);
+    setScanLog([...logs]);
+
+    // Phase 1: Scanning (2s)
+    setTimeout(() => {
+      logs.push("[SCAN] Enumerating attack surface...");
+      logs.push("[SCAN] Probing endpoints...");
+      setScanLog([...logs]);
+      setScanPhase("attacking");
+      setIsAttackActive(true);
+
+      // Phase 2: Attacking (3s)
+      setTimeout(() => {
+        logs.push(`[ATTACK] ${type === "ddos" ? "DDoS flood packets" : "SQL injection payloads"} deployed`);
+        logs.push("[ATTACK] Monitoring response degradation...");
+        setScanLog([...logs]);
+
+        // Phase 3: Reporting (2s)
+        setTimeout(() => {
+          const vulns = generateVulnerabilities(selectedRepo);
+          logs.push(`[REPORT] Scan complete. ${vulns.length} vulnerabilities detected.`);
+          setScanLog([...logs]);
+
+          setIsAttackActive(false);
+          setScanPhase("reporting");
+          setVulnerabilities(vulns);
+          setShowReport(true);
+          setActiveAttackType(null);
+        }, 2000);
+      }, 3000);
+    }, 2000);
+  }, [selectedRepo, scanPhase, deviceUUID]);
+
+  const handleChaosToggle = useCallback((type: AttackType) => {
+    if (scanPhase !== "idle") return;
+    if (!selectedRepo) {
+      setRepoDropdownOpen(true);
+      return;
+    }
+    runAttack(type);
+  }, [selectedRepo, scanPhase, runAttack]);
+
+  const handleAutoMedic = useCallback((vulns: Vulnerability[]) => {
+    const params = new URLSearchParams();
+    params.set("source", "attack-path");
+    params.set("repo", selectedRepo?.full_name || "");
+    params.set("vulns", JSON.stringify(vulns.map(v => ({ severity: v.severity, title: v.title, file: v.file }))));
+    navigate(`/automedic?${params.toString()}`);
+  }, [navigate, selectedRepo]);
+
+  const resetScan = useCallback(() => {
+    setScanPhase("idle");
+    setIsAttackActive(false);
+    setActiveAttackType(null);
+    setVulnerabilities([]);
+    setShowReport(false);
+    setScanLog([]);
+  }, []);
+
   const toggleLockdown = () => {
     setGlitch(true);
     setTimeout(() => setGlitch(false), 200);
     setIsLockdown(!isLockdown);
-  };
-
-  const toggleAttack = () => {
-    setIsAttackActive(!isAttackActive);
   };
 
   return (
