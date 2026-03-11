@@ -977,15 +977,15 @@ const AttackPath = () => {
   );
 };
 
-const ChaosToggle = ({ label, active, onClick }: any) => {
+const ChaosToggle = ({ label, active, onClick, disabled }: { label: string; active: boolean; onClick: () => void; disabled?: boolean }) => {
   return (
-    <div className="flex items-center justify-between group pointer-events-auto">
+    <div className={`flex items-center justify-between group pointer-events-auto ${disabled && !active ? 'opacity-50' : ''}`}>
       <span className={`text-xs font-bold tracking-wider transition-colors duration-300 ${active ? 'text-black' : 'text-gray-500'}`}>
         {label}
       </span>
-      <div 
-        onClick={onClick}
-        className="relative w-14 h-7 cursor-pointer"
+      <div
+        onClick={disabled && !active ? undefined : onClick}
+        className={`relative w-14 h-7 ${disabled && !active ? 'cursor-not-allowed' : 'cursor-pointer'}`}
       >
         {/* Track */}
         <div className={`absolute inset-0 rounded-full border transition-all duration-500 ${active ? 'bg-purple-100 border-purple-500' : 'bg-gray-100 border-gray-300'}`} />
@@ -1024,7 +1024,7 @@ const ChaosToggle = ({ label, active, onClick }: any) => {
   );
 };
 
-const MasterOverride = ({ onClick, active }: any) => {
+const MasterOverride = ({ onClick, active }: { onClick: () => void; active: boolean }) => {
   const [coverOpen, setCoverOpen] = useState(false);
 
   return (
