@@ -817,21 +817,73 @@ const AttackPath = () => {
             >
               <h3 className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mb-4">Chaos Simulation</h3>
               <div className="space-y-4">
-                <ChaosToggle 
-                  label="DDoS Attack" 
-                  active={isAttackActive} 
-                  onClick={toggleAttack} 
+                <ChaosToggle
+                  label="Simulate DDoS"
+                  active={activeAttackType === "ddos" && scanPhase !== "idle"}
+                  onClick={() => handleChaosToggle("ddos")}
+                  disabled={scanPhase !== "idle"}
                 />
-                <ChaosToggle 
-                  label="SQL Injection" 
-                  active={false} 
-                  onClick={() => {}} 
+                <ChaosToggle
+                  label="Inject Payload"
+                  active={activeAttackType === "injection" && scanPhase !== "idle"}
+                  onClick={() => handleChaosToggle("injection")}
+                  disabled={scanPhase !== "idle"}
                 />
+                {scanPhase !== "idle" && (
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    onClick={resetScan}
+                    className="w-full mt-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <X className="w-3 h-3" /> Reset
+                  </motion.button>
+                )}
               </div>
+
+              {/* Scan Phase Indicator */}
+              {scanPhase !== "idle" && (
+                <div className="mt-4 pt-3 border-t border-gray-200">
+                  <div className="flex items-center gap-2">
+                    {scanPhase === "reporting" ? (
+                      <Scan className="w-3 h-3 text-[#6C63FF]" />
+                    ) : (
+                      <Loader2 className="w-3 h-3 text-[#00C2CB] animate-spin" />
+                    )}
+                    <span className="text-[9px] font-mono text-gray-500 uppercase tracking-wider">
+                      {scanPhase === "scanning" && "Scanning target..."}
+                      {scanPhase === "attacking" && "Attack in progress..."}
+                      {scanPhase === "reporting" && `${vulnerabilities.length} vulns found`}
+                    </span>
+                  </div>
+                </div>
+              )}
             </motion.div>
 
-            {/* Empty space for 3D map */}
-            <div className="col-span-2" />
+            {/* Scan Log (center column) */}
+            <div className="col-span-2 flex items-end">
+              <AnimatePresence>
+                {scanLog.length > 0 && (
+                  <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 20, opacity: 0 }}
+                    className="w-full bg-[#0B0E14]/90 backdrop-blur-xl border border-[#00C2CB]/20 rounded-xl p-4 pointer-events-auto max-h-32 overflow-auto"
+                  >
+                    {scanLog.map((line, i) => (
+                      <motion.p
+                        key={i}
+                        initial={{ x: -5, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        className="text-[10px] font-mono text-[#00C2CB]/80 leading-relaxed"
+                      >
+                        {line}
+                      </motion.p>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Master Override */}
             <motion.div 
