@@ -140,9 +140,14 @@ const AttackParticles = React.memo(({ start, end, active }: any) => {
   );
 });
 
-const TopologyNode = React.memo(({ position, label, isTargeted }: any) => {
+const TopologyNode = React.memo(({ position, label, isTargeted, isRepoNode }: {
+  position: number[];
+  label: string;
+  isTargeted: boolean;
+  isRepoNode?: boolean;
+}) => {
   const meshRef = useRef<THREE.Mesh>(null);
-  
+
   useFrame((state) => {
     if (isTargeted && meshRef.current) {
       meshRef.current.position.x = position[0] + Math.sin(state.clock.elapsedTime * 20) * 0.05;
@@ -150,24 +155,26 @@ const TopologyNode = React.memo(({ position, label, isTargeted }: any) => {
     }
   });
 
+  const nodeColor = isRepoNode ? "#00C2CB" : isTargeted ? "#6C63FF" : "#00C2CB";
+  const emissiveIntensity = isRepoNode ? 8 : isTargeted ? 20 : 2;
+
   return (
     <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
       <group position={position}>
         <Icosahedron ref={meshRef} args={[0.5, 1]} onPointerOver={(e) => (e.stopPropagation())}>
-          <meshStandardMaterial 
-            color={isTargeted ? "#6C63FF" : "#00C2CB"} 
-            emissive={isTargeted ? "#6C63FF" : "#00C2CB"} 
-            emissiveIntensity={isTargeted ? 20 : 2} 
-            wireframe 
+          <meshStandardMaterial
+            color={nodeColor}
+            emissive={nodeColor}
+            emissiveIntensity={emissiveIntensity}
+            wireframe
           />
         </Icosahedron>
-        
-        {/* Pulsing Aura */}
+
         <Sphere args={[0.5, 16, 16]}>
-          <meshBasicMaterial 
-            color={isTargeted ? "#6C63FF" : "#00C2CB"} 
-            transparent 
-            opacity={0.1} 
+          <meshBasicMaterial
+            color={nodeColor}
+            transparent
+            opacity={0.1}
           />
         </Sphere>
 
@@ -190,6 +197,12 @@ const TopologyNode = React.memo(({ position, label, isTargeted }: any) => {
               transparent
               opacity={0.3}
             />
+          </Sphere>
+        )}
+
+        {isRepoNode && !isTargeted && (
+          <Sphere args={[0.55, 16, 16]}>
+            <meshBasicMaterial color="#00C2CB" transparent opacity={0.15} />
           </Sphere>
         )}
       </group>
