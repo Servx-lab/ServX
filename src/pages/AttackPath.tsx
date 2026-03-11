@@ -569,6 +569,22 @@ const AttackPath = () => {
 
   const deviceUUID = useMemo(() => getDeviceUUID(), []);
 
+  // Auth + fetch repos
+  useEffect(() => {
+    const auth = getAuth();
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(!!user);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    apiClient.get("/github/repos").then((res) => {
+      setRepos(res.data);
+    }).catch(() => {});
+  }, [isAuthenticated]);
+
   const toggleLockdown = () => {
     setGlitch(true);
     setTimeout(() => setGlitch(false), 200);
