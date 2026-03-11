@@ -462,6 +462,32 @@ const RepoSelector = ({ repos, selectedRepo, onSelect, isOpen, setIsOpen, scanPh
   );
 };
 
+// ─── Defense Radar Widget ───────────────────────────────────────
+
+const DefenseRadar = ({ selectedRepo, scanPhase }: { selectedRepo: RepoSummary | null; scanPhase: ScanPhase }) => {
+  const isActive = scanPhase === "attacking" && !!selectedRepo;
+  return (
+    <div className="flex items-center gap-3">
+      <div className="relative w-8 h-8">
+        <RadioTower className={`w-4 h-4 absolute inset-0 m-auto transition-colors ${isActive ? "text-[#6C63FF]" : "text-[#A4ADB3]"}`} />
+        {isActive && (
+          <motion.div
+            animate={{ scale: [1, 2.5], opacity: [0.6, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            className="absolute inset-0 border border-[#6C63FF] rounded-full"
+          />
+        )}
+      </div>
+      <div className="text-right">
+        <p className="text-[10px] text-[#A4ADB3] uppercase tracking-widest font-mono">Defense Radar</p>
+        <p className={`text-xs font-mono font-bold ${isActive ? "text-[#6C63FF]" : "text-[#00C2CB]"}`}>
+          {isActive ? selectedRepo!.name.toUpperCase() : "ALL NODES"}
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const AttackPath = () => {
   const [isAttackActive, setIsAttackActive] = useState(false);
   const [isLockdown, setIsLockdown] = useState(false);
