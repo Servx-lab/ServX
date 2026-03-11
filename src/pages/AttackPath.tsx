@@ -488,6 +488,67 @@ const DefenseRadar = ({ selectedRepo, scanPhase }: { selectedRepo: RepoSummary |
   );
 };
 
+// ─── Simulated Vulnerability Generator ──────────────────────────
+
+function generateVulnerabilities(repo: RepoSummary): Vulnerability[] {
+  const name = repo.name.toLowerCase();
+  const vulns: Vulnerability[] = [
+    {
+      id: `${repo.id}-crit-1`,
+      severity: "critical",
+      title: "Hardcoded Firebase Key found in config.js",
+      detail: `Plaintext API credentials detected in the ${repo.name} repository. This allows unauthenticated access to the Firebase project and all associated user data.`,
+      file: "src/config.js:14",
+    },
+    {
+      id: `${repo.id}-crit-2`,
+      severity: "critical",
+      title: "Exposed .env file in public directory",
+      detail: "Environment variables containing database credentials are served as a static asset. Immediate remediation required.",
+      file: "public/.env",
+    },
+    {
+      id: `${repo.id}-med-1`,
+      severity: "medium",
+      title: "Outdated dependency: axios v0.21.1",
+      detail: "Known SSRF vulnerability (CVE-2023-45857) in axios versions below 1.6.0. Upgrade to latest stable release.",
+      file: "package.json",
+    },
+    {
+      id: `${repo.id}-med-2`,
+      severity: "medium",
+      title: "Missing Content-Security-Policy header",
+      detail: "The application does not set CSP headers, leaving it vulnerable to XSS attacks via injected scripts.",
+    },
+    {
+      id: `${repo.id}-med-3`,
+      severity: "medium",
+      title: "Insecure CORS configuration",
+      detail: `Access-Control-Allow-Origin is set to '*' allowing any origin to make authenticated requests.`,
+      file: "server/server.js:28",
+    },
+  ];
+
+  if (name.includes("quiz") || name.includes("game")) {
+    vulns.push({
+      id: `${repo.id}-low-1`,
+      severity: "low",
+      title: "Rate limiting not configured on API routes",
+      detail: "Public API endpoints lack rate limiting, making brute-force enumeration feasible.",
+      file: "server/routes/api.js",
+    });
+  } else {
+    vulns.push({
+      id: `${repo.id}-low-1`,
+      severity: "low",
+      title: "Debug logging enabled in production build",
+      detail: "Console.log statements found in 14 files. Sensitive data may be leaked to browser devtools.",
+    });
+  }
+
+  return vulns;
+}
+
 const AttackPath = () => {
   const [isAttackActive, setIsAttackActive] = useState(false);
   const [isLockdown, setIsLockdown] = useState(false);
