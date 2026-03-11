@@ -585,6 +585,19 @@ const AttackPath = () => {
     }).catch(() => {});
   }, [isAuthenticated]);
 
+  // 3D node labels — replace default label when repo is selected
+  const nodeLabels = useMemo(() => {
+    if (selectedRepo) {
+      return [
+        `${selectedRepo.name.toUpperCase()}-FE`,
+        `${selectedRepo.name.toUpperCase()}-API`,
+        `${selectedRepo.name.toUpperCase()}-DB`,
+        `${selectedRepo.name.toUpperCase()}-AUTH`,
+      ];
+    }
+    return ["G-FRONTEND-01", "G-CORE-API-07", "G-PERSIST-09", "G-AUTH-SYS-04"];
+  }, [selectedRepo]);
+
   const toggleLockdown = () => {
     setGlitch(true);
     setTimeout(() => setGlitch(false), 200);
