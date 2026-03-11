@@ -686,6 +686,13 @@ const AttackPath = () => {
       }} />
 
       <main className="ml-56 flex-1 relative flex flex-col items-center justify-center">
+        {/* Scan Line Animation */}
+        <AnimatePresence>
+          {selectedRepo && scanPhase !== "idle" && scanPhase !== "reporting" && (
+            <ScanLineAnimation repoName={selectedRepo.name} phase={scanPhase} />
+          )}
+        </AnimatePresence>
+
         {/* 3D Viewport */}
         <div className="absolute inset-0 z-0">
           <Canvas shadows>
