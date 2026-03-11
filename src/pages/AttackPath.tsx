@@ -895,7 +895,24 @@ const AttackPath = () => {
               <MasterOverride onClick={toggleLockdown} active={isLockdown} />
             </motion.div>
           </div>
+
+          {/* Device UUID watermark */}
+          <div className="absolute bottom-2 left-2 pointer-events-none">
+            <p className="text-[8px] font-mono text-gray-300 tracking-wider">DEVICE {deviceUUID.slice(0, 12)}...</p>
+          </div>
         </div>
+
+        {/* Vulnerability Report Overlay */}
+        <AnimatePresence>
+          {showReport && selectedRepo && (
+            <VulnerabilityReport
+              vulns={vulnerabilities}
+              repoName={selectedRepo.full_name}
+              onClose={() => setShowReport(false)}
+              onAutoMedic={handleAutoMedic}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Lockdown Overlay */}
         <AnimatePresence>
