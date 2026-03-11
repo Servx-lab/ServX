@@ -170,8 +170,8 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
         return (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                <Cloud size={14} className="text-[#00C2CB]" />
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                <Cloud size={14} className="text-blue-500" />
                 Paste Service Account JSON
               </label>
               <button
@@ -180,15 +180,15 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                 className={cn(
                   "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md transition-all border",
                   jsonMasked
-                    ? "bg-[#00C2CB]/10 text-[#00C2CB] border-[#00C2CB]/30"
-                    : "text-gray-500 hover:text-white border-transparent hover:border-white/10"
+                    ? "bg-blue-50 text-blue-600 border-blue-200"
+                    : "text-gray-500 hover:text-black border-transparent hover:border-gray-200"
                 )}
               >
                 {jsonMasked ? <EyeOff size={12} /> : <Eye size={12} />}
                 {jsonMasked ? 'Masked' : 'Mask JSON'}
               </button>
             </div>
-            <div className="relative rounded-lg border-2 border-[#00C2CB]/40 shadow-[0_0_15px_-3px_#00C2CB30] focus-within:border-[#00C2CB] focus-within:shadow-[0_0_20px_-3px_#00C2CB50] transition-all">
+            <div className="relative rounded-lg border-2 border-blue-200 shadow-sm focus-within:border-blue-500 focus-within:shadow-md transition-all">
               <textarea
                 value={formData.serviceAccountJson || ''}
                 onChange={(e) => handleInputChange('serviceAccountJson', e.target.value)}
@@ -196,17 +196,17 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                 rows={10}
                 spellCheck={false}
                 className={cn(
-                  "w-full bg-[#0B0E14] text-sm rounded-lg px-4 py-3 focus:outline-none transition-all placeholder:text-gray-700 resize-none font-mono leading-relaxed",
+                  "w-full bg-white text-sm rounded-lg px-4 py-3 focus:outline-none transition-all placeholder:text-gray-400 resize-none font-mono leading-relaxed",
                   jsonMasked
-                    ? "text-transparent caret-gray-400 selection:bg-[#00C2CB]/30 selection:text-transparent"
-                    : "text-gray-200"
+                    ? "text-transparent caret-gray-400 selection:bg-blue-100 selection:text-transparent"
+                    : "text-black"
                 )}
                 style={jsonMasked ? {
                   WebkitTextSecurity: 'disc',
                 } as React.CSSProperties : {}}
               />
               {jsonMasked && (
-                <div className="absolute top-2 right-3 flex items-center gap-1 text-[10px] text-[#00C2CB]/60 pointer-events-none">
+                <div className="absolute top-2 right-3 flex items-center gap-1 text-[10px] text-blue-500 pointer-events-none">
                   <ShieldCheck size={10} />
                   SECURED
                 </div>
@@ -217,15 +217,15 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                 const parsed = JSON.parse(formData.serviceAccountJson);
                 const hasRequired = parsed.project_id && parsed.private_key && parsed.client_email;
                 return hasRequired ? (
-                  <div className="flex items-center gap-2 text-xs text-green-500">
+                  <div className="flex items-center gap-2 text-xs text-green-600">
                     <Check size={12} />
-                    Valid: project <span className="font-mono text-green-400">{parsed.project_id}</span>
+                    Valid: project <span className="font-mono text-green-600">{parsed.project_id}</span>
                   </div>
                 ) : (
-                  <div className="text-xs text-yellow-500">Missing required fields: project_id, private_key, or client_email</div>
+                  <div className="text-xs text-yellow-600">Missing required fields: project_id, private_key, or client_email</div>
                 );
               } catch {
-                return <div className="text-xs text-red-400">Invalid JSON format</div>;
+                return <div className="text-xs text-red-600">Invalid JSON format</div>;
               }
             })()}
           </div>
@@ -290,15 +290,15 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                 type="password" 
                 placeholder="vk1_..." 
             />
-            <div className="bg-[#181C25] border border-white/5 rounded-lg p-4 space-y-2">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                   <HelpCircle size={12} className="text-[#00C2CB]" /> 
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                   <HelpCircle size={12} className="text-blue-500" /> 
                    How to get your token
                 </p>
-                <div className="text-[11px] text-[#A4ADB3] leading-relaxed space-y-1.5 list-decimal list-inside pl-1">
-                    <p>1. Click your profile picture in the top right of Vercel and select <span className="text-gray-300">Account Settings</span>.</p>
-                    <p>2. Click <span className="text-gray-300">Tokens</span> in the left sidebar menu.</p>
-                    <p>3. Click <span className="text-gray-300">Create</span>, name it "Orizon Dashboard", and it will give you a single long token (e.g., vk1_...).</p>
+                <div className="text-[11px] text-gray-500 leading-relaxed space-y-1.5 list-decimal list-inside pl-1">
+                    <p>1. Click your profile picture in the top right of Vercel and select <span className="text-black">Account Settings</span>.</p>
+                    <p>2. Click <span className="text-black">Tokens</span> in the left sidebar menu.</p>
+                    <p>3. Click <span className="text-black">Create</span>, name it "Orizon Dashboard", and it will give you a single long token (e.g., vk1_...).</p>
                 </div>
             </div>
           </div>
@@ -327,20 +327,20 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     
     return (
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">{label}</label>
+        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">{label}</label>
         <div className="relative group">
           <input
             type={isPassword && !isVisible ? 'password' : 'text'}
             value={formData[field] || ''}
             onChange={(e) => handleInputChange(field, e.target.value)}
             placeholder={placeholder}
-            className={`w-full bg-[#0B0E14] border border-[#1f2937] text-gray-200 text-sm rounded-lg pl-4 pr-10 py-3 focus:outline-none focus:border-[#00C2CB] focus:ring-1 focus:ring-[#00C2CB] transition-all placeholder:text-gray-600`}
+            className={`w-full bg-white border border-gray-200 text-black text-sm rounded-lg pl-4 pr-10 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-gray-400`}
           />
           {isPassword && (
             <button
               type="button"
               onClick={() => togglePasswordVisibility(field)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#00C2CB] transition-colors bg-[#0B0E14] pl-2"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition-colors bg-white pl-2"
             >
               {isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
@@ -351,7 +351,7 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   };
 
   return (
-    <div className="w-full bg-[#0B0E14] text-white p-4 flex flex-col font-sans">
+    <div className="w-full bg-white text-black p-4 flex flex-col font-sans">
         {/* 1. Selection Logic: Grid of Database Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             {providers.map((p) => (
@@ -361,27 +361,27 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => { setSelectedProvider(p.id); setFormData({}); setTestSuccess(false); setShowHelp(false); }}
                     className={cn(
-                        "relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all duration-300 bg-[#181C25]",
+                        "relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all duration-300 bg-gray-50",
                         selectedProvider === p.id 
-                            ? "border-[#00C2CB] shadow-[0_0_10px_-5px_#00C2CB40] z-10" 
-                            : "border-transparent hover:border-white/10"
+                            ? "border-blue-500 shadow-sm z-10" 
+                            : "border-transparent hover:border-gray-200"
                     )}
                 >
                     <div className={cn(
-                        "p-2 rounded-full bg-[#0B0E14]", 
-                        selectedProvider === p.id ? "text-[#00C2CB]" : "text-gray-400"
+                        "p-2 rounded-full bg-white border border-gray-100", 
+                        selectedProvider === p.id ? "text-blue-500" : "text-gray-500"
                     )}>
                         <DatabaseLogo type={p.id} className="w-8 h-8" />
                     </div>
                     <span className={cn(
                         "font-medium text-xs",
-                        selectedProvider === p.id ? "text-white" : "text-gray-400"
+                        selectedProvider === p.id ? "text-black" : "text-gray-500"
                     )}>{p.id}</span>
                     
                     {selectedProvider === p.id && (
                         <motion.div 
                             layoutId="active-check"
-                            className="absolute top-2 right-2 text-[#00C2CB]"
+                            className="absolute top-2 right-2 text-blue-500"
                         >
                             <ShieldCheck size={14} />
                         </motion.div>
@@ -397,20 +397,20 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="bg-[#181C25] rounded-xl p-6 border border-white/5"
+                    className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm"
                 >
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
-                            <span className="h-6 w-1 bg-[#00C2CB] rounded-full"></span>
+                            <span className="h-6 w-1 bg-blue-500 rounded-full"></span>
                             <h2 className="text-lg font-semibold">{selectedProvider} Configuration</h2>
                         </div>
                         
-                        <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-white transition-colors">
+                        <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer hover:text-black transition-colors">
                             <input 
                                 type="checkbox" 
                                 checked={showHelp} 
                                 onChange={(e) => setShowHelp(e.target.checked)}
-                                className="w-3.5 h-3.5 rounded border-gray-600 bg-[#0B0E14] text-[#00C2CB] focus:ring-[#00C2CB]" 
+                                className="w-3.5 h-3.5 rounded border-gray-300 bg-white text-blue-500 focus:ring-blue-500" 
                             />
                             <span>Show Help</span>
                             <HelpCircle size={14} />
@@ -426,7 +426,7 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                                 exit={{ height: 0, opacity: 0 }}
                                 className="overflow-hidden"
                             >
-                                <div className="bg-[#00C2CB]/10 border border-[#00C2CB]/20 rounded-lg p-4 mb-6 text-[#00C2CB] text-xs flex items-start gap-3">
+                                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6 text-blue-600 text-xs flex items-start gap-3">
                                     <HelpCircle size={16} className="mt-0.5 shrink-0" />
                                     <p>{renderHelpText()}</p>
                                 </div>
@@ -437,28 +437,28 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                     {/* Dynamic Fields */}
                     <div className="grid gap-4 mb-6">
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Connection Name</label>
+                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Connection Name</label>
                             <input
                                 type="text"
                                 value={connectionName}
                                 onChange={(e) => setConnectionName(e.target.value)}
                                 placeholder="e.g. Production Cluster"
-                                className="w-full bg-[#0B0E14] border border-[#1f2937] text-gray-200 text-sm rounded-lg px-4 py-3 focus:outline-none focus:border-[#00C2CB] focus:ring-1 focus:ring-[#00C2CB] transition-all placeholder:text-gray-600"
+                                className="w-full bg-white border border-gray-200 text-black text-sm rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-gray-400"
                             />
                         </div>
                         {renderFields()}
                     </div>
 
                     {error && (
-                        <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs p-3 rounded-lg mb-4">
+                        <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-3 rounded-lg mb-4">
                             {error}
                         </div>
                     )}
 
                     {/* 3. Action Buttons */}
-                    <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                         <button 
-                            className="px-4 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white transition-colors"
+                            className="px-4 py-2 rounded-lg text-xs font-medium text-gray-500 hover:text-black transition-colors hover:bg-gray-100"
                             onClick={() => { setSelectedProvider(null); if (onSuccess) onSuccess(); }} 
                         >
                             Cancel
@@ -470,8 +470,8 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                             className={cn(
                                 "px-4 py-2 rounded-lg text-xs font-medium transition-all duration-300 flex items-center gap-2 min-w-[140px] justify-center",
                                 testSuccess 
-                                    ? "bg-green-500/10 text-green-500 border border-green-500/50 cursor-default"
-                                    : "bg-[#00C2CB] text-black hover:bg-[#00C2CB]/90"
+                                    ? "bg-green-50 text-green-600 border border-green-200 cursor-default"
+                                    : "bg-blue-500 text-white hover:bg-blue-600"
                             )}
                         >
                             {isTesting ? (
@@ -497,7 +497,7 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                                 initial={{ opacity: 0, x: 10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 onClick={handleSaveConnection}
-                                className="px-6 py-2 rounded-lg text-xs font-bold bg-white text-black hover:bg-gray-200 transition-colors"
+                                className="px-6 py-2 rounded-lg text-xs font-bold bg-black text-white hover:bg-gray-800 transition-colors"
                             >
                                 Save
                             </motion.button>
@@ -508,7 +508,7 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                  <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex flex-col items-center justify-center p-8 text-gray-500 border-2 border-dashed border-[#1f2937] rounded-xl"
+                    className="flex flex-col items-center justify-center p-8 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50"
                 >
                     <Database size={32} className="mb-2 opacity-50" />
                     <p className="text-sm">Select a provider above to get started</p>
