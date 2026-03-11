@@ -222,15 +222,24 @@ const GitHubIntegration = () => {
   }
 
   return (
-    <div className="flex h-[800px] w-full bg-[#0B0E14] rounded-xl overflow-hidden shadow-2xl border border-white/5">
+    <div className="flex h-full w-full bg-[#0B0E14] rounded-xl overflow-hidden shadow-2xl border border-white/5">
       {/* Sidebar List */}
-      <div className="w-80 border-r border-white/10 flex flex-col bg-[#181C25]">
+      <div className="w-80 border-r border-white/10 flex flex-col bg-[#181C25] relative">
+        <div className="px-5 py-5 border-b border-white/10 bg-[#181C25]">
+            <h1 className="text-xl font-bold tracking-tight text-white/90">
+                GitHub Analytics
+            </h1>
+            <p className="text-[#A4ADB3] mt-1 text-xs">
+                Manage and analyze your repositories.
+            </p>
+        </div>
+
         <div className="p-4 border-b border-white/10 space-y-3">
           <h3 className="font-semibold text-sm uppercase tracking-wider text-[#A4ADB3] flex items-center justify-between">
             <span className="flex items-center gap-2"><Box className="w-4 h-4" /> Repositories</span>
             <button 
                 onClick={handleDisconnectGitHub}
-                className="text-[10px] text-red-400/60 hover:text-red-400 transition-colors uppercase tracking-tight"
+                className="text-xs text-red-400/60 hover:text-red-400 transition-colors uppercase tracking-tight font-medium"
             >
                 Disconnect
             </button>
@@ -298,7 +307,7 @@ const GitHubIntegration = () => {
            </div>
         ) : repoDetails ? (
           <ScrollArea className="flex-1">
-             <div className="p-8 space-y-8 pb-20">
+             <div className="p-8 space-y-8 pb-20 pt-6">
                 {/* Header Section */}
                 <div className="flex items-start justify-between">
                     <div>
@@ -317,14 +326,6 @@ const GitHubIntegration = () => {
                             <ExternalLink className="w-4 h-4" /> View on GitHub
                         </a>
                     </div>
-                </div>
-
-                {/* KPI Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <KpiCard icon={Star} label="Stars" value={repoDetails.stargazers_count} color="text-yellow-400" />
-                    <KpiCard icon={GitPullRequest} label="Forks" value={repoDetails.forks || 0} color="text-purple-400" />
-                    <KpiCard icon={Activity} label="Open Issues" value={repoDetails.open_issues || 0} color="text-red-400" />
-                    <KpiCard icon={Calendar} label="Created" value={format(new Date(repoDetails.created_at || new Date()), 'MMM yyyy')} color="text-blue-400" isText />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -483,6 +484,14 @@ const GitHubIntegration = () => {
                             )}
                         </div>
                     </div>
+                </div>
+
+                {/* KPI Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-white/5">
+                    <KpiCard icon={Star} label="Stars" value={repoDetails.stargazers_count} color="text-yellow-400" />
+                    <KpiCard icon={GitPullRequest} label="Forks" value={repoDetails.forks || 0} color="text-purple-400" />
+                    <KpiCard icon={Activity} label="Open Issues" value={repoDetails.open_issues || 0} color="text-red-400" />
+                    <KpiCard icon={Calendar} label="Created" value={format(new Date(repoDetails.created_at || new Date()), 'MMM yyyy')} color="text-blue-400" isText />
                 </div>
              </div>
           </ScrollArea>
