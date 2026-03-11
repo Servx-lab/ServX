@@ -359,6 +359,109 @@ const VulnerabilityReport = ({ vulns, repoName, onClose, onAutoMedic }: {
   );
 };
 
+// ─── Repository Selector Dropdown ───────────────────────────────
+
+const RepoSelector = ({ repos, selectedRepo, onSelect, isOpen, setIsOpen, scanPhase }: {
+  repos: RepoSummary[];
+  selectedRepo: RepoSummary | null;
+  onSelect: (r: RepoSummary) => void;
+  isOpen: boolean;
+  setIsOpen: (v: boolean) => void;
+  scanPhase: ScanPhase;
+}) => {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [setIsOpen]);
+
+  return (
+    <div ref={dropdownRef} className="relative pointer-events-auto">
+      <motion.button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-3 px-4 py-2.5 bg-[#0B0E14]/90 backdrop-blur-xl border border-[#00C2CB]/40 rounded-xl hover:border-[#00C2CB]/70 transition-all group"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+      >
+        {selectedRepo ? (
+          <>
+            <div className="relative">
+              <Crosshair className="w-4 h-4 text-[#00C2CB]" />
+              {scanPhase !== "idle" && (
+                <motion.div
+                  animate={{ scale: [1, 1.5, 1], opacity: [1, 0.4, 1] }}
+                  transition={{ duration: 1.2, repeat: Infinity }}
+                  className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#00C2CB] rounded-full"
+                />
+              )}
+            </div>
+            <span className="text-sm font-bold text-white tracking-tight">{selectedRepo.name}</span>
+            {selectedRepo.language && (
+              <span className="text-[9px] font-mono text-[#00C2CB] bg-[#00C2CB]/10 px-1.5 py-0.5 rounded-full">{selectedRepo.language}</span>
+            )}
+          </>
+        ) : (
+          <>
+            <Target className="w-4 h-4 text-[#A4ADB3]" />
+            <span className="text-sm text-[#A4ADB3]">Select Target Repository</span>
+          </>
+        )}
+        <ChevronDown className={`w-4 h-4 text-[#A4ADB3] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </motion.button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.97 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full left-0 mt-2 w-72 bg-[#0B0E14]/95 backdrop-blur-xl border border-[#00C2CB]/30 rounded-xl overflow-hidden shadow-2xl shadow-black/50 z-[100]"
+          >
+            <div className="px-4 py-3 border-b border-white/5">
+              <p className="text-[9px] font-mono text-[#00C2CB] uppercase tracking-[0.25em]">Target Selection</p>
+            </div>
+            <div className="max-h-64 overflow-auto">
+              {repos.length === 0 ? (
+                <div className="px-4 py-6 text-center text-xs text-[#A4ADB3]">
+                  No repositories linked.
+                </div>
+              ) : (
+                repos.map((repo) => (
+                  <button
+                    key={repo.id}
+                    onClick={() => { onSelect(repo); setIsOpen(false); }}
+                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors hover:bg-[#00C2CB]/10 ${
+                      selectedRepo?.id === repo.id ? "bg-[#00C2CB]/5 border-l-2 border-l-[#00C2CB]" : "border-l-2 border-l-transparent"
+                    }`}
+                  >
+                    <Crosshair className={`w-3.5 h-3.5 flex-shrink-0 ${selectedRepo?.id === repo.id ? "text-[#00C2CB]" : "text-[#A4ADB3]"}`} />
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-medium truncate ${selectedRepo?.id === repo.id ? "text-[#00C2CB]" : "text-white"}`}>
+                        {repo.name}
+                      </p>
+                      <p className="text-[10px] text-[#A4ADB3] truncate font-mono">{repo.full_name}</p>
+                    </div>
+                    {repo.language && (
+                      <span className="text-[9px] text-[#A4ADB3] font-mono">{repo.language}</span>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const AttackPath = () => {
   const [isAttackActive, setIsAttackActive] = useState(false);
   const [isLockdown, setIsLockdown] = useState(false);
