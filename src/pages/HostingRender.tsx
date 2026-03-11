@@ -50,7 +50,7 @@ const HostingRender = () => {
                                 </div>
                             </header>
 
-                            <HostingIntegrationCard provider={providerName} />
+                            <HostingIntegrationCard key={providerName} provider={providerName} />
                         </div>
                     </div>
                 </div>

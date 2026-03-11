@@ -332,21 +332,29 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       setSelectedSource('Google Sheets');
   };
 
+  const HOSTING_PROVIDERS = ['vercel', 'render', 'railway', 'digitalocean', 'fly.io', 'aws'];
+
   const currentDatabaseOptions = useMemo(() => {
       const options: { id: string, label: string, provider?: string, group: string }[] = [
           { id: 'All', label: 'All Databases', group: 'General' }
       ];
 
-      // Add actual connections
       if (connections.length > 0) {
-          connections.forEach(conn => {
-              options.push({ 
-                  id: conn._id, 
-                  label: conn.name, 
-                  provider: conn.provider,
-                  group: 'Your Connections' 
+          connections
+              .filter(conn => {
+                  const provider = (conn.provider || '').trim().toLowerCase();
+                  const name = (conn.name || '').trim().toLowerCase();
+                  // Filter out if provider is a hosting provider, OR if the name explicitly contains 'hosting'
+                  return !HOSTING_PROVIDERS.includes(provider) && !name.includes('hosting');
+              })
+              .forEach(conn => {
+                  options.push({ 
+                      id: conn._id, 
+                      label: conn.name, 
+                      provider: conn.provider,
+                      group: 'Your Connections' 
+                  });
               });
-          });
       }
       
       options.push({ id: 'Google Sheets', label: 'Google Sheets', provider: 'Google Sheets', group: 'Uploads' });

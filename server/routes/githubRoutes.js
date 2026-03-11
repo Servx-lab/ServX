@@ -65,6 +65,9 @@ router.get('/repos', requireAuth, authenticate, async (req, res) => {
     res.json(repos);
   } catch (error) {
     console.error('GitHub Repos Error:', error.response?.data || error.message);
+    if (error.response?.status === 401) {
+      return res.status(401).json({ error: 'GitHub token invalid or expired.' });
+    }
     res.status(500).json({ error: 'Failed to fetch repositories' });
   }
 });

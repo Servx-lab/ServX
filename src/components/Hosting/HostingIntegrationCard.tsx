@@ -1,5 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, ExternalLink, ArrowRight, Shield, Zap, Globe, Trash2, RefreshCw, Box, GitBranch, Clock, Server } from 'lucide-react';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell
+} from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -323,6 +337,24 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     return `${days}d ago`;
   };
 
+  const deploymentTimeline = useMemo(() => {
+    const counts: Record<string, number> = {};
+    deployments.forEach(d => {
+      const date = new Date(d.created).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      counts[date] = (counts[date] || 0) + 1;
+    });
+    return Object.entries(counts).map(([date, count]) => ({ date, count })).reverse();
+  }, [deployments]);
+
+  const serviceStatusData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    services.forEach(s => {
+      const status = s.status || 'unknown';
+      counts[status] = (counts[status] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [services]);
+
   if (!config) return null;
 
   // --- Loading ---
@@ -374,86 +406,217 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-              <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Services</p>
-              <p className="text-2xl font-bold text-white">{services.length}</p>
-            </div>
-            <div className="p-4 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-              <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Deployments</p>
-              <p className="text-2xl font-bold text-white">{deployments.length}</p>
-            </div>
-            <div className="p-4 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-              <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Healthy</p>
-              <p className="text-2xl font-bold text-green-400">{readyCount}</p>
-            </div>
-            <div className="p-4 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-              <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Errors</p>
-              <p className="text-2xl font-bold text-red-400">{errorCount}</p>
-            </div>
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             {/* Chart 1: Deployments Over Time */}
+             <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                <div className="flex justify-between items-center mb-4">
+                   <h4 className="text-sm font-semibold text-white">Deployments Over Time</h4>
+                   <span className="text-[10px] text-white/40 uppercase tracking-widest">Total: {deployments.length}</span>
+                </div>
+                <div className="h-[140px] w-full">
+                   {deploymentTimeline.length > 0 ? (
+                       <ResponsiveContainer width="100%" height="100%">
+                           <AreaChart data={deploymentTimeline} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                               <defs>
+                                   <linearGradient id="colorTeal" x1="0" y1="0" x2="0" y2="1">
+                                       <stop offset="5%" stopColor="#00C2CB" stopOpacity={0.3}/>
+                                       <stop offset="95%" stopColor="#00C2CB" stopOpacity={0}/>
+                                   </linearGradient>
+                               </defs>
+                               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0a" vertical={false} />
+                               <XAxis dataKey="date" stroke="#A4ADB3" fontSize={10} tickLine={false} axisLine={false} />
+                               <YAxis stroke="#A4ADB3" fontSize={10} tickLine={false} axisLine={false} />
+                               <Tooltip contentStyle={{ backgroundColor: '#0B0E14', border: '1px solid #ffffff10', borderRadius: '8px' }} itemStyle={{ color: '#fff' }} />
+                               <Area type="monotone" dataKey="count" stroke="#00C2CB" strokeWidth={2} fillOpacity={1} fill="url(#colorTeal)" />
+                           </AreaChart>
+                       </ResponsiveContainer>
+                   ) : (
+                       <div className="flex h-full items-center justify-center text-[#A4ADB3] text-xs opacity-60">No data</div>
+                   )}
+                </div>
+             </div>
+
+             {/* Chart 2: Service Status */}
+             <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                <div className="flex justify-between items-center mb-4">
+                   <h4 className="text-sm font-semibold text-white">Service Status</h4>
+                   <span className="text-[10px] text-white/40 uppercase tracking-widest">Total: {services.length}</span>
+                </div>
+                <div className="h-[140px] w-full">
+                   {serviceStatusData.length > 0 ? (
+                       <ResponsiveContainer width="100%" height="100%">
+                           <BarChart data={serviceStatusData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0a" vertical={false} />
+                               <XAxis dataKey="name" stroke="#A4ADB3" fontSize={10} tickLine={false} axisLine={false} />
+                               <YAxis stroke="#A4ADB3" fontSize={10} tickLine={false} axisLine={false} />
+                               <Tooltip cursor={{ fill: '#ffffff05' }} contentStyle={{ backgroundColor: '#0B0E14', border: '1px solid #ffffff10', borderRadius: '8px' }} itemStyle={{ color: '#fff' }} />
+                               <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                   {serviceStatusData.map((entry, index) => (
+                                       <Cell key={`cell-${index}`} fill={['READY','ACTIVE','RUNNING'].includes(entry.name.toUpperCase()) ? '#00C2CB' : '#2A303C'} />
+                                   ))}
+                               </Bar>
+                           </BarChart>
+                       </ResponsiveContainer>
+                   ) : (
+                       <div className="flex h-full items-center justify-center text-[#A4ADB3] text-xs opacity-60">No data</div>
+                   )}
+                </div>
+             </div>
+
+             {/* Chart 3: Health Overview */}
+             <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                <div className="flex justify-between items-center mb-4">
+                   <h4 className="text-sm font-semibold text-white">Health Overview</h4>
+                   <span className="text-[10px] text-white/40 uppercase tracking-widest">Healthy vs Errors</span>
+                </div>
+                <div className="h-[140px] w-full flex items-center justify-center relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={[
+                                    { name: 'Healthy', value: readyCount },
+                                    { name: 'Errors', value: errorCount },
+                                    { name: 'Other', value: services.length + deployments.length - readyCount - errorCount }
+                                ].filter(d => d.value > 0)}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={40}
+                                outerRadius={60}
+                                paddingAngle={2}
+                                dataKey="value"
+                                stroke="none"
+                            >
+                                { [
+                                    { name: 'Healthy', value: readyCount },
+                                    { name: 'Errors', value: errorCount },
+                                    { name: 'Other', value: services.length + deployments.length - readyCount - errorCount }
+                                ].filter(d => d.value > 0).map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.name === 'Healthy' ? '#00C2CB' : entry.name === 'Errors' ? '#ef4444' : '#2A303C'} />
+                                ))}
+                            </Pie>
+                            <Tooltip contentStyle={{ backgroundColor: '#0B0E14', border: '1px solid #ffffff10', borderRadius: '8px' }} itemStyle={{ color: '#fff' }} />
+                        </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-xl font-bold text-white">{readyCount}</span>
+                        <span className="text-[9px] text-[#A4ADB3]">Healthy</span>
+                    </div>
+                </div>
+             </div>
           </div>
 
-          {/* Services + Deployments */}
+          {/* Services + Deployments Tables */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Box size={14} className="text-[#00C2CB]" />
-                <h4 className="text-sm font-semibold text-white">Services / Projects</h4>
+            {/* Services Table */}
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden flex flex-col">
+              <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Box size={14} className="text-[#00C2CB]" /> Services / Projects
+                </h4>
+                <button className="text-xs text-[#A4ADB3] hover:text-white transition-colors flex items-center gap-1">
+                  Show all <ArrowRight size={12} />
+                </button>
               </div>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                {services.length === 0 ? (
-                  <p className="text-xs text-white/30 py-4 text-center">No services found</p>
-                ) : services.map(svc => (
-                  <div key={svc.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] hover:border-[#00C2CB]/20 transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-medium text-white truncate">{svc.name}</span>
-                        {svc.type && <Badge variant="outline" className="text-[10px] border-white/10 text-white/40 flex-shrink-0">{svc.type}</Badge>}
-                      </div>
-                      <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${getStateColor(svc.status)}`}>{svc.status}</Badge>
-                    </div>
-                    {svc.url && (
-                      <a href={svc.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#00C2CB]/60 hover:text-[#00C2CB] mt-1 flex items-center gap-1 truncate">
-                        <Globe size={10} /> {svc.url.replace('https://', '')}
-                      </a>
-                    )}
-                  </div>
-                ))}
+              <div className="flex-1 overflow-auto max-h-[400px]">
+                <table className="w-full text-left text-sm">
+                  <thead className="text-[10px] uppercase tracking-widest text-white/30 bg-white/[0.01]">
+                    <tr>
+                      <th className="px-5 py-3 font-medium">Service Name</th>
+                      <th className="px-5 py-3 font-medium">Type</th>
+                      <th className="px-5 py-3 font-medium">Last Updated</th>
+                      <th className="px-5 py-3 font-medium text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.06]">
+                    {services.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-5 py-8 text-center text-xs text-white/30">No services found</td>
+                      </tr>
+                    ) : services.map(svc => (
+                      <tr key={svc.id} className="hover:bg-white/[0.02] transition-colors group">
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-white truncate max-w-[150px]">{svc.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 text-[#A4ADB3] text-xs capitalize">{svc.type || 'Unknown'}</td>
+                        <td className="px-5 py-3 text-[#A4ADB3] text-xs">{timeAgo(svc.updatedAt)}</td>
+                        <td className="px-5 py-3 text-right">
+                          <div className="flex items-center justify-end gap-3">
+                            <Badge variant="outline" className={`text-[10px] ${getStateColor(svc.status)}`}>{svc.status}</Badge>
+                            {svc.url ? (
+                              <a href={svc.url} target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-white transition-colors">
+                                <ArrowRight size={14} />
+                              </a>
+                            ) : (
+                              <span className="w-3.5" />
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Zap size={14} className="text-[#00C2CB]" />
-                <h4 className="text-sm font-semibold text-white">Recent Deployments</h4>
+            {/* Deployments Table */}
+            <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden flex flex-col">
+              <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Zap size={14} className="text-[#00C2CB]" /> Recent Deployments
+                </h4>
+                <button className="text-xs text-[#A4ADB3] hover:text-white transition-colors flex items-center gap-1">
+                  Show all <ArrowRight size={12} />
+                </button>
               </div>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                {deployments.length === 0 ? (
-                  <p className="text-xs text-white/30 py-4 text-center">No deployments found</p>
-                ) : deployments.map(dep => (
-                  <div key={dep.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] hover:border-[#00C2CB]/20 transition-all">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-medium text-white truncate">{dep.name}</span>
-                        <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${getStateColor(dep.state)}`}>{dep.state}</Badge>
-                      </div>
-                      <span className="text-[10px] text-white/30 flex-shrink-0 flex items-center gap-1">
-                        <Clock size={10} /> {timeAgo(dep.created)}
-                      </span>
-                    </div>
-                    {dep.commit && (
-                      <p className="text-[11px] text-white/40 truncate flex items-center gap-1">
-                        <GitBranch size={10} className="flex-shrink-0 text-white/20" /> {dep.commit}
-                      </p>
-                    )}
-                    {dep.url && (
-                      <a href={dep.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#00C2CB]/60 hover:text-[#00C2CB] mt-0.5 flex items-center gap-1 truncate">
-                        <ExternalLink size={10} /> {dep.url.replace('https://', '')}
-                      </a>
-                    )}
-                  </div>
-                ))}
+              <div className="flex-1 overflow-auto max-h-[400px]">
+                <table className="w-full text-left text-sm">
+                  <thead className="text-[10px] uppercase tracking-widest text-white/30 bg-white/[0.01]">
+                    <tr>
+                      <th className="px-5 py-3 font-medium">Deployment</th>
+                      <th className="px-5 py-3 font-medium">Commit</th>
+                      <th className="px-5 py-3 font-medium">Created</th>
+                      <th className="px-5 py-3 font-medium text-right">State</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.06]">
+                    {deployments.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-5 py-8 text-center text-xs text-white/30">No deployments found</td>
+                      </tr>
+                    ) : deployments.map(dep => (
+                      <tr key={dep.id} className="hover:bg-white/[0.02] transition-colors group">
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-white truncate max-w-[120px]">{dep.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 text-[#A4ADB3] text-xs">
+                          {dep.commit ? (
+                            <div className="flex items-center gap-1 truncate max-w-[100px]">
+                              <GitBranch size={10} className="text-white/20 flex-shrink-0" /> <span className="truncate">{dep.commit}</span>
+                            </div>
+                          ) : '-'}
+                        </td>
+                        <td className="px-5 py-3 text-[#A4ADB3] text-xs">{timeAgo(dep.created)}</td>
+                        <td className="px-5 py-3 text-right">
+                          <div className="flex items-center justify-end gap-3">
+                            <Badge variant="outline" className={`text-[10px] ${getStateColor(dep.state)}`}>{dep.state}</Badge>
+                            {dep.url ? (
+                              <a href={dep.url} target="_blank" rel="noopener noreferrer" className="text-white/30 hover:text-white transition-colors">
+                                <ArrowRight size={14} />
+                              </a>
+                            ) : (
+                              <span className="w-3.5" />
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
