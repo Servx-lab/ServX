@@ -754,24 +754,44 @@ const AttackPath = () => {
         <div className="relative z-10 w-full h-full p-8 flex flex-col justify-between pointer-events-none">
           {/* Top Header */}
           <div className="flex justify-between items-start">
-            <motion.div 
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              className="bg-white/80 backdrop-blur-xl border border-gray-200 p-6 rounded-2xl shadow-sm pointer-events-auto"
-            >
-              <h2 className="text-xs font-black text-blue-500 uppercase tracking-[0.3em] mb-1">War Room Context</h2>
-              <div className="flex items-center gap-3">
-                <AlertTriangle className={`w-5 h-5 ${isAttackActive ? 'text-purple-500 animate-pulse' : 'text-blue-500'}`} />
-                <span className="text-xl font-bold tracking-tight text-black">Active Infrastructure Map</span>
-              </div>
-            </motion.div>
+            <div className="flex flex-col gap-3">
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className="bg-white/80 backdrop-blur-xl border border-gray-200 p-6 rounded-2xl shadow-sm pointer-events-auto"
+              >
+                <h2 className="text-xs font-black text-blue-500 uppercase tracking-[0.3em] mb-1">War Room Context</h2>
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className={`w-5 h-5 ${isAttackActive ? 'text-purple-500 animate-pulse' : 'text-blue-500'}`} />
+                  <span className="text-xl font-bold tracking-tight text-black">Active Infrastructure Map</span>
+                </div>
+              </motion.div>
 
-            <motion.div 
+              {/* Repository Selector */}
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <RepoSelector
+                  repos={repos}
+                  selectedRepo={selectedRepo}
+                  onSelect={(r) => { setSelectedRepo(r); resetScan(); }}
+                  isOpen={repoDropdownOpen}
+                  setIsOpen={setRepoDropdownOpen}
+                  scanPhase={scanPhase}
+                />
+              </motion.div>
+            </div>
+
+            <motion.div
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               className="bg-white/80 backdrop-blur-xl border border-gray-200 p-6 rounded-2xl shadow-sm pointer-events-auto"
             >
               <div className="flex items-center gap-4">
+                <DefenseRadar selectedRepo={selectedRepo} scanPhase={scanPhase} />
+                <div className="h-10 w-px bg-gray-200" />
                 <div className="text-right">
                   <p className="text-[10px] text-gray-500 uppercase tracking-widest">Network Load</p>
                   <p className="text-lg font-mono font-bold text-blue-500">{isAttackActive ? '94.2%' : '12.4%'}</p>
