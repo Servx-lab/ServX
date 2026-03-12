@@ -24,7 +24,10 @@ import {
   ChevronDown,
   Loader2,
   Search,
-  Check
+  Check,
+  FolderKanban,
+  Triangle,
+  Server
 } from 'lucide-react';
 import { toast } from "sonner";
 import apiClient from '@/lib/apiClient';
@@ -35,22 +38,52 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Sidebar from "@/components/Sidebar";
+import { ProjectProvider, useProject } from "@/contexts/ProjectContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu";
+
+// Default fallbacks for when project has no stored data
+const DEFAULT_KILL_SWITCHES = { maintenance: false, flags: { imageUploads: true, aiFeatures: true, newSignups: true } };
+const DEFAULT_FINOPS = { currentCost: 0, projected: 0, threshold: 1.00 };
+const DEFAULT_API_IPS: { ip: string; location: string; reqs: number; status: 'active' | 'banned' }[] = [];
 
 // --- 1. Kill Switch & Feature Flags ---
 const FeatureFlags = () => {
-    const [maintenance, setMaintenance] = useState(false);
-    const [flags, setFlags] = useState({
-        imageUploads: true,
-        aiFeatures: true,
-        newSignups: false,
-    });
+    const { selectedProjectId, selectedProject, killSwitchOverrides, setKillSwitchOverride } = useProject();
+    const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+    const override = selectedProjectId ? killSwitchOverrides[selectedProjectId] : undefined;
+    const maintenance = override?.maintenance ?? DEFAULT_KILL_SWITCHES.maintenance;
+    const flags = override?.flags ?? DEFAULT_KILL_SWITCHES.flags;
 
-    const toggleFlag = (key: keyof typeof flags) => {
-        setFlags(prev => {
-            const newState = { ...prev, [key]: !prev[key] };
-            toast.success(`${key} is now ${newState[key] ? 'Active' : 'Disabled'}`);
-            return newState;
-        });
+    const toggleMaintenance = async () => {
+        if (!selectedProjectId || !selectedProject) return;
+        const next = !maintenance;
+        setMaintenanceLoading(true);
+        try {
+            const { data } = await apiClient.post('/operations/toggle-maintenance', {
+                projectId: selectedProjectId,
+                provider: selectedProject.provider,
+                isEnabled: next,
+            });
+            if (data?.success) {
+                setKillSwitchOverride(selectedProjectId, { maintenance: next, flags });
+                if (next) toast.error("MAINTENANCE MODE ACTIVATED - TRAFFIC BLOCKED");
+                else toast.success("Maintenance Mode Deactivated - Traffic Restored");
+            } else {
+                toast.error(data?.message || "Failed to toggle maintenance mode");
+            }
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || err?.message || "Failed to toggle maintenance mode";
+            toast.error(msg);
+        } finally {
+            setMaintenanceLoading(false);
+        }
     };
 
     return (
@@ -61,9 +94,15 @@ const FeatureFlags = () => {
             </div>
 
             <div className="space-y-6">
-                {/* Big Maintenance Mode Button */}
+                {/* Project Selector - inside this box */}
+                <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
+                    <p className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Project</p>
+                    <ProjectSelectDropdown />
+                </div>
+
+                {/* Global Maintenance Mode - only inside this box */}
                 <div className={`
-                    relative p-5 rounded-lg border transition-all duration-300 group
+                    relative p-5 rounded-lg border transition-all duration-300
                     ${maintenance 
                         ? 'bg-red-50 border-red-200 shadow-[0_0_30px_-5px_rgba(239,68,68,0.1)]' 
                         : 'bg-gray-50 border-gray-200 hover:border-gray-300'}
@@ -77,15 +116,16 @@ const FeatureFlags = () => {
                                 Immediately blocks all non-admin traffic.
                             </p>
                         </div>
-                        <Switch 
-                            checked={maintenance}
-                            onCheckedChange={(checked) => {
-                                setMaintenance(checked);
-                                if(checked) toast.error("MAINTENANCE MODE ACTIVATED - TRAFFIC BLOCKED");
-                                else toast.success("Maintenance Mode Deactivated - Traffic Restored");
-                            }}
-                            className={`data-[state=checked]:bg-red-500`}
-                        />
+                        {maintenanceLoading ? (
+                            <Loader2 className="w-5 h-5 animate-spin text-green-600" />
+                        ) : (
+                            <Switch
+                                checked={maintenance}
+                                onCheckedChange={toggleMaintenance}
+                                disabled={maintenanceLoading || !selectedProject}
+                                className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-200"
+                            />
+                        )}
                     </div>
                     {maintenance && (
                         <div className="absolute inset-0 bg-red-500/5 animate-pulse rounded-lg pointer-events-none" />
@@ -93,47 +133,41 @@ const FeatureFlags = () => {
                 </div>
 
                 <div className="space-y-4">
-                    <FlagItem 
-                        icon={ImageIcon} 
-                        label="Image Uploads" 
-                        active={flags.imageUploads} 
-                        onChange={() => toggleFlag('imageUploads')}
-                        color="text-blue-500"
-                    />
-                    <FlagItem 
-                        icon={Sparkles} 
-                        label="Beta AI Features" 
-                        active={flags.aiFeatures} 
-                        onChange={() => toggleFlag('aiFeatures')}
-                        color="text-purple-500"
-                    />
-                    <FlagItem 
-                        icon={UserPlus} 
-                        label="New User Signups" 
-                        active={flags.newSignups} 
-                        onChange={() => toggleFlag('newSignups')}
-                        color="text-green-500"
-                    />
+                <FlagItem 
+                    icon={ImageIcon} 
+                    label="Image Uploads" 
+                    active={flags.imageUploads} 
+                    color="text-blue-500"
+                />
+                <FlagItem 
+                    icon={Sparkles} 
+                    label="Beta AI Features" 
+                    active={flags.aiFeatures} 
+                    color="text-purple-500"
+                />
+                <FlagItem 
+                    icon={UserPlus} 
+                    label="New User Signups" 
+                    active={flags.newSignups} 
+                    color="text-green-500"
+                />
                 </div>
             </div>
         </div>
     );
 };
 
-const FlagItem = ({ icon: Icon, label, active, onChange, color }: any) => (
-    <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100 hover:border-gray-200 transition-colors">
+const FlagItem = ({ icon: Icon, label, active, color }: any) => (
+    <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-200 transition-colors">
         <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-md bg-white border border-gray-100 ${active ? color : 'text-gray-400'}`}>
+            <div className={`p-2 rounded-md bg-white border border-gray-200 ${active ? color : 'text-gray-400'}`}>
                 <Icon className="w-4 h-4" />
             </div>
             <span className={`text-sm font-medium ${active ? 'text-black' : 'text-gray-400 line-through'}`}>
                 {label}
             </span>
         </div>
-        <div className="flex items-center gap-3">
-            <div className={`w-2 h-2 rounded-full shadow-sm ${active ? 'bg-green-500 text-green-500' : 'bg-red-500 text-red-500'}`} />
-            <Switch checked={active} onCheckedChange={onChange} />
-        </div>
+        <div className={`w-2 h-2 rounded-full ${active ? 'bg-green-500' : 'bg-gray-300'}`} />
     </div>
 );
 
@@ -251,27 +285,27 @@ const TargetSelect = ({
         <>
             <div className="fixed inset-0 z-[9998]" onClick={() => { onOpenChange(false); setSearchQuery(''); }} />
             <div
-                className="fixed z-[9999] rounded-lg border border-[#222831] bg-[#181C25] shadow-xl overflow-hidden"
+                className="fixed z-[9999] rounded-lg border border-gray-200 bg-white shadow-xl overflow-hidden"
                 style={{ top: position.top, left: position.left, width: position.width, minWidth: 280 }}
             >
                 {/* Search input */}
-                <div className="p-2 border-b border-[#222831]">
+                <div className="p-2 border-b border-gray-200">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
                             placeholder="Search..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={(e) => e.stopPropagation()}
-                            className="w-full pl-9 pr-3 py-2.5 text-sm text-white bg-white/5 border border-[#222831] rounded-lg placeholder:text-white/40 focus:outline-none focus:border-[#00C2CB] focus:ring-1 focus:ring-[#00C2CB]"
+                            className="w-full pl-9 pr-3 py-2.5 text-sm text-black bg-gray-50 border border-gray-200 rounded-lg placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         />
                     </div>
                 </div>
                 {/* Options list */}
                 <div className="max-h-52 overflow-y-auto">
                     {filteredOptions.length === 0 ? (
-                        <div className="px-4 py-6 text-sm text-white/50 text-center">
+                        <div className="px-4 py-6 text-sm text-gray-500 text-center">
                             {options.length === 0 ? 'No options available' : 'No matches found'}
                         </div>
                     ) : (
@@ -280,9 +314,9 @@ const TargetSelect = ({
                                 key={opt.id}
                                 type="button"
                                 onClick={() => { onChange(opt.id); onOpenChange(false); setSearchQuery(''); }}
-                                className={`w-full px-4 py-3 text-left text-base hover:bg-white/5 transition-colors flex items-center gap-3 ${value === opt.id ? 'bg-[#00C2CB]/10 text-[#00C2CB]' : 'text-white'}`}
+                                className={`w-full px-4 py-3 text-left text-base hover:bg-gray-50 transition-colors flex items-center gap-3 ${value === opt.id ? 'bg-blue-50 text-blue-600' : 'text-black'}`}
                             >
-                                <span className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${value === opt.id ? 'bg-[#00C2CB] border-[#00C2CB]' : 'border-[#222831]'}`}>
+                                <span className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${value === opt.id ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
                                     {value === opt.id && <Check className="w-3 h-3 text-white" />}
                                 </span>
                                 <span className="truncate">{opt.label}</span>
@@ -303,15 +337,15 @@ const TargetSelect = ({
                 onClick={() => { onOpenChange(!open); if (!open) setSearchQuery(''); }}
                 className={`
                     w-full min-w-[280px] px-4 py-3 text-left text-base rounded-lg
-                    bg-transparent border transition-all duration-200
+                    bg-white border transition-all duration-200
                     flex items-center justify-between gap-2
-                    ${open ? 'border-[#00C2CB] shadow-[0_0_0_1px_#00C2CB]' : 'border-[#222831]'}
-                    ${selectedLabel ? 'text-white' : 'text-white/60'}
-                    hover:border-[#00C2CB]/70 focus:outline-none focus:border-[#00C2CB] focus:shadow-[0_0_0_1px_#00C2CB]
+                    ${open ? 'border-blue-500 shadow-[0_0_0_1px_rgba(59,130,246,0.5)]' : 'border-gray-200'}
+                    ${selectedLabel ? 'text-black' : 'text-gray-500'}
+                    hover:border-gray-300 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_1px_rgba(59,130,246,0.5)]
                 `}
             >
                 <span className="truncate">{selectedLabel || placeholder}</span>
-                <ChevronDown className={`w-5 h-5 flex-shrink-0 text-white/60 transition-transform ${open ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-5 h-5 flex-shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
             {typeof document !== 'undefined' && document.body && createPortal(dropdownContent, document.body)}
         </div>
@@ -409,9 +443,9 @@ const TaskExecutor = () => {
     };
 
     return (
-        <div className="relative overflow-hidden rounded-xl border border-[#222831] bg-[#181C25] p-6 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center gap-2 text-white mb-2">
-                <Zap className="w-5 h-5 text-[#00C2CB]" />
+        <div className="glass-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-black mb-2">
+                <Zap className="w-5 h-5 text-yellow-500" />
                 <h3 className="text-lg font-semibold tracking-tight">Remote Tasks</h3>
             </div>
 
@@ -423,21 +457,21 @@ const TaskExecutor = () => {
                     const placeholder = getPlaceholderForTask(task.id);
 
                     return (
-                        <div key={task.id} className="rounded-lg border border-[#222831] bg-white/[0.03] p-4 relative overflow-visible">
+                        <div key={task.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4 relative overflow-visible">
                             <div className="flex flex-wrap items-center gap-4 relative z-10">
                                 {/* Task Info */}
                                 <div className="flex-1 min-w-[140px]">
                                     <div className="flex items-center gap-2">
-                                        <task.icon className="w-4 h-4 text-[#00C2CB]" />
-                                        <span className="text-sm font-medium text-white">{task.name}</span>
+                                        <task.icon className="w-4 h-4 text-gray-500" />
+                                        <span className="text-sm font-medium text-black">{task.name}</span>
                                     </div>
-                                    <p className="text-xs text-white/50 mt-0.5 pl-6">{task.desc}</p>
+                                    <p className="text-xs text-gray-500 mt-0.5 pl-6">{task.desc}</p>
                                 </div>
 
                                 {/* Target Selector */}
                                 <div className="flex-shrink-0">
                                     {loadingOptions ? (
-                                        <div className="min-w-[280px] px-4 py-3 flex items-center justify-center gap-2 text-white/50 text-base">
+                                        <div className="min-w-[280px] px-4 py-3 flex items-center justify-center gap-2 text-gray-500 text-base">
                                             <Loader2 className="w-5 h-5 animate-spin" /> Loading...
                                         </div>
                                     ) : (
@@ -456,7 +490,7 @@ const TaskExecutor = () => {
                                 {/* Action Button */}
                                 <div className="flex-shrink-0">
                                     {task.done ? (
-                                        <Badge className="border-[#00C2CB]/30 text-[#00C2CB] bg-[#00C2CB]/10">
+                                        <Badge variant="outline" className="border-green-500/30 text-green-600 bg-green-50">
                                             <CheckCircle2 className="w-3 h-3 mr-1" /> Done
                                         </Badge>
                                     ) : (
@@ -464,8 +498,8 @@ const TaskExecutor = () => {
                                             size="sm"
                                             className={`h-8 text-xs transition-all ${
                                                 hasSelection
-                                                    ? 'bg-[#00C2CB]/20 text-[#00C2CB] border border-[#00C2CB] hover:bg-[#00C2CB]/30'
-                                                    : 'opacity-50 bg-white/5 text-white/50 border border-[#222831] cursor-not-allowed'
+                                                    ? 'bg-blue-50 text-blue-600 border border-blue-500 hover:bg-blue-100'
+                                                    : 'opacity-50 bg-gray-100 text-gray-500 border border-gray-200 cursor-not-allowed'
                                             }`}
                                             onClick={() => executeTask(task.id)}
                                             disabled={task.running || !hasSelection}
@@ -481,7 +515,7 @@ const TaskExecutor = () => {
                             </div>
 
                             {task.running && (
-                                <div className="absolute bottom-0 left-0 h-1 bg-[#00C2CB] animate-[width-grow_2s_ease-in-out_forwards] w-full origin-left" />
+                                <div className="absolute bottom-0 left-0 h-1 bg-blue-500 animate-[width-grow_2s_ease-in-out_forwards] w-full origin-left" />
                             )}
                         </div>
                     );
@@ -500,9 +534,8 @@ const TaskExecutor = () => {
 
 // --- 4. Unified FinOps ---
 const FinOps = () => {
-    const currentCost = 0.00;
-    const projected = 1.20;
-    const threshold = 1.00;
+    const { selectedProjectId } = useProject();
+    const { currentCost, projected, threshold } = DEFAULT_FINOPS;
     const isWarning = projected > threshold;
 
     return (
@@ -545,16 +578,16 @@ const FinOps = () => {
 
 // --- 5. API Bouncer ---
 const ApiBouncer = () => {
-    const [ips, setIps] = useState([
-        { ip: '192.168.1.45', location: 'Kiev, UA', reqs: 1240, status: 'active' },
-        { ip: '10.0.0.12', location: 'San Jose, US', reqs: 980, status: 'active' },
-        { ip: '172.16.0.5', location: 'Frankfurt, DE', reqs: 850, status: 'active' },
-        { ip: '45.32.11.8', location: 'Beijing, CN', reqs: 420, status: 'banned' },
-        { ip: '23.11.45.90', location: 'Moscow, RU', reqs: 15400, status: 'active' },
-    ]);
+    const { selectedProjectId, bannedIps, banIp } = useProject();
+    const baseIps = DEFAULT_API_IPS;
+    const projectBanned = selectedProjectId ? (bannedIps[selectedProjectId] ?? new Set<string>()) : new Set<string>();
+    const ips = baseIps.map((item) => ({
+        ...item,
+        status: (projectBanned.has(item.ip) ? 'banned' : item.status) as 'active' | 'banned',
+    }));
 
     const handleBan = (ip: string) => {
-        setIps(prev => prev.map(item => item.ip === ip ? { ...item, status: 'banned' } : item));
+        if (selectedProjectId) banIp(selectedProjectId, ip);
         toast("IP Address Blacklisted", {
             description: `${ip} has been added to the firewall rejection list.`,
             icon: <Ban className="w-4 h-4 text-red-500" />
@@ -608,8 +641,85 @@ const ApiBouncer = () => {
 };
 
 
+// --- Project Selection Dropdown (used inside Kill Switches & Features) ---
+const ProviderBadge = ({ provider }: { provider: 'vercel' | 'render' }) => (
+    provider === 'vercel' ? (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-black text-white">
+            <Triangle className="w-1.5 h-1.5" /> Vercel
+        </span>
+    ) : (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-600 text-white">
+            <Server className="w-1.5 h-1.5" /> Render
+        </span>
+    )
+);
+
+const ProjectSelectDropdown = () => {
+    const { projects, isLoadingProjects, selectedProject, setSelectedProject } = useProject();
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <button
+                    type="button"
+                    disabled={isLoadingProjects}
+                    className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg bg-white border border-gray-200 text-black hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-green-500/50 focus:border-green-500/50 w-full justify-between disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                    {isLoadingProjects ? (
+                        <>
+                            <Loader2 className="w-4 h-4 animate-spin text-green-600" />
+                            <span className="text-sm text-gray-500">Loading projects...</span>
+                        </>
+                    ) : selectedProject ? (
+                        <>
+                            <span className="flex items-center gap-2">
+                                <FolderKanban className="w-4 h-4 text-green-600" />
+                                <span className="text-sm font-medium">{selectedProject.name}</span>
+                                <ProviderBadge provider={selectedProject.provider} />
+                            </span>
+                            <ChevronDown className="w-4 h-4 text-gray-500" />
+                        </>
+                    ) : (
+                        <>
+                            <span className="text-sm text-gray-500">No projects</span>
+                            <ChevronDown className="w-4 h-4 text-gray-500" />
+                        </>
+                    )}
+                </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+                align="start"
+                className="min-w-[240px] bg-white border border-gray-200 text-black shadow-lg"
+            >
+                {isLoadingProjects ? (
+                    <div className="flex items-center justify-center gap-2 py-6 text-gray-500">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-sm">Loading projects...</span>
+                    </div>
+                ) : projects.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-gray-500">No projects found</div>
+                ) : (
+                    <DropdownMenuRadioGroup value={selectedProject?.id ?? ''} onValueChange={(v) => setSelectedProject(v)}>
+                        {projects.map((p) => (
+                            <DropdownMenuRadioItem
+                                key={p.id}
+                                value={p.id}
+                                className="cursor-pointer focus:bg-gray-50 focus:text-black data-[state=checked]:bg-green-50 data-[state=checked]:text-green-600"
+                            >
+                                <span className="flex items-center gap-2">
+                                    {p.name}
+                                    <ProviderBadge provider={p.provider} />
+                                </span>
+                            </DropdownMenuRadioItem>
+                        ))}
+                    </DropdownMenuRadioGroup>
+                )}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+};
+
 // --- PAGE LAYOUT ---
-const Operations = () => {
+const OperationsContent = () => {
     return (
         <div className="flex h-screen w-full bg-white text-black overflow-hidden font-sans">
             <Sidebar />
@@ -622,9 +732,11 @@ const Operations = () => {
                         System Operations Center
                     </div>
                     <div className="flex justify-between items-end">
-                        <h1 className="text-3xl font-bold tracking-tight text-black">
-                            Global Operations & Security
-                        </h1>
+                        <div className="flex items-center gap-4">
+                            <h1 className="text-3xl font-bold tracking-tight text-black">
+                                Global Operations & Security
+                            </h1>
+                        </div>
                         <div className="flex gap-2">
                             <Badge variant="outline" className="border-green-500/30 bg-green-50 text-green-600">
                                 <CheckCircle2 className="w-3 h-3 mr-1" /> ALL SYSTEMS NORMAL
@@ -655,17 +767,17 @@ const Operations = () => {
                              <div className="flex-[1.5]">
                                 <UserCRM />
                              </div>
-                             {/* Widget 3: Task Executor */}
+                             {/* Widget 3: API Security Radar */}
                              <div className="flex-1">
-                                 <TaskExecutor />
+                                 <ApiBouncer />
                              </div>
                         </div>
 
                         {/* Column 3 */}
                         <div className="space-y-6 flex flex-col lg:col-span-1 h-full">
-                            {/* Widget 5: API Bouncer */}
+                            {/* Widget 5: Remote Tasks */}
                             <div className="h-full">
-                                <ApiBouncer />
+                                <TaskExecutor />
                             </div>
                         </div>
 
@@ -675,5 +787,11 @@ const Operations = () => {
         </div>
     );
 };
+
+const Operations = () => (
+    <ProjectProvider>
+        <OperationsContent />
+    </ProjectProvider>
+);
 
 export default Operations;

@@ -12,6 +12,7 @@ const oauthRoutes = require('./routes/oauthRoutes');
 const databaseExplorerRoutes = require('./routes/databaseExplorerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const gmailRoutes = require('./routes/gmailRoutes');
+const operationsRoutes = require('./routes/operationsRoutes');
 const requireAuth = require('./middleware/requireAuth');
 const autoMedicMiddleware = require('./middleware/autoMedicMiddleware');
 const { encrypt } = require('./utils/encryption');
@@ -56,6 +57,7 @@ app.use('/api/github', githubRoutes);
 app.use('/api/oauth', oauthRoutes);
 app.use('/api/db', databaseExplorerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/operations', operationsRoutes);
 
 // Database Connection
 const connectDB = async () => {
@@ -209,7 +211,7 @@ app.get('/api/connections/hosting/:provider/status', requireAuth, async (req, re
     try {
       const decrypted = decrypt({ iv: connection.iv, content: connection.encryptedConfig });
       const parsed = JSON.parse(decrypted);
-      token = parsed.token;
+      token = parsed.token || parsed.apiKey;
     } catch {
       return res.json({ connected: true, connectionId: connection._id, createdAt: connection.createdAt, services: [], deployments: [], error: 'Failed to decrypt token' });
     }
@@ -321,16 +323,19 @@ app.post('/api/connections/hosting/:provider', requireAuth, async (req, res) => 
     const providerInfo = HOSTING_PROVIDERS[providerKey];
     if (!providerInfo) return res.status(400).json({ message: 'Unknown hosting provider.' });
 
-    const { name, token } = req.body;
+    const { name, token, edgeConfigId } = req.body;
     const ownerUid = req.user.uid;
 
     if (!name || !token) {
       return res.status(400).json({ message: `Connection name and ${providerInfo.label} API key are required.` });
     }
 
+    const config = { token };
+    if (providerKey === 'vercel' && edgeConfigId) config.edgeConfigId = edgeConfigId;
+
     const existing = await UserConnection.findOne({ ownerUid, provider: providerInfo.dbName });
     if (existing) {
-      const encrypted = encrypt(JSON.stringify({ token }));
+      const encrypted = encrypt(JSON.stringify(config));
       existing.encryptedConfig = encrypted.content;
       existing.iv = encrypted.iv;
       existing.name = name;
@@ -338,7 +343,7 @@ app.post('/api/connections/hosting/:provider', requireAuth, async (req, res) => 
       return res.status(200).json({ message: `${providerInfo.label} connection updated successfully`, connection: { _id: existing._id, name: existing.name, provider: providerInfo.dbName, createdAt: existing.createdAt } });
     }
 
-    const encrypted = encrypt(JSON.stringify({ token }));
+    const encrypted = encrypt(JSON.stringify(config));
     const newConnection = new UserConnection({
       name,
       provider: providerInfo.dbName,
@@ -363,10 +368,11 @@ app.post('/api/connections/hosting/:provider', requireAuth, async (req, res) => 
 app.get('/api/connections/vercel/status', requireAuth, (req, res, next) => { req.params.provider = 'vercel'; req.url = '/api/connections/hosting/vercel/status'; next('route'); });
 app.post('/api/connections/vercel', requireAuth, async (req, res) => {
   const providerInfo = HOSTING_PROVIDERS['vercel'];
-  const { name, token } = req.body;
+  const { name, token, edgeConfigId } = req.body;
   const ownerUid = req.user.uid;
   if (!name || !token) return res.status(400).json({ message: 'Connection name and Vercel PAT are required.' });
-  const encrypted = encrypt(JSON.stringify({ token }));
+  const config = { token }; if (edgeConfigId) config.edgeConfigId = edgeConfigId;
+  const encrypted = encrypt(JSON.stringify(config));
   const existing = await UserConnection.findOne({ ownerUid, provider: providerInfo.dbName });
   if (existing) { existing.encryptedConfig = encrypted.content; existing.iv = encrypted.iv; existing.name = name; await existing.save(); return res.status(200).json({ message: 'Vercel connection updated', connection: { _id: existing._id, name: existing.name, provider: 'Vercel', createdAt: existing.createdAt } }); }
   const newConnection = new UserConnection({ name, provider: 'Vercel', encryptedConfig: encrypted.content, iv: encrypted.iv, isEncrypted: true, ownerUid });
