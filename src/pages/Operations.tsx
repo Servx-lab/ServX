@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   ShieldAlert, 
   Power, 
@@ -19,9 +20,14 @@ import {
   Lock,
   Zap,
   Activity,
-  ChevronRight
+  ChevronRight,
+  ChevronDown,
+  Loader2,
+  Search,
+  Check
 } from 'lucide-react';
 import { toast } from "sonner";
+import apiClient from '@/lib/apiClient';
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -197,70 +203,296 @@ const UserCRM = () => {
 };
 
 
+// --- Target Selector Dropdown (styled per spec) ---
+const HOSTING_PROVIDERS = ['vercel', 'render', 'railway', 'digitalocean', 'fly', 'aws'];
+const PROVIDER_TO_KEY: Record<string, string> = {
+    Vercel: 'vercel', Render: 'render', Railway: 'railway',
+    DigitalOcean: 'digitalocean', 'Fly.io': 'fly', AWS: 'aws',
+};
+
+const TargetSelect = ({
+    value,
+    onChange,
+    placeholder,
+    options,
+    disabled,
+    open,
+    onOpenChange,
+}: {
+    value: string;
+    onChange: (id: string) => void;
+    placeholder: string;
+    options: { id: string; label: string }[];
+    disabled?: boolean;
+    open: boolean;
+    onOpenChange: (v: boolean) => void;
+}) => {
+    const [searchQuery, setSearchQuery] = useState('');
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const [position, setPosition] = useState({ top: 0, left: 0, width: 280 });
+
+    const selectedLabel = options.find(o => o.id === value)?.label;
+    const filteredOptions = options.filter(opt =>
+        opt.label.toLowerCase().includes((searchQuery || '').toLowerCase())
+    );
+
+    useEffect(() => {
+        if (open && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setPosition({
+                top: rect.bottom + 4,
+                left: rect.left,
+                width: Math.max(rect.width, 280),
+            });
+        }
+    }, [open]);
+
+    const dropdownContent = open ? (
+        <>
+            <div className="fixed inset-0 z-[9998]" onClick={() => { onOpenChange(false); setSearchQuery(''); }} />
+            <div
+                className="fixed z-[9999] rounded-lg border border-[#222831] bg-[#181C25] shadow-xl overflow-hidden"
+                style={{ top: position.top, left: position.left, width: position.width, minWidth: 280 }}
+            >
+                {/* Search input */}
+                <div className="p-2 border-b border-[#222831]">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={(e) => e.stopPropagation()}
+                            className="w-full pl-9 pr-3 py-2.5 text-sm text-white bg-white/5 border border-[#222831] rounded-lg placeholder:text-white/40 focus:outline-none focus:border-[#00C2CB] focus:ring-1 focus:ring-[#00C2CB]"
+                        />
+                    </div>
+                </div>
+                {/* Options list */}
+                <div className="max-h-52 overflow-y-auto">
+                    {filteredOptions.length === 0 ? (
+                        <div className="px-4 py-6 text-sm text-white/50 text-center">
+                            {options.length === 0 ? 'No options available' : 'No matches found'}
+                        </div>
+                    ) : (
+                        filteredOptions.map(opt => (
+                            <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => { onChange(opt.id); onOpenChange(false); setSearchQuery(''); }}
+                                className={`w-full px-4 py-3 text-left text-base hover:bg-white/5 transition-colors flex items-center gap-3 ${value === opt.id ? 'bg-[#00C2CB]/10 text-[#00C2CB]' : 'text-white'}`}
+                            >
+                                <span className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${value === opt.id ? 'bg-[#00C2CB] border-[#00C2CB]' : 'border-[#222831]'}`}>
+                                    {value === opt.id && <Check className="w-3 h-3 text-white" />}
+                                </span>
+                                <span className="truncate">{opt.label}</span>
+                            </button>
+                        ))
+                    )}
+                </div>
+            </div>
+        </>
+    ) : null;
+
+    return (
+        <div className="relative">
+            <button
+                ref={buttonRef}
+                type="button"
+                disabled={disabled}
+                onClick={() => { onOpenChange(!open); if (!open) setSearchQuery(''); }}
+                className={`
+                    w-full min-w-[280px] px-4 py-3 text-left text-base rounded-lg
+                    bg-transparent border transition-all duration-200
+                    flex items-center justify-between gap-2
+                    ${open ? 'border-[#00C2CB] shadow-[0_0_0_1px_#00C2CB]' : 'border-[#222831]'}
+                    ${selectedLabel ? 'text-white' : 'text-white/60'}
+                    hover:border-[#00C2CB]/70 focus:outline-none focus:border-[#00C2CB] focus:shadow-[0_0_0_1px_#00C2CB]
+                `}
+            >
+                <span className="truncate">{selectedLabel || placeholder}</span>
+                <ChevronDown className={`w-5 h-5 flex-shrink-0 text-white/60 transition-transform ${open ? 'rotate-180' : ''}`} />
+            </button>
+            {typeof document !== 'undefined' && document.body && createPortal(dropdownContent, document.body)}
+        </div>
+    );
+};
+
 // --- 3. Remote Task Executor ---
 const TaskExecutor = () => {
     const [tasks, setTasks] = useState([
-        { id: 1, name: 'Force DB Backup', icon: Database, running: false, done: false },
-        { id: 2, name: 'Clear Redis Cache', icon: Trash2, running: false, done: false },
-        { id: 3, name: 'Sync GitHub Stats', icon: RefreshCw, running: false, done: false },
+        { id: 1, taskKey: 'backup-db', name: 'Force DB Backup', desc: 'Trigger full backup of selected database', icon: Database, running: false, done: false },
+        { id: 2, taskKey: 'clear-redis', name: 'Clear Redis Cache', desc: 'Flush cache for selected environment', icon: Trash2, running: false, done: false },
+        { id: 3, taskKey: 'sync-github', name: 'Sync GitHub Stats', desc: 'Refresh analytics for selected repo', icon: RefreshCw, running: false, done: false },
     ]);
 
-    const runTask = (id: number) => {
-        setTasks(prev => prev.map(t => t.id === id ? { ...t, running: true, done: false } : t));
-        
-        setTimeout(() => {
-            setTasks(prev => prev.map(t => t.id === id ? { ...t, running: false, done: true } : t));
-            toast.success("Task Completed Successfully");
-        }, 2000);
+    const [selections, setSelections] = useState<Record<number, string>>({ 1: '', 2: '', 3: '' });
+    const [dropdownOpen, setDropdownOpen] = useState<Record<number, boolean>>({ 1: false, 2: false, 3: false });
+
+    const [dbOptions, setDbOptions] = useState<{ id: string; label: string }[]>([]);
+    const [envOptions, setEnvOptions] = useState<{ id: string; label: string }[]>([]);
+    const [repoOptions, setRepoOptions] = useState<{ id: string; label: string }[]>([]);
+    const [loadingOptions, setLoadingOptions] = useState(true);
+
+    const fetchOptions = useCallback(async () => {
+        setLoadingOptions(true);
+        try {
+            const [connRes, githubRes] = await Promise.all([
+                apiClient.get('/connections').catch(() => ({ data: [] })),
+                apiClient.get('/github/repos').catch(() => ({ data: [] })),
+            ]);
+
+            const connections = connRes?.data || [];
+            const dbConns = connections.filter((c: any) => {
+                const p = (c.provider || '').trim().toLowerCase();
+                const key = PROVIDER_TO_KEY[c?.provider] ?? p.replace(/\.io$/, '');
+                return !HOSTING_PROVIDERS.includes(key);
+            });
+            setDbOptions(dbConns.map((c: any) => ({ id: c._id, label: `${c.provider || 'DB'} - ${c.name}` })));
+
+            const hostingConns = connections.filter((c: any) => {
+                const key = PROVIDER_TO_KEY[c?.provider] || (c?.provider || '').trim().toLowerCase().replace(/\.io$/, '');
+                return key && HOSTING_PROVIDERS.includes(key);
+            });
+            const envList: { id: string; label: string }[] = [];
+            await Promise.all(hostingConns.map(async (conn: any) => {
+                const key = PROVIDER_TO_KEY[conn.provider] || (conn.provider || '').trim().toLowerCase().replace(/\.io$/, '');
+                if (!key || !['vercel', 'render', 'railway', 'digitalocean', 'fly'].includes(key)) return;
+                try {
+                    const res = await apiClient.get(`/connections/hosting/${key}/status`);
+                    const services = res.data?.services || [];
+                    services.forEach((s: any) => envList.push({ id: `${conn._id}::${s.id}`, label: `${s.name} - ${conn.name}` }));
+                } catch { /* ignore */ }
+            }));
+            setEnvOptions(envList);
+
+            const repos = githubRes?.data || [];
+            setRepoOptions(repos.map((r: any) => ({ id: String(r.id), label: r.full_name || r.name })));
+        } catch {
+            setDbOptions([]);
+            setEnvOptions([]);
+            setRepoOptions([]);
+        } finally {
+            setLoadingOptions(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchOptions(); }, [fetchOptions]);
+
+    const getOptionsForTask = (taskId: number) => {
+        if (taskId === 1) return dbOptions;
+        if (taskId === 2) return envOptions;
+        return repoOptions;
+    };
+
+    const getPlaceholderForTask = (taskId: number) => {
+        if (taskId === 1) return 'Select Database...';
+        if (taskId === 2) return 'Select Environment...';
+        return 'Select Repository...';
+    };
+
+    const executeTask = async (taskId: number) => {
+        const task = tasks.find(t => t.id === taskId);
+        const targetId = selections[taskId];
+        if (!task || !targetId) return;
+
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, running: true, done: false } : t));
+
+        try {
+            await apiClient.post('/tasks/execute', { task: task.taskKey, targetId });
+            setTasks(prev => prev.map(t => t.id === taskId ? { ...t, running: false, done: true } : t));
+            toast.success('Task completed successfully');
+        } catch {
+            setTasks(prev => prev.map(t => t.id === taskId ? { ...t, running: false } : t));
+            toast.error('Task failed. Please try again.');
+        }
     };
 
     return (
-        <div className="glass-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col gap-4">
-             <div className="flex items-center gap-2 text-black mb-2">
-                <Zap className="w-5 h-5 text-yellow-500" />
+        <div className="relative overflow-hidden rounded-xl border border-[#222831] bg-[#181C25] p-6 shadow-sm flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-white mb-2">
+                <Zap className="w-5 h-5 text-[#00C2CB]" />
                 <h3 className="text-lg font-semibold tracking-tight">Remote Tasks</h3>
             </div>
 
             <div className="space-y-4">
-                {tasks.map(task => (
-                    <div key={task.id} className="bg-gray-50 rounded-lg border border-gray-200 p-4 relative overflow-hidden">
-                        <div className="flex items-center justify-between relative z-10">
-                            <div className="flex items-center gap-3 text-sm font-medium text-black">
-                                <task.icon className="w-4 h-4 text-gray-400" />
-                                {task.name}
+                {tasks.map(task => {
+                    const selected = selections[task.id];
+                    const hasSelection = !!selected;
+                    const options = getOptionsForTask(task.id);
+                    const placeholder = getPlaceholderForTask(task.id);
+
+                    return (
+                        <div key={task.id} className="rounded-lg border border-[#222831] bg-white/[0.03] p-4 relative overflow-visible">
+                            <div className="flex flex-wrap items-center gap-4 relative z-10">
+                                {/* Task Info */}
+                                <div className="flex-1 min-w-[140px]">
+                                    <div className="flex items-center gap-2">
+                                        <task.icon className="w-4 h-4 text-[#00C2CB]" />
+                                        <span className="text-sm font-medium text-white">{task.name}</span>
+                                    </div>
+                                    <p className="text-xs text-white/50 mt-0.5 pl-6">{task.desc}</p>
+                                </div>
+
+                                {/* Target Selector */}
+                                <div className="flex-shrink-0">
+                                    {loadingOptions ? (
+                                        <div className="min-w-[280px] px-4 py-3 flex items-center justify-center gap-2 text-white/50 text-base">
+                                            <Loader2 className="w-5 h-5 animate-spin" /> Loading...
+                                        </div>
+                                    ) : (
+                                        <TargetSelect
+                                            value={selected}
+                                            onChange={(id) => setSelections(prev => ({ ...prev, [task.id]: id }))}
+                                            placeholder={placeholder}
+                                            options={options}
+                                            disabled={task.running || task.done}
+                                            open={!!dropdownOpen[task.id]}
+                                            onOpenChange={(v) => setDropdownOpen(prev => ({ ...prev, [task.id]: v }))}
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Action Button */}
+                                <div className="flex-shrink-0">
+                                    {task.done ? (
+                                        <Badge className="border-[#00C2CB]/30 text-[#00C2CB] bg-[#00C2CB]/10">
+                                            <CheckCircle2 className="w-3 h-3 mr-1" /> Done
+                                        </Badge>
+                                    ) : (
+                                        <Button
+                                            size="sm"
+                                            className={`h-8 text-xs transition-all ${
+                                                hasSelection
+                                                    ? 'bg-[#00C2CB]/20 text-[#00C2CB] border border-[#00C2CB] hover:bg-[#00C2CB]/30'
+                                                    : 'opacity-50 bg-white/5 text-white/50 border border-[#222831] cursor-not-allowed'
+                                            }`}
+                                            onClick={() => executeTask(task.id)}
+                                            disabled={task.running || !hasSelection}
+                                        >
+                                            {task.running ? (
+                                                <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> Running...</>
+                                            ) : (
+                                                'Run Task'
+                                            )}
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
-                            
-                            {task.done ? (
-                                <Badge variant="outline" className="border-green-500/30 text-green-600 bg-green-50">
-                                    <CheckCircle2 className="w-3 h-3 mr-1" /> Done
-                                </Badge>
-                            ) : (
-                                <Button 
-                                    size="sm" 
-                                    className="h-7 text-xs bg-gray-100 hover:bg-gray-200 text-black border border-gray-200"
-                                    onClick={() => runTask(task.id)}
-                                    disabled={task.running}
-                                >
-                                    {task.running ? 'Running...' : 'Run Task'}
-                                </Button>
+
+                            {task.running && (
+                                <div className="absolute bottom-0 left-0 h-1 bg-[#00C2CB] animate-[width-grow_2s_ease-in-out_forwards] w-full origin-left" />
                             )}
                         </div>
-                        
-                        {/* Progress Bar Animation */}
-                        {task.running && (
-                             <div className="absolute bottom-0 left-0 h-1 bg-yellow-500 animate-[width_2s_ease-in-out_forwards] w-full origin-left" 
-                                  style={{ animationName: 'width-grow' }} 
-                             />
-                        )}
-                         <style>{`
-                            @keyframes width-grow {
-                                from { width: 0%; }
-                                to { width: 100%; }
-                            }
-                        `}</style>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
+            <style>{`
+                @keyframes width-grow {
+                    from { width: 0%; }
+                    to { width: 100%; }
+                }
+            `}</style>
         </div>
     );
 };

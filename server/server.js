@@ -68,7 +68,7 @@ const connectDB = async () => {
   }
 };
 
-// Routes
+
 app.use('/api', gmailRoutes);
 
 // Health Check
@@ -76,7 +76,22 @@ app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
-// POST /api/connections - Save a new database connection securely
+// Remote Task Execution (stub - extend with real logic)
+app.post('/api/tasks/execute', requireAuth, async (req, res) => {
+  try {
+    const { task, targetId } = req.body;
+    if (!task || !targetId) {
+      return res.status(400).json({ message: 'Missing task or targetId' });
+    }
+    // TODO: Implement actual task execution (backup, cache clear, sync)
+    console.log(`[Tasks] ${req.user?.uid} executed ${task} on target ${targetId}`);
+    res.json({ success: true, task, targetId });
+  } catch (err) {
+    console.error('Task execute error:', err);
+    res.status(500).json({ message: 'Task execution failed' });
+  }
+});
+
 app.post('/api/connections', requireAuth, async (req, res) => {
   try {
     const { name, provider, config } = req.body;
