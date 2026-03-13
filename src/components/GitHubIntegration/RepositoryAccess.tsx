@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Lock, Unlock, X } from 'lucide-react';
+import { toast } from 'sonner';
 import apiClient from '@/lib/apiClient';
 import { Contributor } from './types';
 
@@ -35,9 +36,13 @@ export const RepositoryAccess: React.FC<RepositoryAccessProps> = ({ repoName, co
         ...prev,
         [username]: newStatus
       }));
-    } catch (error) {
-      console.error('Failed to update access:', error);
-      // Could add a toast notification here
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Failed to update access';
+      if (err?.response?.status === 403) {
+        toast.error('Only repository owners can manage collaborator access.');
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoadingUser(null);
     }

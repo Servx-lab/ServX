@@ -328,12 +328,14 @@ const GitHubIntegration = () => {
                         </p>
                     </div>
                     <div className="flex gap-4 items-center">
-                        <button 
-                            onClick={() => setIsAccessPanelOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition-colors text-sm font-medium"
-                        >
-                            <Shield className="w-4 h-4" /> Manage Access
-                        </button>
+                        {repoDetails.isOwner !== false && (
+                            <button 
+                                onClick={() => setIsAccessPanelOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition-colors text-sm font-medium"
+                            >
+                                <Shield className="w-4 h-4" /> Manage Access
+                            </button>
+                        )}
                         <a href={repoDetails.html_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors text-sm font-medium text-black">
                             <ExternalLink className="w-4 h-4" /> View on GitHub
                         </a>

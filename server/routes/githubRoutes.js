@@ -67,6 +67,13 @@ router.get('/repos', requireAuth, authenticate, async (req, res) => {
   } catch (error) {
     console.error('GitHub Repos Error:', error.response?.data || error.message);
     if (error.response?.status === 401) {
+      // Clear invalid token in DB
+      try {
+        await User.findOneAndUpdate({ uid: req.user.uid }, { $unset: { githubAccessToken: "" } });
+        console.log(`[GitHub Auth] Cleared invalid token for user ${req.user.uid}`);
+      } catch (dbErr) {
+        console.error('[GitHub Auth] Failed to clear invalid token from DB:', dbErr.message);
+      }
       return res.status(401).json({ error: 'GitHub token invalid or expired.' });
     }
     res.status(500).json({ error: 'Failed to fetch repositories' });
@@ -75,15 +82,19 @@ router.get('/repos', requireAuth, authenticate, async (req, res) => {
 
 // GET /api/github/repos/:owner/:repo/details
 // Fetches comprehensive details: repo info, last 50 commits, contributors
+// Includes isOwner so the UI can hide "Manage Access" for collaborators
 router.get('/repos/:owner/:repo/details', requireAuth, authenticate, async (req, res) => {
   const { owner, repo } = req.params;
   const repoFullName = `${owner}/${repo}`;
 
   try {
+    const headers = { Authorization: `Bearer ${req.githubToken}` };
+
+    // 0. Fetch current user to check ownership
+    const currentUserPromise = axios.get('https://api.github.com/user', { headers });
+
     // 1. Fetch Repository Details
-    const repoDetailsPromise = axios.get(`https://api.github.com/repos/${repoFullName}`, {
-      headers: { Authorization: `Bearer ${req.githubToken}` },
-    });
+    const repoDetailsPromise = axios.get(`https://api.github.com/repos/${repoFullName}`, { headers });
 
     // 2. Fetch Last 50 Commits
     const commitsPromise = axios.get(`https://api.github.com/repos/${repoFullName}/commits`, {
@@ -109,6 +120,7 @@ router.get('/repos/:owner/:repo/details', requireAuth, authenticate, async (req,
     });
 
     const results = await Promise.allSettled([
+        currentUserPromise,
         repoDetailsPromise,
         commitsPromise,
         contributorsPromise,
@@ -117,20 +129,25 @@ router.get('/repos/:owner/:repo/details', requireAuth, authenticate, async (req,
     ]);
 
     results.forEach((result, index) => {
-      if (result.status === 'rejected') {
+      if (result.status === 'rejected' && index > 0) {
         console.error(`GitHub API Error for ${repoFullName} at index ${index}:`, result.reason?.response?.data || result.reason?.message);
       }
     });
 
-    const repoResponse = results[0].status === 'fulfilled' ? results[0].value : null;
-    const commitsResponse = results[1].status === 'fulfilled' ? results[1].value : { data: [] };
-    const contributorsResponse = results[2].status === 'fulfilled' ? results[2].value : { data: [] };
-    const languagesResponse = results[3].status === 'fulfilled' ? results[3].value : { data: {} };
-    const deploymentsResponse = results[4].status === 'fulfilled' ? results[4].value : { data: [] };
+    const currentUserResponse = results[0].status === 'fulfilled' ? results[0].value : null;
+    const repoResponse = results[1].status === 'fulfilled' ? results[1].value : null;
+    const commitsResponse = results[2].status === 'fulfilled' ? results[2].value : { data: [] };
+    const contributorsResponse = results[3].status === 'fulfilled' ? results[3].value : { data: [] };
+    const languagesResponse = results[4].status === 'fulfilled' ? results[4].value : { data: {} };
+    const deploymentsResponse = results[5].status === 'fulfilled' ? results[5].value : { data: [] };
+
+    const currentUserLogin = currentUserResponse?.data?.login || null;
+    const repoOwnerLogin = repoResponse?.data?.owner?.login || owner;
+    const isOwner = !!currentUserLogin && currentUserLogin.toLowerCase() === repoOwnerLogin.toLowerCase();
 
     if (!repoResponse) {
-      const status = results[0].reason?.response?.status || 404;
-      return res.status(status).json({ error: 'Repository not found or access denied', details: results[0].reason?.response?.data });
+      const status = results[1].reason?.response?.status || 404;
+      return res.status(status).json({ error: 'Repository not found or access denied', details: results[1].reason?.response?.data });
     }
 
     // Format Data
@@ -196,6 +213,8 @@ router.get('/repos/:owner/:repo/details', requireAuth, authenticate, async (req,
         stars: repoResponse.data.stargazers_count,
         forks: repoResponse.data.forks_count,
         open_issues: repoResponse.data.open_issues_count,
+        owner: repoResponse.data.owner ? { login: repoResponse.data.owner.login } : { login: owner },
+        isOwner,
       },
       commits: formattedCommits,
       contributors: formattedContributors,
@@ -211,6 +230,7 @@ router.get('/repos/:owner/:repo/details', requireAuth, authenticate, async (req,
 
 // POST /api/github/collaborator/role
 // Updates a collaborator's permission (locked = read, unlocked = push)
+// Only repository owners can change collaborator access
 router.post('/collaborator/role', requireAuth, authenticate, async (req, res) => {
   const { repoName, githubUsername, status } = req.body;
 
@@ -225,6 +245,15 @@ router.post('/collaborator/role', requireAuth, authenticate, async (req, res) =>
 
   try {
     const octokit = new Octokit({ auth: req.githubToken });
+
+    // Verify current user is the repo owner (only owners can manage collaborator access)
+    const { data: currentUser } = await octokit.rest.users.getAuthenticated();
+    if (currentUser.login.toLowerCase() !== owner.toLowerCase()) {
+      return res.status(403).json({
+        error: 'Only repository owners can manage collaborator access. Collaborators cannot change who can push.',
+      });
+    }
+
     const permission = status === 'locked' ? 'read' : 'push';
 
     await octokit.rest.repos.addCollaborator({

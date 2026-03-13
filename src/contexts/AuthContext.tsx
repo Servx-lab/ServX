@@ -174,7 +174,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             linkGitHub,
             logout 
         }}>
-            {!loading && children}
+            {children}
         </AuthContext.Provider>
     );
 };

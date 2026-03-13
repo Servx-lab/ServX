@@ -1,6 +1,15 @@
 import axios from 'axios';
 import { getAuth } from "firebase/auth";
 
+declare module 'axios' {
+  interface InternalAxiosRequestConfig {
+    skipAuthErrorLog?: boolean;
+  }
+  interface AxiosRequestConfig {
+    skipAuthErrorLog?: boolean;
+  }
+}
+
 /**
  * Custom Axios instance for Orizon API with automatic Firebase Auth injection
  */
@@ -42,7 +51,7 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !error.config?.skipAuthErrorLog) {
       console.error('Unauthorized API Call:', {
         url: error.config?.url,
         message: error.response?.data?.message || error.response?.data?.error || 'No message',

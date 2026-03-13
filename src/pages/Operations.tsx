@@ -29,6 +29,7 @@ import {
   Triangle,
   Server
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
 import apiClient from '@/lib/apiClient';
 import { Switch } from "@/components/ui/switch";
@@ -354,6 +355,7 @@ const TargetSelect = ({
 
 // --- 3. Remote Task Executor ---
 const TaskExecutor = () => {
+    const navigate = useNavigate();
     const [tasks, setTasks] = useState([
         { id: 1, taskKey: 'backup-db', name: 'Force DB Backup', desc: 'Trigger full backup of selected database', icon: Database, running: false, done: false },
         { id: 2, taskKey: 'clear-redis', name: 'Clear Redis Cache', desc: 'Flush cache for selected environment', icon: Trash2, running: false, done: false },
@@ -373,7 +375,7 @@ const TaskExecutor = () => {
         try {
             const [connRes, githubRes] = await Promise.all([
                 apiClient.get('/connections').catch(() => ({ data: [] })),
-                apiClient.get('/github/repos').catch(() => ({ data: [] })),
+                apiClient.get('/github/repos', { skipAuthErrorLog: true }).catch(() => ({ data: [] })),
             ]);
 
             const connections = connRes?.data || [];
@@ -402,14 +404,24 @@ const TaskExecutor = () => {
 
             const repos = githubRes?.data || [];
             setRepoOptions(repos.map((r: any) => ({ id: String(r.id), label: r.full_name || r.name })));
-        } catch {
+        } catch (err: any) {
+            if (err?.response?.status === 401) {
+                console.warn('[Operations] GitHub 401 detected. Token might be expired.');
+                toast.error("GitHub connection expired", {
+                    description: "Please reconnect your GitHub account in settings.",
+                    action: {
+                        label: "Reconnect",
+                        onClick: () => navigate('/github')
+                    }
+                });
+            }
             setDbOptions([]);
             setEnvOptions([]);
             setRepoOptions([]);
         } finally {
             setLoadingOptions(false);
         }
-    }, []);
+    }, [navigate]);
 
     useEffect(() => { fetchOptions(); }, [fetchOptions]);
 
@@ -644,12 +656,12 @@ const ApiBouncer = () => {
 // --- Project Selection Dropdown (used inside Kill Switches & Features) ---
 const ProviderBadge = ({ provider }: { provider: 'vercel' | 'render' }) => (
     provider === 'vercel' ? (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-black text-white">
-            <Triangle className="w-1.5 h-1.5" /> Vercel
+        <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-medium bg-black text-white w-fit">
+            <Triangle className="w-1 h-1" /> Vercel
         </span>
     ) : (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-600 text-white">
-            <Server className="w-1.5 h-1.5" /> Render
+        <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-medium bg-emerald-600 text-white w-fit">
+            <Server className="w-1 h-1" /> Render
         </span>
     )
 );
@@ -688,7 +700,7 @@ const ProjectSelectDropdown = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent
                 align="start"
-                className="min-w-[240px] bg-white border border-gray-200 text-black shadow-lg"
+                className="min-w-[480px] max-w-[520px] bg-white border border-gray-200 text-black shadow-lg p-2"
             >
                 {isLoadingProjects ? (
                     <div className="flex items-center justify-center gap-2 py-6 text-gray-500">
@@ -699,18 +711,22 @@ const ProjectSelectDropdown = () => {
                     <div className="py-6 text-center text-sm text-gray-500">No projects found</div>
                 ) : (
                     <DropdownMenuRadioGroup value={selectedProject?.id ?? ''} onValueChange={(v) => setSelectedProject(v)}>
-                        {projects.map((p) => (
-                            <DropdownMenuRadioItem
-                                key={p.id}
-                                value={p.id}
-                                className="cursor-pointer focus:bg-gray-50 focus:text-black data-[state=checked]:bg-green-50 data-[state=checked]:text-green-600"
-                            >
-                                <span className="flex items-center gap-2">
-                                    {p.name}
-                                    <ProviderBadge provider={p.provider} />
-                                </span>
-                            </DropdownMenuRadioItem>
-                        ))}
+                        <ScrollArea className="max-h-[280px]">
+                            <div className="grid grid-cols-4 gap-1.5 p-1 pr-3">
+                                {projects.map((p) => (
+                                    <DropdownMenuRadioItem
+                                        key={p.id}
+                                        value={p.id}
+                                        className="cursor-pointer focus:bg-gray-50 focus:text-black data-[state=checked]:bg-green-50 data-[state=checked]:text-green-600 rounded-md px-2 py-1.5 text-xs col-span-1 pl-2 [&>span:first-child]:hidden"
+                                    >
+                                        <span className="flex flex-col gap-0.5 min-w-0 overflow-hidden">
+                                            <span className="truncate font-medium">{p.name}</span>
+                                            <ProviderBadge provider={p.provider} />
+                                        </span>
+                                    </DropdownMenuRadioItem>
+                                ))}
+                            </div>
+                        </ScrollArea>
                     </DropdownMenuRadioGroup>
                 )}
             </DropdownMenuContent>
@@ -720,6 +736,7 @@ const ProjectSelectDropdown = () => {
 
 // --- PAGE LAYOUT ---
 const OperationsContent = () => {
+    const navigate = useNavigate();
     return (
         <div className="flex h-screen w-full bg-white text-black overflow-hidden font-sans">
             <Sidebar />

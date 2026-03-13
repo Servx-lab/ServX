@@ -13,6 +13,7 @@ export interface RepoDetails {
   created_at?: string;
   updated_at: string;
   owner: { login: string };
+  isOwner?: boolean;
   commits?: Commit[];
   contributors?: Contributor[];
   languages?: Language[];
