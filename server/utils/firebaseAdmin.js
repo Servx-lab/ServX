@@ -22,9 +22,6 @@ if (!admin.apps.length) {
         projectId: process.env.FIREBASE_PROJECT_ID || 'orizon-lab'
       });
       console.log('Firebase Admin Initialized with Project ID (limited - no service account)');
-      console.log('⚠️  For full Firebase Auth access, download a service account key from:');
-      console.log('   Firebase Console → Project Settings → Service Accounts → Generate New Private Key');
-      console.log('   Save it as: server/firebase-service-account.json');
     }
   } catch (error) {
     console.error('Firebase Admin Initialization Error:', error.message);
