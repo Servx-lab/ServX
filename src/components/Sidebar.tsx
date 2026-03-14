@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import SecurityInfo from "./SecurityInfo";
 import WorkspaceBranding from "./WorkspaceBranding";
+import ServXLogo from "./ServXLogo";
 import {
   LayoutDashboard,
   Search,
@@ -62,11 +63,8 @@ const Sidebar = () => {
   return (
     <div className="glass-sidebar w-56 h-screen flex flex-col py-6 px-3 fixed left-0 top-0 z-50 overflow-y-auto no-scrollbar">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-3 mb-8">
-        <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center cyber-glow-blue">
-          <Shield className="w-4.5 h-4.5 text-primary" />
-        </div>
-        <span className="text-foreground font-semibold text-lg tracking-wide">ORIZON</span>
+      <div className="flex flex-col items-center px-3 mb-8">
+        <ServXLogo showTagline={false} size="sm" className="items-start w-full" />
       </div>
 
       {/* Workspace Branding */}

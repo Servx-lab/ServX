@@ -7,6 +7,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import ServXLogo from "@/components/ServXLogo";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/components/ui/use-toast";
 
@@ -82,11 +83,8 @@ const AuthPage = () => {
             >
                 {/* Brand Header */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-orizons-teal to-orizons-purple mb-4 shadow-[0_0_30px_rgba(0,194,203,0.3)]">
-                        <Zap className="h-6 w-6 text-white fill-white" />
-                    </div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Welcome to Orizon</h1>
-                    <p className="text-orizons-text-low">
+                    <ServXLogo showTagline={true} size="lg" className="mb-4" />
+                    <p className="text-orizons-text-low mt-2">
                         The developer-first infrastructure platform.
                     </p>
                 </div>

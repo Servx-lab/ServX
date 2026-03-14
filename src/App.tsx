@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import Databases from "./pages/Databases";
 import GitHub from "./pages/GitHub";
 import HostingRender from "./pages/HostingRender";
-import InfrastructureConnections from "./pages/InfrastructureConnections";
+import InfraSettings from "./pages/InfraSettings";
 import AutoMedic from "./pages/AutoMedic";
 import Operations from "./pages/Operations";
 import NotFound from "./pages/NotFound";
@@ -81,7 +81,7 @@ const App = () => (
               path="/settings/connections"
               element={
                 <RequireAuth>
-                  <InfrastructureConnections />
+                  <InfraSettings />
                 </RequireAuth>
               }
             />

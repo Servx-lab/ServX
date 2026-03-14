@@ -11,7 +11,7 @@ declare module 'axios' {
 }
 
 /**
- * Custom Axios instance for Orizon API with automatic Firebase Auth injection
+ * Custom Axios instance for ServX API with automatic Firebase Auth injection
  */
 const rawUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '';
 const baseURL = rawUrl ? `${rawUrl.replace(/\/+$/, '')}/api` : '/api';

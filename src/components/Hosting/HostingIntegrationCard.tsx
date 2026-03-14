@@ -112,7 +112,7 @@ const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     tokenPageUrl: 'https://vercel.com/account/tokens', tokenPageLabel: 'Open Vercel Tokens Page',
     description: 'Enter your Vercel Personal Access Token to enable deployment monitoring and project analytics.',
     guideTitle: 'How to generate your Vercel token',
-    guideSubtitle: 'Follow these steps to create a Personal Access Token from your Vercel dashboard. This token gives Orizon read-only access to your deployments and projects.',
+    guideSubtitle: 'Follow these steps to create a Personal Access Token from your Vercel dashboard. This token gives ServX read-only access to your deployments and projects.',
     steps: [
       { title: 'Open Account Settings', detail: 'Click your profile picture in the top-right corner of Vercel, then select Account Settings.' },
       { title: 'Navigate to Tokens', detail: 'In the left sidebar, click Tokens to open the token management page.' },
@@ -128,11 +128,11 @@ const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     tokenPageUrl: 'https://dashboard.render.com/u/settings#api-keys', tokenPageLabel: 'Open Render API Keys Page',
     description: 'Enter your Render API Key to enable service monitoring, deployment tracking, and resource analytics.',
     guideTitle: 'How to generate your Render API Key',
-    guideSubtitle: 'Follow these steps to create an API Key from your Render dashboard. This key gives Orizon access to your services and deployments.',
+    guideSubtitle: 'Follow these steps to create an API Key from your Render dashboard. This key gives ServX access to your services and deployments.',
     steps: [
       { title: 'Open Account Settings', detail: 'Click your profile in the top right of the Render Dashboard and select Account Settings.' },
       { title: 'Navigate to API Keys', detail: 'Click API Keys in the left sidebar menu.' },
-      { title: 'Create API Key', detail: 'Click Create API Key, name it "Orizon", and paste the rnd_... token here.' },
+      { title: 'Create API Key', detail: 'Click Create API Key, name it "ServX", and paste the rnd_... token here.' },
     ],
     features: ['AES-256 encrypted', 'Service health monitoring', 'Deploy history tracking'],
     logo: <RenderLogoSVG className="w-12 h-12" />,
@@ -148,7 +148,7 @@ const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     steps: [
       { title: 'Open Account Settings', detail: 'Click your avatar in the bottom-left of Railway, then select Account Settings.' },
       { title: 'Navigate to Tokens', detail: 'Click the Tokens tab to open the API token management page.' },
-      { title: 'Create a new token', detail: 'Click Create Token, name it "Orizon Dashboard", copy the generated token.' },
+      { title: 'Create a new token', detail: 'Click Create Token, name it "ServX Dashboard", copy the generated token.' },
     ],
     features: ['AES-256 encrypted', 'Project monitoring', 'GraphQL-powered sync'],
     logo: <RailwayLogoSVG className="w-12 h-12" />,
@@ -180,7 +180,7 @@ const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     steps: [
       { title: 'Open Account Settings', detail: 'Go to fly.io, click your avatar in the top right, and select Account.' },
       { title: 'Navigate to Access Tokens', detail: 'In the sidebar, click Access Tokens under Personal.' },
-      { title: 'Create Token', detail: 'Click Create Access Token, name it "Orizon Dashboard", and copy the generated value.' },
+      { title: 'Create Token', detail: 'Click Create Access Token, name it "ServX Dashboard", and copy the generated value.' },
     ],
     features: ['AES-256 encrypted', 'Machine monitoring', 'Multi-region support'],
     logo: <FlyLogoSVG className="w-12 h-12" />,

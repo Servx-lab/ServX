@@ -1,4 +1,4 @@
-# Orizon App
+# ServX App
 
 This project is a React application built with Vite and Tailwind CSS.
 
@@ -9,7 +9,7 @@ To get started with this project, follow these steps:
 1. **Clone the repository:**
    ```sh
    git clone <YOUR_GIT_URL>
-   cd orizon-app
+   cd servx-app
    ```
 
 2. **Install dependencies:**

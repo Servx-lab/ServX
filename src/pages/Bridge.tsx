@@ -91,7 +91,7 @@ const Bridge = () => {
 
                         <h2 className="text-2xl font-bold text-white mb-2">Connect GitHub</h2>
                         <p className="text-orizons-text-low max-w-sm mx-auto">
-                            To create deployments and manage repositories, Orizon requires a GitHub connection.
+                            To create deployments and manage repositories, ServX requires a GitHub connection.
                         </p>
                     </div>
 

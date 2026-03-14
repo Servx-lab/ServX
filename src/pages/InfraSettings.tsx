@@ -66,9 +66,7 @@ const FlyLogo = () => (
   </svg>
 );
 
-interface InfrastructureConnectionsProps {}
-
-const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () => {
+const InfraSettings = () => {
   const [connections, setConnections] = useState(MOCK_CONNECTIONS);
   const [savedConnections, setSavedConnections] = useState<any[]>([]);
   const [apiKeys, setApiKeys] = useState({ render: '', fly: '' });
@@ -330,7 +328,7 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
                                 <div className="text-[11px] text-gray-500 leading-relaxed space-y-0.5">
                                     <p>1. Click your profile picture → <span className="text-black">Account Settings</span></p>
                                     <p>2. Click <span className="text-black">Tokens</span> in the left sidebar</p>
-                                    <p>3. Click <span className="text-black">Create</span>, name it "Orizon Dashboard"</p>
+                                    <p>3. Click <span className="text-black">Create</span>, name it "ServX Dashboard"</p>
                                 </div>
                             </div>
                         </div>
@@ -445,4 +443,4 @@ const InfrastructureConnections: React.FC<InfrastructureConnectionsProps> = () =
   );
 };
 
-export default InfrastructureConnections;
+export default InfraSettings;

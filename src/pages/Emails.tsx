@@ -160,7 +160,7 @@ const Emails = () => {
                   
                   <h2 className="text-2xl font-bold text-black mb-2">Connect Gmail</h2>
                   <p className="text-gray-500 text-sm mb-8">
-                    Link your Google account to read your emails directly inside the Orizon dashboard.
+                    Link your Google account to read your emails directly inside the ServX dashboard.
                   </p>
 
                   {error && (

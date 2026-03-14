@@ -298,7 +298,7 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                 <div className="text-[11px] text-gray-500 leading-relaxed space-y-1.5 list-decimal list-inside pl-1">
                     <p>1. Click your profile picture in the top right of Vercel and select <span className="text-black">Account Settings</span>.</p>
                     <p>2. Click <span className="text-black">Tokens</span> in the left sidebar menu.</p>
-                    <p>3. Click <span className="text-black">Create</span>, name it "Orizon Dashboard", and it will give you a single long token (e.g., vk1_...).</p>
+                    <p>3. Click <span className="text-black">Create</span>, name it "ServX Dashboard", and it will give you a single long token (e.g., vk1_...).</p>
                 </div>
             </div>
           </div>

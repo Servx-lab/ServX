@@ -34,7 +34,7 @@ export const OnboardingModal = ({ userName, authMethod = 'github' }: OnboardingM
     const handleDownload = () => {
         // In a real scenario, this would trigger the download
         // For now, we simulate and continue
-        window.open('https://orizon.dev/download', '_blank');
+        window.open('https://servx.dev/download', '_blank');
         setTimeout(() => {
             navigate('/dashboard');
         }, 1000);
@@ -67,7 +67,7 @@ export const OnboardingModal = ({ userName, authMethod = 'github' }: OnboardingM
                 </h2>
                 
                 <p className="text-orizons-text-low text-lg mb-8 max-w-lg mx-auto leading-relaxed">
-                    To get the full power of the <span className="text-orizons-teal">Auto-Medic Pipeline</span> and local server monitoring, download the Orizon-Lab desktop companion.
+                    To get the full power of the <span className="text-orizons-teal">Auto-Medic Pipeline</span> and local server monitoring, download the ServX-Lab desktop companion.
                 </p>
 
                 {/* Feature Highlights */}
@@ -100,7 +100,7 @@ export const OnboardingModal = ({ userName, authMethod = 'github' }: OnboardingM
                                 <AppleIcon />
                                 <LinuxIcon />
                             </span>
-                            Download Orizon-Lab App
+                            Download ServX-Lab App
                         </span>
                         {/* Sparkle/Pulse effect inside button */}
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[200%] group-hover:animate-shine" />

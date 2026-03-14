@@ -61,13 +61,13 @@ const AuthCard = () => {
                 await signInWithEmailAndPassword(auth, email, password);
                 toast({
                     title: "Welcome back!",
-                    description: "Successfully signed in to Orizons.",
+                    description: "Successfully signed in to ServX.",
                 });
             } else {
                 await createUserWithEmailAndPassword(auth, email, password);
                 toast({
                     title: "Account created",
-                    description: "Welcome to Orizons! Your account has been created.",
+                    description: "Welcome to ServX! Your account has been created.",
                 });
             }
             navigate('/dashboard');
