@@ -254,7 +254,7 @@ router.post('/collaborator/role', requireAuth, authenticate, async (req, res) =>
       });
     }
 
-    const permission = status === 'locked' ? 'read' : 'push';
+    const permission = status === 'locked' ? 'pull' : 'push';
 
     await octokit.rest.repos.addCollaborator({
       owner,
@@ -265,8 +265,13 @@ router.post('/collaborator/role', requireAuth, authenticate, async (req, res) =>
 
     res.json({ success: true, message: `Successfully updated ${githubUsername} to ${permission} access.` });
   } catch (error) {
+    const statusCode = error.response?.status || error.status || 500;
+    const message =
+      error.response?.data?.message ||
+      error.message ||
+      'Failed to update collaborator role';
     console.error('GitHub Collaborator Role Error:', error.response?.data || error.message);
-    res.status(error.status || 500).json({ error: 'Failed to update collaborator role' });
+    res.status(statusCode).json({ error: message });
   }
 });
 
