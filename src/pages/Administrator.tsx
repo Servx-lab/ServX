@@ -146,24 +146,25 @@ const Administrator = () => {
   };
 
   return (
-    <main className="flex-1 p-8 pt-24 flex flex-col min-h-full">
+    <main className="flex-1 p-8 pt-24 flex flex-col min-h-full bg-white text-black font-sans">
         <div className="max-w-6xl mx-auto w-full">
+        {/* Page header - matches Operations / Emails / AutoMedic */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 rounded-xl bg-[#00C2CB]/10 border border-[#00C2CB]/20">
-            <Shield className="w-8 h-8 text-[#00C2CB]" />
+          <div className="p-3 rounded-xl bg-cyan-50 border border-cyan-200 shadow-sm">
+            <Shield className="w-8 h-8 text-cyan-600" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-white">Administrator Management</h1>
-            <p className="text-gray-400 mt-1">Manage system-level access and permissions for ServX.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-black">Administrator Management</h1>
+            <p className="text-gray-500 mt-1">Manage system-level access and permissions for ServX.</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {/* Section 1: Invite Admin */}
-          <section className="lg:col-span-2 bg-[#151921] border border-gray-800 rounded-2xl p-6 shadow-2xl">
+          <section className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-6">
-              <UserPlus className="w-5 h-5 text-[#00C2CB]" />
-              <h2 className="text-xl font-semibold">Invite New Administrator</h2>
+              <UserPlus className="w-5 h-5 text-cyan-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Invite New Administrator</h2>
             </div>
             
             <form onSubmit={handleInvite} className="flex flex-col gap-4">
@@ -171,7 +172,7 @@ const Administrator = () => {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <Input 
                   placeholder="User email address..." 
-                  className="pl-10 bg-[#0B0E14] border-gray-700 focus:border-[#00C2CB] focus:ring-1 focus:ring-[#00C2CB] transition-all"
+                  className="pl-10 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-500 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   type="email"
@@ -182,10 +183,10 @@ const Administrator = () => {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger className="bg-[#0B0E14] border-gray-700 focus:ring-[#00C2CB]">
+                    <SelectTrigger className="bg-gray-50 border-gray-200 text-gray-900 focus:ring-cyan-500">
                       <SelectValue placeholder="Select Role" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#151921] border-gray-700 text-gray-200">
+                    <SelectContent className="bg-white border-gray-200 text-gray-900">
                       <SelectItem value="owner">Owner</SelectItem>
                       <SelectItem value="editor">Editor</SelectItem>
                       <SelectItem value="viewer">Viewer</SelectItem>
@@ -195,7 +196,7 @@ const Administrator = () => {
 
                 <Button 
                   type="submit" 
-                  className="bg-[#00C2CB] hover:bg-[#00AAB1] text-black font-semibold px-8"
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold px-8 transition-colors"
                   disabled={loading}
                 >
                   {loading ? "Inviting..." : "Invite Admin"}
@@ -205,24 +206,25 @@ const Administrator = () => {
           </section>
 
           {/* Section: Workspace Settings */}
-          <section className="bg-[#151921] border border-gray-800 rounded-2xl p-6 shadow-2xl">
+          <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-6">
-              <Settings className="w-5 h-5 text-[#00C2CB]" />
-              <h2 className="text-xl font-semibold">Workspace Settings</h2>
+              <Settings className="w-5 h-5 text-cyan-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Workspace Settings</h2>
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Workspace Logo URL</label>
                 <Input 
                   placeholder="https://example.com/logo.png" 
-                  className="bg-[#0B0E14] border-gray-700 focus:border-[#00C2CB] text-xs"
+                  className="bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-500 focus:border-cyan-500 text-xs"
                   value={workspaceLogo}
                   onChange={(e) => setWorkspaceLogo(e.target.value)}
                 />
               </div>
               <Button 
                 onClick={handleLogoUpdate}
-                className="w-full bg-transparent border border-[#00C2CB] text-[#00C2CB] hover:bg-[#00C2CB]/10 font-bold"
+                variant="outline"
+                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 font-medium transition-colors"
               >
                 Update Branding
               </Button>
@@ -249,66 +251,66 @@ const Administrator = () => {
         </AnimatePresence>
 
         {/* Section 2: Admin List */}
-        <section className="bg-[#151921] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+        <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
             <div className="flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-[#00C2CB]" />
-              <h2 className="text-xl font-semibold">Current Administrators</h2>
+              <UserCheck className="w-5 h-5 text-cyan-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Current Administrators</h2>
             </div>
-            <Badge variant="outline" className="border-[#00C2CB]/30 text-[#00C2CB] bg-[#00C2CB]/5">
+            <Badge variant="outline" className="border-cyan-200 text-cyan-700 bg-cyan-50">
               {admins.length} Total
             </Badge>
           </div>
 
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-[#0B0E14]/50">
-                <TableRow className="border-gray-800 hover:bg-transparent">
-                  <TableHead className="text-gray-400 font-medium">Administrator</TableHead>
-                  <TableHead className="text-gray-400 font-medium">UID</TableHead>
-                  <TableHead className="text-gray-400 font-medium">Role</TableHead>
-                  <TableHead className="text-gray-400 font-medium">Added On</TableHead>
-                  <TableHead className="text-right text-gray-400 font-medium">Action</TableHead>
+              <TableHeader>
+                <TableRow className="border-gray-200 hover:bg-transparent bg-gray-50/80">
+                  <TableHead className="text-gray-600 font-medium">Administrator</TableHead>
+                  <TableHead className="text-gray-600 font-medium">UID</TableHead>
+                  <TableHead className="text-gray-600 font-medium">Role</TableHead>
+                  <TableHead className="text-gray-600 font-medium">Added On</TableHead>
+                  <TableHead className="text-right text-gray-600 font-medium">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {admins.map((admin) => (
                   <TableRow 
                     key={admin.uid} 
-                    className={`border-gray-800 hover:bg-[#0B0E14]/30 transition-colors cursor-pointer ${selectedUser?.uid === admin.uid ? 'bg-[#00C2CB]/5 border-[#00C2CB]/30' : ''}`}
+                    className={`border-gray-200 hover:bg-gray-50/80 transition-colors cursor-pointer ${selectedUser?.uid === admin.uid ? 'bg-cyan-50/80 border-l-2 border-l-cyan-500' : ''}`}
                     onClick={() => setSelectedUser(admin)}
                   >
-                    <TableCell className="font-medium text-gray-200">
+                    <TableCell className="font-medium text-gray-900">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00C2CB]/20 to-[#00C2CB]/5 border border-[#00C2CB]/20 flex items-center justify-center text-[#00C2CB] text-xs font-bold">
+                        <div className="w-8 h-8 rounded-full bg-cyan-100 border border-cyan-200 flex items-center justify-center text-cyan-700 text-xs font-bold">
                           {admin.email[0].toUpperCase()}
                         </div>
                         {admin.email}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <code className="text-[10px] font-mono bg-[#0B0E14] px-1.5 py-0.5 rounded text-gray-500">
+                      <code className="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-600 border border-gray-200">
                         {admin.uid}
                       </code>
                     </TableCell>
                     <TableCell>
                       <Badge className={`
                         capitalize font-medium
-                        ${admin.role === 'owner' ? 'bg-[#00C2CB] text-black' : 
-                          admin.role === 'editor' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 
-                          'bg-gray-500/10 text-gray-400 border border-gray-500/20'}
+                        ${admin.role === 'owner' ? 'bg-cyan-100 text-cyan-700 border border-cyan-200' : 
+                          admin.role === 'editor' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 
+                          'bg-gray-100 text-gray-600 border border-gray-200'}
                       `}>
                         {admin.role}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-gray-400 text-sm">
+                    <TableCell className="text-gray-600 text-sm">
                       {new Date(admin.addedAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-all"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 transition-all"
                         onClick={() => handleRevoke(admin.uid)}
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
