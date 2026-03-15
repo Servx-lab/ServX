@@ -59,8 +59,28 @@ export const AutoMedicPipeline = () => {
         fetchConnections();
     }, []);
 
+    // Pipeline logic
+    const handleSelectError = (id: string) => {
+        setActiveErrorId(id);
+        setIsHudOpen(false);
+        setActiveStep(0);
+        
+        // Simulate scanning
+        setTimeout(() => setActiveStep(1), 500);
+        setTimeout(() => setActiveStep(2), 2000);
+        setTimeout(() => setActiveStep(3), 3500);
+        setTimeout(() => setActiveStep(4), 5000);
+    };
+
     const isConnected = connections.vercel || connections.render;
     const activeErrors = mockErrors.length;
+
+    // --- AUTO-SELECT FIRST ERROR ---
+    useEffect(() => {
+        if (isConnected && !activeErrorId && mockErrors.length > 0) {
+            handleSelectError(mockErrors[0].id);
+        }
+    }, [isConnected, activeErrorId]);
     
     const activeError = activeErrorId ? mockErrors.find(e => e.id === activeErrorId) : null;
 
@@ -101,18 +121,7 @@ export const AutoMedicPipeline = () => {
         );
     }
 
-    // Pipeline logic
-    const handleSelectError = (id: string) => {
-        setActiveErrorId(id);
-        setIsHudOpen(false);
-        setActiveStep(0);
-        
-        // Simulate scanning
-        setTimeout(() => setActiveStep(1), 500);
-        setTimeout(() => setActiveStep(2), 2000);
-        setTimeout(() => setActiveStep(3), 3500);
-        setTimeout(() => setActiveStep(4), 5000);
-    };
+    // Replay logic
 
     const handleReplay = () => {
         setIsPlaying(true);
