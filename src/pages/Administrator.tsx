@@ -10,7 +10,6 @@ import {
   Settings
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import Sidebar from "@/components/Sidebar";
 import AdminPermissionMatrix from "@/components/AdminPermissionMatrix";
 import { 
   Table, 
@@ -147,10 +146,7 @@ const Administrator = () => {
   };
 
   return (
-    <div className="flex min-h-screen cyber-gradient-bg dot-grid">
-      <Sidebar />
-
-      <main className="ml-56 flex-1 p-8 pt-24 flex flex-col">
+    <main className="flex-1 p-8 pt-24 flex flex-col min-h-full">
         <div className="max-w-6xl mx-auto w-full">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-3 rounded-xl bg-[#00C2CB]/10 border border-[#00C2CB]/20">
@@ -334,8 +330,7 @@ const Administrator = () => {
         </section>
       </div>
     </main>
-  </div>
-);
+  );
 };
 
 export default Administrator;

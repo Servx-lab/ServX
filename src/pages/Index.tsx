@@ -1,15 +1,10 @@
 import { motion } from "framer-motion";
-import Sidebar from "@/components/Sidebar";
 import FlowVisualization from "@/components/FlowVisualization";
 import MetricCards from "@/components/MetricCards";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen cyber-gradient-bg dot-grid">
-      <Sidebar />
-
-      {/* Main Content */}
-      <main className="ml-56 flex-1 p-8 flex flex-col">
+    <main className="flex-1 p-8 flex flex-col min-h-full">
         {/* Breadcrumb */}
         <motion.div
           className="flex items-center gap-2 text-sm text-muted-foreground mb-2"
@@ -56,8 +51,7 @@ const Index = () => {
             <MetricCards />
           </motion.div>
         </div>
-      </main>
-    </div>
+    </main>
   );
 };
 

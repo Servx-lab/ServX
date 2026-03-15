@@ -1,13 +1,10 @@
 import React from "react";
-import Sidebar from "@/components/Sidebar";
 import { Clock, Rocket, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 
 const ComingSoon = () => {
   return (
-    <div className="flex h-screen bg-background overflow-hidden selection:bg-primary/30">
-      <Sidebar />
-      <main className="flex-1 relative flex flex-col items-center justify-center p-8 ml-56">
+    <main className="flex-1 relative flex flex-col items-center justify-center p-8 min-h-full overflow-auto selection:bg-primary/30">
         {/* Background Effects */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[128px] mix-blend-screen" />
@@ -45,8 +42,7 @@ const ComingSoon = () => {
             </div>
           </div>
         </motion.div>
-      </main>
-    </div>
+    </main>
   );
 };
 

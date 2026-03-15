@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
-import Sidebar from "@/components/Sidebar";
 import { DatabaseController } from "@/components/Databases/DatabaseList";
 import { DatabaseType } from "@/components/Databases/types";
 
@@ -9,11 +8,7 @@ const Databases = () => {
   const sourceParam = searchParams.get('source');
   
   return (
-    <div className="flex min-h-screen cyber-gradient-bg dot-grid text-foreground">
-      <Sidebar />
-
-      {/* Main Content */}
-      <main className="ml-56 flex-1 p-8 flex flex-col h-screen overflow-hidden">
+    <main className="flex-1 p-8 flex flex-col h-full overflow-hidden">
         {/* Breadcrumb */}
         <motion.div
           className="flex items-center gap-2 text-sm text-muted-foreground mb-6"
@@ -55,8 +50,7 @@ const Databases = () => {
         >
             <DatabaseController key={sourceParam} initialSource={sourceParam as DatabaseType} />
         </motion.div>
-      </main>
-    </div>
+    </main>
   );
 };
 

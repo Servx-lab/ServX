@@ -38,7 +38,6 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Sidebar from "@/components/Sidebar";
 import { ProjectProvider, useProject } from "@/contexts/ProjectContext";
 import {
   DropdownMenu,
@@ -738,10 +737,7 @@ const ProjectSelectDropdown = () => {
 const OperationsContent = () => {
     const navigate = useNavigate();
     return (
-        <div className="flex h-screen w-full bg-white text-black overflow-hidden font-sans">
-            <Sidebar />
-            
-            <main className="flex-1 flex flex-col h-full pl-56 overflow-hidden relative z-0">
+        <main className="flex-1 flex flex-col h-full overflow-hidden relative z-0 bg-white text-black font-sans">
                  {/* Page Header */}
                  <div className="p-8 pb-4 border-b border-gray-200 bg-white/80 backdrop-blur-md z-1">
                     <div className="flex items-center gap-2 text-gray-500 text-xs font-mono mb-2 uppercase tracking-widest">
@@ -800,8 +796,7 @@ const OperationsContent = () => {
 
                     </div>
                 </div>
-            </main>
-        </div>
+        </main>
     );
 };
 

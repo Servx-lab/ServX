@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,6 +21,7 @@ import ComingSoon from "./pages/ComingSoon";
 import Emails from "./pages/Emails";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "@/components/RequireAuth";
+import DashboardLayout from "@/components/DashboardLayout";
 
 const queryClient = new QueryClient();
 
@@ -36,15 +37,29 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<AuthPage />} />
 
-            {/* Protected Routes (Require Auth + GitHub Link) */}
+            {/* Protected routes with persistent Sidebar (no blink on navigation) */}
             <Route
-              path="/dashboard"
               element={
                 <RequireAuth>
-                  <Index />
+                  <DashboardLayout />
                 </RequireAuth>
               }
-            />
+            >
+              <Route path="/dashboard" element={<Index />} />
+              <Route path="/databases" element={<Databases />} />
+              <Route path="/github" element={<GitHub />} />
+              <Route path="/hosting/:providerId" element={<HostingRender />} />
+              <Route path="/auto-medic" element={<AutoMedic />} />
+              <Route path="/operations" element={<Operations />} />
+              <Route path="/admin" element={<Administrator />} />
+              <Route path="/attack-paths" element={<AttackPath />} />
+              <Route path="/exposure" element={<ComingSoon />} />
+              <Route path="/scenarios" element={<ComingSoon />} />
+              <Route path="/emails" element={<Emails />} />
+              <Route path="/reports" element={<ComingSoon />} />
+            </Route>
+
+            {/* Protected routes without sidebar layout */}
             <Route
               path="/onboarding"
               element={
@@ -54,98 +69,10 @@ const App = () => (
               }
             />
             <Route
-              path="/databases"
-              element={
-                <RequireAuth>
-                  <Databases />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/github"
-              element={
-                <RequireAuth>
-                  <GitHub />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/hosting/:providerId"
-              element={
-                <RequireAuth>
-                  <HostingRender />
-                </RequireAuth>
-              }
-            />
-            <Route
               path="/settings/connections"
               element={
                 <RequireAuth>
                   <InfraSettings />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/auto-medic"
-              element={
-                <RequireAuth>
-                  <AutoMedic />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/operations"
-              element={
-                <RequireAuth>
-                  <Operations />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <RequireAuth>
-                  <Administrator />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/attack-paths"
-              element={
-                <RequireAuth>
-                  <AttackPath />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/exposure"
-              element={
-                <RequireAuth>
-                  <ComingSoon />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/scenarios"
-              element={
-                <RequireAuth>
-                  <ComingSoon />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/emails"
-              element={
-                <RequireAuth>
-                  <Emails />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/reports"
-              element={
-                <RequireAuth>
-                  <ComingSoon />
                 </RequireAuth>
               }
             />

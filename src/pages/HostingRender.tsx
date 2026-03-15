@@ -1,12 +1,9 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import Sidebar from "@/components/Sidebar";
 import HostingSidebar from "@/components/Hosting/HostingSidebar";
 import HostingIntegrationCard from "@/components/Hosting/HostingIntegrationCard";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 const HostingRender = () => {
-    const isMobile = useIsMobile();
     const { providerId } = useParams();
 
     const getProviderName = (id: string | undefined): 'Render' | 'Vercel' | 'AWS' | 'Railway' | 'DigitalOcean' | 'Fly.io' => {
@@ -31,11 +28,8 @@ const HostingRender = () => {
     };
 
     return (
-        <div className="flex h-screen w-full bg-background overflow-hidden relative">
-            {!isMobile && <Sidebar />}
-            
-            <main className={`flex-1 flex h-full overflow-hidden transition-all duration-300 ${isMobile ? 'pl-0' : 'pl-56'} relative z-0`}>
-                <HostingSidebar />
+        <main className="flex-1 flex h-full overflow-hidden relative z-0 bg-background">
+            <HostingSidebar />
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
                     <div className="flex-1 overflow-auto p-4 md:p-6 mb-20 md:mb-0 scroll-smooth">
                         <div className="max-w-[1600px] mx-auto space-y-6 animate-fade-in pb-10">
@@ -54,8 +48,7 @@ const HostingRender = () => {
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
+        </main>
     );
 };
 

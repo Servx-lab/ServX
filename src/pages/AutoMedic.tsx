@@ -17,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Sidebar from "@/components/Sidebar";
 
 const AutoMedic = () => {
   const [searchParams] = useSearchParams();
@@ -48,10 +47,7 @@ const AutoMedic = () => {
   };
 
   return (
-    <div className="flex h-screen w-full bg-white text-black overflow-hidden font-sans">
-      <Sidebar />
-      
-      <main className="flex-1 flex flex-col h-full pl-56 overflow-hidden">
+    <main className="flex-1 flex flex-col h-full overflow-hidden bg-white text-black font-sans">
         {/* Header */}
         <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md px-8 py-5 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
@@ -314,8 +310,7 @@ const AutoMedic = () => {
 
           </div>
         </div>
-      </main>
-    </div>
+    </main>
   );
 };
 
