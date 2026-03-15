@@ -30,7 +30,9 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend
+  Legend,
+  RadialBarChart,
+  RadialBar
 } from "recharts";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -342,163 +344,211 @@ const GitHubIntegration = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Commits Bar Chart (Compute Activity style) */}
-                    <div className="lg:col-span-2 glass-panel p-6 rounded-xl border border-gray-200 bg-white shadow-sm">
-                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-black">
-                            <GitCommit className="w-5 h-5 text-blue-500" /> Commit Activity
-                        </h3>
-                        <div className="h-[300px] w-full">
-                            {commitData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={commitData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                                    <XAxis dataKey="date" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
-                                    <Tooltip 
-                                        cursor={{ fill: '#f3f4f6' }}
-                                        contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                                        itemStyle={{ color: '#000' }}
-                                    />
-                                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                                        {commitData.map((entry, index) => (
-                                            <Cell 
-                                                key={`cell-${index}`} 
-                                                fill={entry.count === maxCommitCount ? '#3B82F6' : '#9CA3AF'} 
-                                            />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                            ) : (
-                                <div className="flex h-full items-center justify-center text-gray-400">No commit data available</div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Languages Pie Chart (Job Statistics style) */}
-                    <div className="glass-panel p-6 rounded-xl border border-gray-200 bg-white shadow-sm">
-                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-black">
-                            <Code className="w-5 h-5 text-green-500" /> Language Statistics
-                        </h3>
-                        <div className="h-[300px] w-full flex flex-col items-center justify-center relative">
-                            {languageData.length > 0 ? (
-                                <>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={languageData}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={70}
-                                                outerRadius={90}
-                                                paddingAngle={2}
-                                                dataKey="bytes"
-                                                stroke="none"
-                                            >
-                                                {languageData.map((entry, index) => (
-                                                    <Cell 
-                                                        key={`cell-${index}`} 
-                                                        fill={index === 0 ? '#10B981' : index === 1 ? '#3B82F6' : index === 2 ? '#F59E0B' : index === 3 ? '#EF4444' : '#9CA3AF'} 
-                                                    />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip 
-                                                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                                                itemStyle={{ color: '#000' }}
-                                            />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                        <span className="text-3xl font-bold text-black">{languageData[0]?.name}</span>
-                                        <span className="text-xs text-gray-500">Top Language</span>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="flex h-full items-center justify-center text-gray-400">No language data</div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Deployments Section (stacked cards) */}
-                    <div className="glass-panel p-6 rounded-xl border border-gray-200 bg-white shadow-sm min-h-[300px]">
-                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-black">
-                            <Rocket className="w-5 h-5 text-yellow-500" /> Recent Deployments
-                        </h3>
-                        <ScrollArea className="h-[300px] pr-4">
-                            <div className="space-y-3">
-                                {repoDetails.deployments && repoDetails.deployments.length > 0 ? (
-                                    repoDetails.deployments.map(dep => (
-                                        <div key={dep.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between group hover:border-yellow-300 transition-colors">
-                                            <div className="flex items-center gap-2.5 min-w-0">
-                                                {dep.creator_avatar && (
-                                                    <img src={dep.creator_avatar} alt={dep.creator || ''} className="w-6 h-6 rounded-full flex-shrink-0" />
-                                                )}
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-medium capitalize flex items-center gap-2 text-black">
-                                                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dep.state === 'success' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                                                        {dep.environment}
-                                                    </p>
-                                                    <p className="text-xs text-gray-500 mt-0.5 truncate">
-                                                        {format(new Date(dep.created_at), 'MMM dd, HH:mm')} by {dep.creator || 'bot'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <a href={dep.url} target="_blank" className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-gray-200 rounded-md flex-shrink-0 text-gray-600">
-                                                <ExternalLink className="w-3.5 h-3.5" />
-                                            </a>
-                                        </div>
-                                    ))
+                <div className="flex flex-col gap-6">
+                    {/* Top Row: Commits and Contributors side-by-side */}
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+                        {/* Commits Bar Chart (Wide-ish) */}
+                        <div className="xl:col-span-7 glass-panel p-6 rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col">
+                            <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-black">
+                                <GitCommit className="w-5 h-5 text-blue-500" /> Commit Activity
+                            </h3>
+                            <div className="flex-1 min-h-[300px] w-full">
+                                {commitData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={commitData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                                        <XAxis dataKey="date" stroke="#6b7280" fontSize={11} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#6b7280" fontSize={11} tickLine={false} axisLine={false} />
+                                        <Tooltip 
+                                            cursor={{ fill: '#f3f4f6' }}
+                                            contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                                            itemStyle={{ color: '#000' }}
+                                        />
+                                        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                                            {commitData.map((entry, index) => (
+                                                <Cell 
+                                                    key={`cell-${index}`} 
+                                                    fill={entry.count === maxCommitCount ? '#3B82F6' : '#9CA3AF'} 
+                                                />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center h-40 text-gray-400 text-sm bg-gray-50 rounded-lg border-dashed border border-gray-200">
-                                        <p>No deployments found</p>
-                                    </div>
+                                    <div className="flex h-full items-center justify-center text-gray-400">No commit data available</div>
                                 )}
                             </div>
-                        </ScrollArea>
+                        </div>
+
+                        {/* Contributor Activity (Right side of top row) */}
+                        <div className="xl:col-span-5 glass-panel p-6 rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col">
+                            <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-black">
+                                <Users className="w-5 h-5 text-red-500" /> Contributor Activity
+                            </h3>
+                            <div className="flex-1 min-h-[300px] w-full">
+                                 {contributorData.length > 0 ? (
+                                 <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={contributorData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorRed" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#EF4444" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                                        <XAxis dataKey="name" stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                                        <Tooltip 
+                                            contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                                            itemStyle={{ color: '#000' }}
+                                        />
+                                        <Area 
+                                            type="stepAfter" 
+                                            dataKey="contributions" 
+                                            stroke="#EF4444" 
+                                            strokeWidth={2}
+                                            fillOpacity={1} 
+                                            fill="url(#colorRed)" 
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                                ) : (
+                                    <div className="flex h-full items-center justify-center text-gray-400">No contributor data</div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Contributors Step Area Chart (Pipeline Activity style) */}
-                    <div className="lg:col-span-2 glass-panel p-6 rounded-xl border border-gray-200 bg-white shadow-sm">
-                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-black">
-                            <Users className="w-5 h-5 text-red-500" /> Contributor Activity
-                        </h3>
-                        <div className="h-[300px] w-full">
-                             {contributorData.length > 0 ? (
-                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={contributorData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="colorRed" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor="#EF4444" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                                    <XAxis dataKey="name" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
-                                    <Tooltip 
-                                        contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                                        itemStyle={{ color: '#000' }}
-                                    />
-                                    <Area 
-                                        type="stepAfter" 
-                                        dataKey="contributions" 
-                                        stroke="#EF4444" 
-                                        strokeWidth={2}
-                                        fillOpacity={1} 
-                                        fill="url(#colorRed)" 
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                            ) : (
-                                <div className="flex h-full items-center justify-center text-gray-400">No contributor data</div>
-                            )}
+                    {/* Bottom Row: Language Distribution (Wide) and Deployments side-by-side */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                        {/* Combined Language Analysis (Radial + Horizontal) */}
+                        <div className="lg:col-span-8 glass-panel p-6 rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col">
+                             <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-black">
+                                <Code className="w-5 h-5 text-green-500" /> Language Distribution
+                            </h3>
+                            
+                            <div className="flex-1 flex gap-12 min-h-[300px]">
+                                {/* Left Side: Radial Chart (1.3 ratio ~3.6 total) */}
+                                <div className="flex-[1.3] flex flex-col items-center justify-center border-r border-gray-100 pr-6 gap-2">
+                                    {languageData.length > 0 ? (
+                                        <>
+                                            <div className="w-full h-full min-h-[220px] relative">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <RadialBarChart 
+                                                        innerRadius="30%" 
+                                                        outerRadius="100%" 
+                                                        data={[...languageData].reverse().map((l, i) => {
+                                                            const colors = ['#A855F7', '#3B82F6', '#F59E0B', '#EF4444', '#10B981', '#9CA3AF'];
+                                                            // Calculate original index to keep color mapping consistent
+                                                            const originalIndex = languageData.length - 1 - i;
+                                                            return {
+                                                                name: l.name,
+                                                                value: l.bytes,
+                                                                fill: colors[originalIndex % 6]
+                                                            };
+                                                        })} 
+                                                        startAngle={180} 
+                                                        endAngle={-180}
+                                                    >
+                                                        <RadialBar
+                                                            background
+                                                            dataKey="value"
+                                                            cornerRadius={10}
+                                                        />
+                                                        <Tooltip 
+                                                            contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                                                            itemStyle={{ color: '#000' }}
+                                                        />
+                                                    </RadialBarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                            <div className="flex flex-col items-center justify-center text-center mt-2">
+                                                <span className="text-xl font-bold text-black leading-none">{languageData[0]?.name}</span>
+                                                <span className="text-[10px] text-gray-500 uppercase tracking-tighter font-semibold mt-1">Main Development</span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="text-gray-400 text-xs">No language data</div>
+                                    )}
+                                </div>
+
+                                {/* Right Side: Horizontal Bars (2.3 ratio ~3.6 total) */}
+                                <div className="flex-[2.3] flex flex-col justify-center space-y-5">
+                                     {languageData.length > 0 ? (
+                                        languageData.map((entry, index) => {
+                                            const colors = ['#A855F7', '#3B82F6', '#F59E0B', '#EF4444', '#10B981', '#9CA3AF'];
+                                            const barColor = colors[index % colors.length];
+                                            const totalBytes = languageData.reduce((acc, curr) => acc + curr.bytes, 0);
+                                            const percentage = ((entry.bytes / totalBytes) * 100).toFixed(1);
+                                            
+                                            return (
+                                                <div key={entry.name} className="space-y-1.5 group">
+                                                    <div className="flex justify-between items-center px-0.5">
+                                                        <span className="text-xs font-bold text-gray-700 group-hover:text-black transition-colors">{entry.name}</span>
+                                                        <span className="text-[10px] font-semibold text-gray-400">{percentage}%</span>
+                                                    </div>
+                                                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden relative border border-gray-50/50">
+                                                        <motion.div 
+                                                            initial={{ width: 0 }}
+                                                            animate={{ width: `${percentage}%` }}
+                                                            transition={{ duration: 1, ease: "easeOut", delay: index * 0.1 }}
+                                                            className="h-full rounded-full shadow-sm"
+                                                            style={{ backgroundColor: barColor }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-gray-400 text-xs text-center">N/A</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Deployments Section (Right side) */}
+                        <div className="lg:col-span-4 glass-panel p-6 rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col">
+                             <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-black">
+                                <Rocket className="w-5 h-5 text-yellow-500" /> Recent Deployments
+                            </h3>
+                            <ScrollArea className="flex-1 pr-1">
+                                <div className="space-y-3">
+                                    {repoDetails.deployments && repoDetails.deployments.length > 0 ? (
+                                        repoDetails.deployments.map(dep => (
+                                            <div key={dep.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between group hover:border-yellow-300 transition-colors">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    {dep.creator_avatar && (
+                                                        <img src={dep.creator_avatar} alt={dep.creator || ''} className="w-7 h-7 rounded-full flex-shrink-0 border border-gray-200" />
+                                                    )}
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-semibold capitalize flex items-center gap-1.5 text-black">
+                                                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dep.state === 'success' ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                                                            {dep.environment}
+                                                        </p>
+                                                        <p className="text-[10px] text-gray-500 mt-0.5 truncate uppercase tracking-tighter">
+                                                            {format(new Date(dep.created_at), 'MMM dd')} • {dep.creator || 'bot'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <a href={dep.url} target="_blank" className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-white hover:shadow-sm rounded-md flex-shrink-0 text-gray-500 border border-transparent hover:border-gray-200">
+                                                    <ExternalLink className="w-3 h-3" />
+                                                </a>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-10 text-gray-400 text-xs bg-gray-50/50 rounded-lg border-dashed border border-gray-200">
+                                            <Rocket className="w-8 h-8 opacity-10 mb-2" />
+                                            <p>No deployments</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </ScrollArea>
                         </div>
                     </div>
                 </div>
 
                 {/* KPI Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-6 border-t border-gray-100">
                     <KpiCard icon={Star} label="Stars" value={repoDetails.stargazers_count} color="text-yellow-500" />
                     <KpiCard icon={GitPullRequest} label="Forks" value={repoDetails.forks || 0} color="text-purple-500" />
                     <KpiCard icon={Activity} label="Open Issues" value={repoDetails.open_issues || 0} color="text-red-500" />
