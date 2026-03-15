@@ -7,9 +7,9 @@ import Sidebar from "@/components/Sidebar";
  */
 const DashboardLayout = () => {
   return (
-    <div className="flex min-h-screen w-full cyber-gradient-bg dot-grid">
+    <div className="flex h-screen w-full cyber-gradient-bg dot-grid overflow-hidden">
       <Sidebar />
-      <div className="ml-56 flex-1 flex flex-col min-h-screen">
+      <div className="ml-56 flex-1 flex flex-col h-screen overflow-hidden">
         <Outlet />
       </div>
     </div>

@@ -227,7 +227,7 @@ const GitHubIntegration = () => {
   }
 
   return (
-    <div className="flex h-full w-full bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200">
+    <div className="flex h-full w-full bg-white overflow-hidden shadow-sm border border-gray-200">
       {/* Sidebar List */}
       <div className="w-80 border-r border-gray-200 flex flex-col bg-gray-50 relative">
         <div className="px-5 py-5 border-b border-gray-200 bg-gray-50">
