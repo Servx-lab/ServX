@@ -5,6 +5,8 @@ const User = require('../models/User');
 const admin = require('../utils/firebaseAdmin'); // Firebase Admin
 const UserConnection = require('../models/UserConnection');
 const { decrypt } = require('../utils/encryption');
+const { logNewUserToSheet } = require('../services/sheetsService');
+const { sendServXAlert } = require('../services/emailService');
 const router = express.Router();
 
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
@@ -173,6 +175,18 @@ router.post('/sync', requireAuth, async (req, res) => {
         githubAccessToken: githubAccessToken || undefined,
         githubId: githubId || undefined,
       });
+
+      // New User Logging Pipeline: Sheet + Welcome Email
+      try {
+        await logNewUserToSheet({ uid, email, role: user.role || 'user' });
+      } catch (sheetErr) {
+        console.error('[Auth] Sheet log failed (user still created):', sheetErr.message);
+      }
+      try {
+        await sendServXAlert(email, 'Welcome to ServX', '<h1>HTML Template Coming Soon</h1>');
+      } catch (emailErr) {
+        console.error('[Auth] Welcome email failed:', emailErr.message);
+      }
     }
 
     res.json({ message: 'User synced', userId: user._id });

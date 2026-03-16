@@ -177,7 +177,7 @@ const StaticAuth = () => {
                 {!isLogin && (
                     <div className="flex items-center gap-2">
                         <input type="checkbox" id="terms" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} className="rounded border-gray-300" />
-                        <Label htmlFor="terms" className="text-sm text-gray-600">I agree to the <a href="#" className="text-blue-600 hover:underline">Terms of Service</a></Label>
+                        <Label htmlFor="terms" className="text-sm text-gray-600">I agree to the <Link to="/terms" className="text-blue-600 hover:underline">Terms of Service</Link></Label>
                     </div>
                 )}
                 <Button type="submit" disabled={isLoading || (!isLogin && !agreeTerms)} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg">
@@ -485,7 +485,9 @@ const Footer = () => (
         <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
             <ServXLogo showTagline={false} size="sm" />
             <p className="text-xs text-gray-500 font-mono">100% OPEN SOURCE INFRASTRUCTURE COMMAND</p>
-            <div className="flex gap-4">
+            <div className="flex items-center gap-6">
+                <Link to="/privacy" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Privacy Policy</Link>
+                <Link to="/terms" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Terms of Service</Link>
                 <a href="#" className="text-gray-500 hover:text-gray-900"><Github className="w-5 h-5" /></a>
             </div>
         </div>

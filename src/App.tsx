@@ -19,6 +19,8 @@ import Administrator from "./pages/Administrator";
 import AttackPath from "./pages/AttackPath";
 import ComingSoon from "./pages/ComingSoon";
 import Emails from "./pages/Emails";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "@/components/RequireAuth";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -36,6 +38,8 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
 
             {/* Protected routes with persistent Sidebar (no blink on navigation) */}
             <Route

@@ -15,6 +15,7 @@ dist-ssr
 # Firebase service account (sensitive)
 server/firebase-service-account.json
 server/.env
+ServX.json
 
 # Editor directories and files
 .vscode/*
