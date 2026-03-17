@@ -9,6 +9,7 @@ import Databases from "./pages/Databases";
 import GitHub from "./pages/GitHub";
 import HostingRender from "./pages/HostingRender";
 import InfraSettings from "./pages/InfraSettings";
+import ProfileSettings from "./pages/ProfileSettings";
 import AutoMedic from "./pages/AutoMedic";
 import Operations from "./pages/Operations";
 import NotFound from "./pages/NotFound";
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/scenarios" element={<ComingSoon />} />
               <Route path="/emails" element={<Emails />} />
               <Route path="/reports" element={<ComingSoon />} />
+              <Route path="/settings/profile" element={<ProfileSettings />} />
             </Route>
 
             {/* Protected routes without sidebar layout */}
@@ -80,7 +82,6 @@ const App = () => (
                 </RequireAuth>
               }
             />
-
             {/* Special Protected Route (Requires Auth, but allows No GitHub Link) */}
             <Route
               path="/bridge"

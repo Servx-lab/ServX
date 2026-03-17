@@ -62,4 +62,25 @@ async function sendServXAlert(to, subject, htmlBody) {
   }
 }
 
-module.exports = { sendServXAlert };
+/**
+ * Sends an OTP email for email verification.
+ * Uses the same Gmail API with refresh_token from env.
+ * @param {string} to - Recipient email
+ * @param {string} otp - 6-digit OTP code
+ * @returns {Promise<void>}
+ */
+async function sendOTPEmail(to, otp) {
+  const subject = 'ServX – Verify your email';
+  const htmlBody = `
+    <div style="font-family: system-ui, sans-serif; max-width: 400px; margin: 0 auto;">
+      <h2 style="color: #0f172a;">Verify your email</h2>
+      <p style="color: #475569;">Use this code to verify your email address on ServX:</p>
+      <p style="font-size: 28px; font-weight: 700; letter-spacing: 6px; color: #0f172a; background: #f1f5f9; padding: 16px; border-radius: 8px; text-align: center;">${otp}</p>
+      <p style="color: #94a3b8; font-size: 12px;">This code expires in 5 minutes. If you didn't request this, you can ignore this email.</p>
+    </div>
+  `;
+  await sendServXAlert(to, subject, htmlBody);
+  console.log('[Email] OTP sent to:', to);
+}
+
+module.exports = { sendServXAlert, sendOTPEmail };

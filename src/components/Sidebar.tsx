@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import SecurityInfo from "./SecurityInfo";
 import WorkspaceBranding from "./WorkspaceBranding";
@@ -59,6 +59,7 @@ const bottomItems = [
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <div className="glass-sidebar w-56 h-screen flex flex-col py-6 px-3 fixed left-0 top-0 z-50 overflow-y-auto no-scrollbar">
@@ -158,11 +159,11 @@ const Sidebar = () => {
         <DropdownMenuContent align="end" className="w-52 mb-2 side-dropdown-content">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="cursor-pointer gap-2">
+          <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => navigate('/settings/profile')}>
             <UserIcon className="w-4 h-4" />
             <span>Profile Settings</span>
           </DropdownMenuItem>
-          <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => (window.location.href = '/settings')}>
+          <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => navigate('/settings/connections')}>
             <Settings className="w-4 h-4" />
             <span>Configuration</span>
           </DropdownMenuItem>

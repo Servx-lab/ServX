@@ -13,6 +13,7 @@ const databaseExplorerRoutes = require('./routes/databaseExplorerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const gmailRoutes = require('./routes/gmailRoutes');
 const operationsRoutes = require('./routes/operationsRoutes');
+const profileRoutes = require('./routes/profileRoutes');
 const requireAuth = require('./middleware/requireAuth');
 const autoMedicMiddleware = require('./middleware/autoMedicMiddleware');
 const { encrypt } = require('./utils/encryption');
@@ -58,6 +59,7 @@ app.use('/api/oauth', oauthRoutes);
 app.use('/api/db', databaseExplorerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/operations', operationsRoutes);
+app.use('/api/profile', profileRoutes);
 
 // Database Connection
 const connectDB = async () => {

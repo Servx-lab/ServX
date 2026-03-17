@@ -166,11 +166,12 @@ router.post('/sync', requireAuth, async (req, res) => {
       if (githubId) user.githubId = githubId;
       await user.save();
     } else {
-      // Create new user
+      // Create new user (email may be missing for GitHub-only sign-ins)
+      const userEmail = email || undefined;
       user = await User.create({
         uid,
-        email,
-        name: name || email.split('@')[0],
+        email: userEmail,
+        name: name || (userEmail ? userEmail.split('@')[0] : 'User'),
         avatarUrl: avatarUrl || '',
         githubAccessToken: githubAccessToken || undefined,
         githubId: githubId || undefined,
@@ -178,14 +179,16 @@ router.post('/sync', requireAuth, async (req, res) => {
 
       // New User Logging Pipeline: Sheet + Welcome Email
       try {
-        await logNewUserToSheet({ uid, email, role: user.role || 'user' });
+        await logNewUserToSheet({ uid, email: userEmail || uid, role: user.role || 'user' });
       } catch (sheetErr) {
         console.error('[Auth] Sheet log failed (user still created):', sheetErr.message);
       }
-      try {
-        await sendServXAlert(email, 'Welcome to ServX', '<h1>HTML Template Coming Soon</h1>');
-      } catch (emailErr) {
-        console.error('[Auth] Welcome email failed:', emailErr.message);
+      if (userEmail) {
+        try {
+          await sendServXAlert(userEmail, 'Welcome to ServX', '<h1>HTML Template Coming Soon</h1>');
+        } catch (emailErr) {
+          console.error('[Auth] Welcome email failed:', emailErr.message);
+        }
       }
     }
 
