@@ -4,8 +4,8 @@
   "description": "Backend for Orizons dashboard",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "start": "tsx server.js",
+    "dev": "tsx --watch server.js"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.1",
@@ -19,5 +19,9 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.1.0",
     "mongoose": "^9.2.4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "tsx": "^4.21.0"
   }
 }

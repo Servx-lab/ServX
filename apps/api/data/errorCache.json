@@ -1,0 +1,1611 @@
+{
+  "76328310044312beb255b3a0d242e2e06e15994acbe8c69ca761a2f81c36e4d0": {
+    "originalError": "MongooseServerSelectionError: Connect to cluster0.mongodb.net:27017 timed out",
+    "diagnosis": "MongoDB Connection Timeout. The application could not reach the database cluster within the default 30s window.",
+    "suggestedFix": "// Check your IP Whitelist in MongoDB Atlas\n// Ensure your current IP is allowed in Network Access",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.296Z"
+  },
+  "0f74c3fb1f9b71047dcab26384ef05859d62eef507f3953dbf1c9ecdc07df35e": {
+    "originalError": "MongoServerError: bad auth : Authentication failed.",
+    "diagnosis": "MongoDB Authentication Failed. The provided username or password in the connection string is incorrect.",
+    "suggestedFix": "// specific to .env file\n// Check MONGODB_URI format: mongodb+srv://<user>:<password>@cluster...\n// Ensure special characters in password are URL encoded",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "20648dc14a51e470422b57d95a520808452dacc494bdf39f77562019919d9813": {
+    "originalError": "MongoServerError: E11000 duplicate key error collection: users index: email_1 dup key",
+    "diagnosis": "Duplicate Key Error. Attempted to create a record with a unique field (likely 'email') that already exists.",
+    "suggestedFix": "try {\n  await User.create(userData);\n} catch (err) {\n  if (err.code === 11000) {\n    return res.status(409).json({ message: 'Email already exists' });\n  }\n}",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "aee1c25c34e37056f226c61e1da41373505bcfbd83d6d6bec620df7424b1246a": {
+    "originalError": "ValidationError: User validation failed: email: Path `email` is required.",
+    "diagnosis": "Mongoose Validation Error. A required field was missing from the document payload.",
+    "suggestedFix": "// Ensure payload contains all required fields\nconst { email, password } = req.body;\nif (!email) {\n  throw new Error('Email is required');\n}",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "ac58ac395cd80463f646f7b142945603bed25dae6217662e5b7edbf67b0284ad": {
+    "originalError": "CastError: Cast to ObjectId failed for value \"123\" (type string) at path \"_id\" for model \"User\"",
+    "diagnosis": "Invalid MongoDB ObjectId. The ID provided in the route parameter is not a valid 24-character hex string.",
+    "suggestedFix": "const mongoose = require('mongoose');\nif (!mongoose.Types.ObjectId.isValid(id)) {\n  return res.status(400).json({ message: 'Invalid ID format' });\n}",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "e34d44affac104fac07badfb90ed89aa682f71148c95443b05dfacc9666e13c6": {
+    "originalError": "Error: listen EADDRINUSE: address already in use :::5000",
+    "diagnosis": "Port Already In Use. Another process is already running on the specified port (usually 5000 or 3000).",
+    "suggestedFix": "// Kill the process using the port (Linux/Mac)\n// terminal: lsof -i :5000 | xargs kill -9\n\n// OR change the port in .env\nPORT=5001",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "59183c456e23105ac27f6f7c0ea86c00bbd8ab4d0195ba7fe89299cf18de5e16": {
+    "originalError": "SyntaxError: Unexpected token } in JSON at position 42",
+    "diagnosis": "Malformed JSON Payload. The request body contains invalid JSON syntax (e.g., missing quotes or trailing commas).",
+    "suggestedFix": "// User needs to fix their request body\n// Ensure standard JSON formatting (double quotes keys)",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "96f4608d60691884e6f3f8ae75e645d8a7327fcd5bfcc057b06722761e93a188": {
+    "originalError": "Access to fetch at '...' from origin '...' has been blocked by CORS policy",
+    "diagnosis": "CORS Policy Block. The frontend origin is not whitelisted in the server's CORS configuration.",
+    "suggestedFix": "app.use(cors({\n  origin: ['http://localhost:5173', 'https://your-domain.com'],\n  credentials: true\n}));",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "72e1d28bb1b94f171f6a1466846ba8dcc63e1c11c8a9da9a4e2a1aff9d72a507": {
+    "originalError": "MulterError: File too large",
+    "diagnosis": "File Upload Limit Exceed. The uploaded file size exceeds the configured limit in Multer.",
+    "suggestedFix": "const upload = multer({\n  limits: { fileSize: 5 * 1024 * 1024 } // Increase limit to 5MB\n});",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "3006f18c688c17e90c66dc621e7f21ae48c1652754f65e84c65370e6d6769d31": {
+    "originalError": "Error: Cannot POST /api/v1/user/logn",
+    "diagnosis": "404 Not Found. The requested route endpoint does not exist on the server (check for typos).",
+    "suggestedFix": "// Check route definitions\n// user/login vs user/logn\napp.use('*', (req, res) => {\n  res.status(404).json({ message: 'Route not found' });\n});",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "8a9d3b8ba2345ffcce5e41b676962b0c7fcad1f0a19ab1d16fac9cf5cc84dddf": {
+    "originalError": "TypeError: Cannot read properties of undefined (reading 'map')",
+    "diagnosis": "Accessed property of undefined. Attempted to .map() over an array that is currently undefined.",
+    "suggestedFix": "// Add optional chaining or default value\nconst items = data?.items || [];\nitems.map(item => ...)",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "0779fe8d3318ed946a57d6301e4e1769d607e513b8fbfa5b0fea039cac4cb5b3": {
+    "originalError": "TypeError: Cannot read properties of null (reading 'toString')",
+    "diagnosis": "Accessed property of null. The variable is explicitly null when an object was expected.",
+    "suggestedFix": "if (value !== null) {\n  console.log(value.toString());\n}",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "fef13af8bb9d73807db5a0eba97f72100b46da3b9b7c5526f2d8ce1fc32b3fff": {
+    "originalError": "TypeError: Assignment to constant variable.",
+    "diagnosis": "Reassigned Const. Attempted to change the value of a variable declared with 'const'.",
+    "suggestedFix": "// Change 'const' to 'let'\nlet count = 0;\ncount = 1;",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "e624ac7af5e54100e5ae0990df786cc403cc2cfd45074e9b84d006d37766fa8e": {
+    "originalError": "TypeError: user.save is not a function",
+    "diagnosis": "Method Not Found. 'user.save' is not a function. The object 'user' might be a plain JSON object, not a Mongoose Document.",
+    "suggestedFix": "// Ensure you are operating on a Mongoose Model instance\nconst user = new User(req.body);\nawait user.save();",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "a442139f649f139bcb623a04d889b8b50ca470e803399b57425484cf7ecf24e9": {
+    "originalError": "ReferenceError: Cannot access 'User' before initialization",
+    "diagnosis": "Circular Dependency / Hoisting Issue. A module requires another module that requires the first one.",
+    "suggestedFix": "// Check import order\n// Break the circular dependency by moving shared logic to a third file",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "a3c6acb2bd2d4ce9493edb2531985685200ebcc9bf1ad823e22b994da1190181": {
+    "originalError": "TokenExpiredError: jwt expired",
+    "diagnosis": "JWT Expired. The access token provided in the Authorization header has passed its expiration time.",
+    "suggestedFix": "// Client: Refresh the token using the refresh token endpoint\n// Server:\nif (err.name === 'TokenExpiredError') {\n  return res.status(401).json({ code: 'TOKEN_EXPIRED' });\n}",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.297Z"
+  },
+  "74ae3a1ef953ebb7739f61977873737cdaddd14071a20a33db4c617f94bfc11f": {
+    "originalError": "JsonWebTokenError: jwt malformed",
+    "diagnosis": "Malformed JWT. The token structure is invalid (missing parts or corrupted header/tail).",
+    "suggestedFix": "// Ensure the header format is \"Bearer <token>\"\nconst token = req.headers.authorization.split(' ')[1];",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "3a4938a65064fa75a75654d093d43239024d843de155ae3ebc7941f4d2f53796": {
+    "originalError": "JsonWebTokenError: invalid signature",
+    "diagnosis": "Invalid JWT Signature. The token was signed with a different secret key than the one on the server.",
+    "suggestedFix": "// Check JWT_SECRET in .env\n// Ensure it matches the one used to generate the token",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "f4bdecf5ccf0537fbf4e4710337dc41afcec4df9b583095650596ee67ae19953": {
+    "originalError": "Error: data and hash arguments required",
+    "diagnosis": "Bcrypt Error. Attempted to compare a password against an undefined hash.",
+    "suggestedFix": "// Ensure user has a password set\nif (!user.password) {\n  throw new Error('User has no password set');\n}\nawait bcrypt.compare(candidate, user.password);",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "50931cc476a3014d3edb3a276eb52e5c5e38f71c80f692847084bc5bc920a392": {
+    "originalError": "UnhandledPromiseRejectionWarning: Unhandled promise rejection.",
+    "diagnosis": "Unhandled Promise Rejection. A Promise rejected but no .catch() or try/catch block handled it.",
+    "suggestedFix": "// Wrap async code in try/catch\ntry {\n  await asyncOperation();\n} catch (error) {\n  next(error);\n}",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "4ac76f68022b452564d6ef6335a1ec86e3a5f608b81dc683d3231fe7aefddf90": {
+    "originalError": "(Lint Warning/Performance) await inside loop",
+    "diagnosis": "Sequential Await in Loop. Awaiting inside a loop causes requests to run sequentially instead of parallel.",
+    "suggestedFix": "// Use Promise.all for parallel execution\nconst results = await Promise.all(items.map(async (item) => {\n  return await process(item);\n}));",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "79adcd91884b44a8808c48ed4997fae9dde9c55bdf396d5a1ecf2125602684f1": {
+    "originalError": "Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client",
+    "diagnosis": "Headers Already Sent. Attempted to send a response twice (e.g., not returning after res.json).",
+    "suggestedFix": "// Add 'return' statement\nif (error) {\n  return res.status(400).json({ error }); \n}\nres.json({ success: true });",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "ad6c36724ab9a21bb96e830a33c5f4985ba61b77906d22ca719a611b7ccc9e40": {
+    "originalError": "FATAL ERROR: CALL_AND_RETRY_LAST Allocation failed - JavaScript heap out of memory",
+    "diagnosis": "Node.js Heap Out of Memory. The process used more RAM than the V8 engine limit (default ~1.5GB).",
+    "suggestedFix": "// Increase max info space size\nnode --max-old-space-size=4096 server.js",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "aa38118c84b3d393e8e0b6bcab2871dafa7b58bcd52fb0be26776831c14e81b9": {
+    "originalError": "Error: ENOENT: no such file or directory, open '/path/to/file'",
+    "diagnosis": "File Not Found (ENOENT). The application tried to read a file that does not exist at the specified path.",
+    "suggestedFix": "// Check absolute vs relative paths\nconst filePath = path.join(__dirname, 'data', 'file.txt');",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "6e6bb826cff59dece522b124e0ca5ea0c4d5d572d145cf5babee250ef499020f": {
+    "originalError": "Error: EACCES: permission denied, mkdir '/var/www'",
+    "diagnosis": "Permission Denied (EACCES). The node process does not have OS permissions to write to this directory.",
+    "suggestedFix": "// Run with sudo (dev) or change folder ownership (prod)\nchown -R user:group /var/www",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "7ba101564014923e06c6cd57eeb5256e30358b5d6f38ca067db7c77148fc7358": {
+    "originalError": "Warning: Each child in a list should have a unique \"key\" prop.",
+    "diagnosis": "Missing React Key Prop. Rendered a list of items without a unique 'key' attribute.",
+    "suggestedFix": "{items.map(item => (\n  <div key={item.id}>{item.name}</div>\n))}",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "04f2fc6339ffda0023c4d7d6702be7bf9d98dd6c764865f3072e0698969d513d": {
+    "originalError": "Error: Rendered fewer hooks than expected. This may be caused by an accidental early return statement.",
+    "diagnosis": "React Hook Rules Violation. Hooks must be called in the exact same order every render (no conditions/loops).",
+    "suggestedFix": "// Move conditional logic AFTER hooks\nconst data = useData(); // 1. Hook\nif (!data) return null; // 2. Condition\nreturn <div>{data}</div>;",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "8e9f8fa0ccdc3cf050898b9d4319d2d8150b6260a8f022cadfa65749a5a4950b": {
+    "originalError": "Error: Text content does not match server-rendered HTML.",
+    "diagnosis": "Hydration Mismatch. The HTML generated on the server (SSR) differs from what the client rendered initially.",
+    "suggestedFix": "// Ensure initial state matches server\n// Avoid using window/localStorage in initial render",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "77256a51216d333022a85d32a182c88a6c327ec7b118f7e8990685de9dcb7a3e": {
+    "originalError": "Warning: Can't perform a React state update on an unmounted component.",
+    "diagnosis": "Memory Leak / Unmounted State Update. Attempted to set state after a component has been destroyed.",
+    "suggestedFix": "useEffect(() => {\n  let mounted = true;\n  apiCall().then(data => {\n    if (mounted) setData(data);\n  });\n  return () => { mounted = false };\n}, []);",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "SEED_SCRIPT",
+    "timestamp": "2026-03-09T21:01:18.298Z"
+  },
+  "acbf3a14ccd9b45b4fa08d28f7857b18c5e3a9d6ea7826784298861ad20dae00": {
+    "signature": "acbf3a14ccd9b45b4fa08d28f7857b18c5e3a9d6ea7826784298861ad20dae00",
+    "originalError": "HTTP Error 400: Bad Request",
+    "diagnosis": "HTTP 400 (Bad Request). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(400).json({ error: \"Bad Request\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "376c81500eb01415f22e36481cac6a08c71d97dd840b3c2412cf006445092491": {
+    "signature": "376c81500eb01415f22e36481cac6a08c71d97dd840b3c2412cf006445092491",
+    "originalError": "HTTP Error 401: Unauthorized",
+    "diagnosis": "HTTP 401 (Unauthorized). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(401).json({ error: \"Unauthorized\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "94268151312ad555a670bd3aa1a56a5a5d8c467c24d312244ab710996d5280d8": {
+    "signature": "94268151312ad555a670bd3aa1a56a5a5d8c467c24d312244ab710996d5280d8",
+    "originalError": "HTTP Error 402: Payment Required",
+    "diagnosis": "HTTP 402 (Payment Required). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(402).json({ error: \"Payment Required\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "39febe39fd5db3aaeaf02cc26fa9c0cde503055486feb77e88d30e81c403bc0d": {
+    "signature": "39febe39fd5db3aaeaf02cc26fa9c0cde503055486feb77e88d30e81c403bc0d",
+    "originalError": "HTTP Error 403: Forbidden",
+    "diagnosis": "HTTP 403 (Forbidden). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(403).json({ error: \"Forbidden\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "4682fb6c29a159cb2fbc4a715cc39980d39ad41a19dfa88fb858665067cef737": {
+    "signature": "4682fb6c29a159cb2fbc4a715cc39980d39ad41a19dfa88fb858665067cef737",
+    "originalError": "HTTP Error 404: Not Found",
+    "diagnosis": "HTTP 404 (Not Found). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "// Check endpoint URL spelling\n// Verify resource ID exists",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "10a2a8c8aea52652f4d44d9f2eb3f0f91a8afc492c7dee03b9f198267f231039": {
+    "signature": "10a2a8c8aea52652f4d44d9f2eb3f0f91a8afc492c7dee03b9f198267f231039",
+    "originalError": "HTTP Error 405: Method Not Allowed",
+    "diagnosis": "HTTP 405 (Method Not Allowed). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(405).json({ error: \"Method Not Allowed\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "ab25c7ab3fbbfed426c4d00caebed421538592b5d530687ba500890d69136212": {
+    "signature": "ab25c7ab3fbbfed426c4d00caebed421538592b5d530687ba500890d69136212",
+    "originalError": "HTTP Error 406: Not Acceptable",
+    "diagnosis": "HTTP 406 (Not Acceptable). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(406).json({ error: \"Not Acceptable\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "f663b9939b70e1ac6118d770f672e0a214605f9a04bf7250f398d00f8bc5cfbd": {
+    "signature": "f663b9939b70e1ac6118d770f672e0a214605f9a04bf7250f398d00f8bc5cfbd",
+    "originalError": "HTTP Error 408: Request Timeout",
+    "diagnosis": "HTTP 408 (Request Timeout). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(408).json({ error: \"Request Timeout\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "01d17db8eb60ed0dde35df1e9e78bc9a533045113b3a3830b0c56290a6f8bc7e": {
+    "signature": "01d17db8eb60ed0dde35df1e9e78bc9a533045113b3a3830b0c56290a6f8bc7e",
+    "originalError": "HTTP Error 409: Conflict",
+    "diagnosis": "HTTP 409 (Conflict). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(409).json({ error: \"Conflict\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "a1ba39e851f0b9702179004429e497dca08e10a3fa01dec1702033f1a92108e5": {
+    "signature": "a1ba39e851f0b9702179004429e497dca08e10a3fa01dec1702033f1a92108e5",
+    "originalError": "HTTP Error 410: Gone",
+    "diagnosis": "HTTP 410 (Gone). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(410).json({ error: \"Gone\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "ac352f441ebfe4aaafc5839bc5db594ad371e8ebce587e908a4624400b641fc7": {
+    "signature": "ac352f441ebfe4aaafc5839bc5db594ad371e8ebce587e908a4624400b641fc7",
+    "originalError": "HTTP Error 413: Payload Too Large",
+    "diagnosis": "HTTP 413 (Payload Too Large). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(413).json({ error: \"Payload Too Large\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "6cdbcaf0e191ae3745e4e6829ecdf0844cc915b6011b83c01a408b2518c2f04b": {
+    "signature": "6cdbcaf0e191ae3745e4e6829ecdf0844cc915b6011b83c01a408b2518c2f04b",
+    "originalError": "HTTP Error 415: Unsupported Media Type",
+    "diagnosis": "HTTP 415 (Unsupported Media Type). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(415).json({ error: \"Unsupported Media Type\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "9cf24cf03ff1de941188e2c8f38a9d44c8b21554cd5957d6105ebdc6cf99e506": {
+    "signature": "9cf24cf03ff1de941188e2c8f38a9d44c8b21554cd5957d6105ebdc6cf99e506",
+    "originalError": "HTTP Error 418: I'm a teapot",
+    "diagnosis": "HTTP 418 (I'm a teapot). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(418).json({ error: \"I'm a teapot\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "006d3866326e0b1d6eb40cef2ea2f724fd35b8b4df25ffa3ef60c4f1a200df8f": {
+    "signature": "006d3866326e0b1d6eb40cef2ea2f724fd35b8b4df25ffa3ef60c4f1a200df8f",
+    "originalError": "HTTP Error 422: Unprocessable Entity",
+    "diagnosis": "HTTP 422 (Unprocessable Entity). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(422).json({ error: \"Unprocessable Entity\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "25a4c34fb766cb768051ffbdde56d1ca32151c6255a8dda94d1b74c2310f3203": {
+    "signature": "25a4c34fb766cb768051ffbdde56d1ca32151c6255a8dda94d1b74c2310f3203",
+    "originalError": "HTTP Error 429: Too Many Requests",
+    "diagnosis": "HTTP 429 (Too Many Requests). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(429).json({ error: \"Too Many Requests\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "b74bfc570b8866db1c771b68ca9281b7e4101c178704c3ead800d0a4c6150dde": {
+    "signature": "b74bfc570b8866db1c771b68ca9281b7e4101c178704c3ead800d0a4c6150dde",
+    "originalError": "HTTP Error 431: Request Header Fields Too Large",
+    "diagnosis": "HTTP 431 (Request Header Fields Too Large). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(431).json({ error: \"Request Header Fields Too Large\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "f55dbeb30156ca2e3d7c02c777546e0ea9672f056491eec00c1ed6648e8f0386": {
+    "signature": "f55dbeb30156ca2e3d7c02c777546e0ea9672f056491eec00c1ed6648e8f0386",
+    "originalError": "HTTP Error 451: Unavailable For Legal Reasons",
+    "diagnosis": "HTTP 451 (Unavailable For Legal Reasons). The request contains bad syntax or cannot be fulfilled.",
+    "suggestedFix": "res.status(451).json({ error: \"Unavailable For Legal Reasons\" });",
+    "severity": "LOW",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "43407838c99b53d7311e91a28a3260a4ece7df40a4a06a9130ca72f2dd033b10": {
+    "signature": "43407838c99b53d7311e91a28a3260a4ece7df40a4a06a9130ca72f2dd033b10",
+    "originalError": "HTTP Error 500: Internal Server Error",
+    "diagnosis": "HTTP 500 (Internal Server Error). The server failed to fulfill an apparently valid request.",
+    "suggestedFix": "res.status(500).json({ error: \"Internal Server Error\" });",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "262989d9d13b9e0cad59836059134c9e49461060bf84640e0ce38c61231f4d3b": {
+    "signature": "262989d9d13b9e0cad59836059134c9e49461060bf84640e0ce38c61231f4d3b",
+    "originalError": "HTTP Error 501: Not Implemented",
+    "diagnosis": "HTTP 501 (Not Implemented). The server failed to fulfill an apparently valid request.",
+    "suggestedFix": "res.status(501).json({ error: \"Not Implemented\" });",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "409bfdf3746b4f93f81b3d8c63ba5a3db287e99d044e0f13018a5965324ee8e5": {
+    "signature": "409bfdf3746b4f93f81b3d8c63ba5a3db287e99d044e0f13018a5965324ee8e5",
+    "originalError": "HTTP Error 502: Bad Gateway",
+    "diagnosis": "HTTP 502 (Bad Gateway). The server failed to fulfill an apparently valid request.",
+    "suggestedFix": "res.status(502).json({ error: \"Bad Gateway\" });",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "e9b2b78406174c728ac0a8333e4327077f87523e789bd41812caa2f6a51d51dc": {
+    "signature": "e9b2b78406174c728ac0a8333e4327077f87523e789bd41812caa2f6a51d51dc",
+    "originalError": "HTTP Error 503: Service Unavailable",
+    "diagnosis": "HTTP 503 (Service Unavailable). The server failed to fulfill an apparently valid request.",
+    "suggestedFix": "res.status(503).json({ error: \"Service Unavailable\" });",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "a2b3b84b7f00657707004080c577f9281b02a7cd8713fa3ab5041d082e17c182": {
+    "signature": "a2b3b84b7f00657707004080c577f9281b02a7cd8713fa3ab5041d082e17c182",
+    "originalError": "HTTP Error 504: Gateway Timeout",
+    "diagnosis": "HTTP 504 (Gateway Timeout). The server failed to fulfill an apparently valid request.",
+    "suggestedFix": "res.status(504).json({ error: \"Gateway Timeout\" });",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "8519627e38b4e0d14219e562cd0a027e4105ac7c568a42d34face2063d67ccfa": {
+    "signature": "8519627e38b4e0d14219e562cd0a027e4105ac7c568a42d34face2063d67ccfa",
+    "originalError": "HTTP Error 505: HTTP Version Not Supported",
+    "diagnosis": "HTTP 505 (HTTP Version Not Supported). The server failed to fulfill an apparently valid request.",
+    "suggestedFix": "res.status(505).json({ error: \"HTTP Version Not Supported\" });",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "5f3b345bdaa241b2a146e41ab66c4001612600a9723a3e0e8c1d94405fdce1c5": {
+    "signature": "5f3b345bdaa241b2a146e41ab66c4001612600a9723a3e0e8c1d94405fdce1c5",
+    "originalError": "HTTP Error 507: Insufficient Storage",
+    "diagnosis": "HTTP 507 (Insufficient Storage). The server failed to fulfill an apparently valid request.",
+    "suggestedFix": "res.status(507).json({ error: \"Insufficient Storage\" });",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "fc9a0a38fd6e6cca59492681de0720e00cc8548ac1cc9405c762df7b6b020f13": {
+    "signature": "fc9a0a38fd6e6cca59492681de0720e00cc8548ac1cc9405c762df7b6b020f13",
+    "originalError": "HTTP Error 508: Loop Detected",
+    "diagnosis": "HTTP 508 (Loop Detected). The server failed to fulfill an apparently valid request.",
+    "suggestedFix": "res.status(508).json({ error: \"Loop Detected\" });",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "86091811b94a8a92eb90ce87c285cc7542c6a8973e220bef73821d3e9cb8f281": {
+    "signature": "86091811b94a8a92eb90ce87c285cc7542c6a8973e220bef73821d3e9cb8f281",
+    "originalError": "HTTP Error 511: Network Authentication Required",
+    "diagnosis": "HTTP 511 (Network Authentication Required). The server failed to fulfill an apparently valid request.",
+    "suggestedFix": "res.status(511).json({ error: \"Network Authentication Required\" });",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_HTTP"
+  },
+  "8363ef8aba0d74e40bdacfb5f8c0b58fa3695d8c200c34ed2a7aa61ddcbf4388": {
+    "signature": "8363ef8aba0d74e40bdacfb5f8c0b58fa3695d8c200c34ed2a7aa61ddcbf4388",
+    "originalError": "Error: EACCES: Permission denied",
+    "diagnosis": "System Error EACCES. Permission denied. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Check system permissions and paths\n// Ensure required services are running",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "be876df3cec13ec92ad04b83c8b14679a4c2e86b8945501bfa570a2cc84d48a9": {
+    "signature": "be876df3cec13ec92ad04b83c8b14679a4c2e86b8945501bfa570a2cc84d48a9",
+    "originalError": "Error: EADDRINUSE: Address already in use",
+    "diagnosis": "System Error EADDRINUSE. Address already in use. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Port is busy. Kill process or change port.\nconst PORT = process.env.PORT || 3001;",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "d02d5d3c91a57fef8b1bc4aedc4c69df498a6df1318ae81dadec58402daf7a34": {
+    "signature": "d02d5d3c91a57fef8b1bc4aedc4c69df498a6df1318ae81dadec58402daf7a34",
+    "originalError": "Error: ECONNREFUSED: Connection refused",
+    "diagnosis": "System Error ECONNREFUSED. Connection refused. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Check system permissions and paths\n// Ensure required services are running",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "48f0c546ccd0d07a1f5f698e78b45b011dcfe6539511ef0c6c32a9113d74867d": {
+    "signature": "48f0c546ccd0d07a1f5f698e78b45b011dcfe6539511ef0c6c32a9113d74867d",
+    "originalError": "Error: ECONNRESET: Connection reset by peer",
+    "diagnosis": "System Error ECONNRESET. Connection reset by peer. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Check system permissions and paths\n// Ensure required services are running",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "bd3d894a8efc4d892bfa9bb7b19eb8740672c941cd7244be3ef3597ad292919d": {
+    "signature": "bd3d894a8efc4d892bfa9bb7b19eb8740672c941cd7244be3ef3597ad292919d",
+    "originalError": "Error: EEXIST: File exists",
+    "diagnosis": "System Error EEXIST. File exists. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Check system permissions and paths\n// Ensure required services are running",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "8eedfa989bd0bf2e6eb3c1d0d1b98e5db2cebc536e51f0c84a69b7af387c7cf1": {
+    "signature": "8eedfa989bd0bf2e6eb3c1d0d1b98e5db2cebc536e51f0c84a69b7af387c7cf1",
+    "originalError": "Error: EISDIR: Illegal operation on a directory",
+    "diagnosis": "System Error EISDIR. Illegal operation on a directory. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Check system permissions and paths\n// Ensure required services are running",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "4c6633ab03bb3e9d9a02af91adbd14a4459a396ce018a993a6395fa1b57d0ad4": {
+    "signature": "4c6633ab03bb3e9d9a02af91adbd14a4459a396ce018a993a6395fa1b57d0ad4",
+    "originalError": "Error: EMFILE: Too many open files",
+    "diagnosis": "System Error EMFILE. Too many open files. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Check system permissions and paths\n// Ensure required services are running",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "757fde6afa2909425f0945b3bd081b3efd7262887b1257a24247034f92f37afe": {
+    "signature": "757fde6afa2909425f0945b3bd081b3efd7262887b1257a24247034f92f37afe",
+    "originalError": "Error: ENOENT: No such file or directory",
+    "diagnosis": "System Error ENOENT. No such file or directory. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Check system permissions and paths\n// Ensure required services are running",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "5b9b76042c9560d7c3643108efd1d4d1662609537095458ef532094474100628": {
+    "signature": "5b9b76042c9560d7c3643108efd1d4d1662609537095458ef532094474100628",
+    "originalError": "Error: ENOTFOUND: DNS lookup failed",
+    "diagnosis": "System Error ENOTFOUND. DNS lookup failed. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Check system permissions and paths\n// Ensure required services are running",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "15ee72b4d396ebc87d20a7e5c5f2a5e1454f4ae6c577a397af341d5c7aad81a8": {
+    "signature": "15ee72b4d396ebc87d20a7e5c5f2a5e1454f4ae6c577a397af341d5c7aad81a8",
+    "originalError": "Error: ENOSPC: No space left on device",
+    "diagnosis": "System Error ENOSPC. No space left on device. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Check system permissions and paths\n// Ensure required services are running",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "32e78d64f4ddd3f60f1f3aed789d5b93696991ed50903d3b64b120ea18c52249": {
+    "signature": "32e78d64f4ddd3f60f1f3aed789d5b93696991ed50903d3b64b120ea18c52249",
+    "originalError": "Error: EPERM: Operation not permitted",
+    "diagnosis": "System Error EPERM. Operation not permitted. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Check system permissions and paths\n// Ensure required services are running",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "8e656b5218bbc35d27f281ad04968ecffe0b568c93ccb00e6b5e84dd4766b01d": {
+    "signature": "8e656b5218bbc35d27f281ad04968ecffe0b568c93ccb00e6b5e84dd4766b01d",
+    "originalError": "Error: EPIPE: Broken pipe",
+    "diagnosis": "System Error EPIPE. Broken pipe. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Check system permissions and paths\n// Ensure required services are running",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "23eb8f8b372b769c4953d5915d263a4a314f6638f57888a0c1d10066d64d1a43": {
+    "signature": "23eb8f8b372b769c4953d5915d263a4a314f6638f57888a0c1d10066d64d1a43",
+    "originalError": "Error: ETIMEDOUT: Operation timed out",
+    "diagnosis": "System Error ETIMEDOUT. Operation timed out. Often relates to OS-level resource constraints or networking.",
+    "suggestedFix": "// Check system permissions and paths\n// Ensure required services are running",
+    "severity": "CRITICAL",
+    "cached": true,
+    "source": "GENERATOR_SYS"
+  },
+  "80d5f1ce7067d629b75c588ef98d8550650b496e64f2f6293a1ac5efb9832684": {
+    "signature": "80d5f1ce7067d629b75c588ef98d8550650b496e64f2f6293a1ac5efb9832684",
+    "originalError": "MongoServerError: ExceededTimeLimit (Code 50)",
+    "diagnosis": "MongoDB Error 50 (ExceededTimeLimit). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "53eb4daef5cd9da72bc57f26d2a3a0958a826b49ac851f1c42d3b07593609041": {
+    "signature": "53eb4daef5cd9da72bc57f26d2a3a0958a826b49ac851f1c42d3b07593609041",
+    "originalError": "MongoServerError: DuplicateKey (Code 11000)",
+    "diagnosis": "MongoDB Error 11000 (DuplicateKey). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Handle duplicate key error\nif (err.code === 11000) {\n  return res.status(409).send('Entry already exists');\n}",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "5409f4c7966e34012d01ff335929efb12a152da50cae3cd0e6bbca5a5a696dad": {
+    "signature": "5409f4c7966e34012d01ff335929efb12a152da50cae3cd0e6bbca5a5a696dad",
+    "originalError": "MongoServerError: Interrupted (Code 11600)",
+    "diagnosis": "MongoDB Error 11600 (Interrupted). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "28e1036505dce9e26fa11613443bf50f68030e9f66887027598134de2660fdcd": {
+    "signature": "28e1036505dce9e26fa11613443bf50f68030e9f66887027598134de2660fdcd",
+    "originalError": "MongoServerError: DocumentValidationFailure (Code 121)",
+    "diagnosis": "MongoDB Error 121 (DocumentValidationFailure). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "1d16476742cf7dec0c8eb1922318d12b4e7c0cf2e857a1cc2f44a509f8adcae9": {
+    "signature": "1d16476742cf7dec0c8eb1922318d12b4e7c0cf2e857a1cc2f44a509f8adcae9",
+    "originalError": "MongoServerError: UnknownError (Code 8)",
+    "diagnosis": "MongoDB Error 8 (UnknownError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "0fec2f28dc997b0c4014b00cbceb63836a3132e50a3be637f07d48cc82ddd8fe": {
+    "signature": "0fec2f28dc997b0c4014b00cbceb63836a3132e50a3be637f07d48cc82ddd8fe",
+    "originalError": "MongoServerError: AuthenticationFailed (Code 18)",
+    "diagnosis": "MongoDB Error 18 (AuthenticationFailed). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "d3bd5e7d654e1acbeb21c4b93c135aa051c0e2596fa3467dd1cdb72f5a3770e3": {
+    "signature": "d3bd5e7d654e1acbeb21c4b93c135aa051c0e2596fa3467dd1cdb72f5a3770e3",
+    "originalError": "MongoServerError: AtlasError (Code 8000)",
+    "diagnosis": "MongoDB Error 8000 (AtlasError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "a9e4f3f2411a7871536449f70dd9509c7e5dc27d9a723aeb3403bae3965cb07c": {
+    "signature": "a9e4f3f2411a7871536449f70dd9509c7e5dc27d9a723aeb3403bae3965cb07c",
+    "originalError": "MongoServerError: GeneralMongoError (Code 1)",
+    "diagnosis": "MongoDB Error 1 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "de7f0056d04e8fa451803abee5d9b2fda818213dbf5969916fe27223c55bea05": {
+    "signature": "de7f0056d04e8fa451803abee5d9b2fda818213dbf5969916fe27223c55bea05",
+    "originalError": "MongoServerError: GeneralMongoError (Code 2)",
+    "diagnosis": "MongoDB Error 2 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "218605fea7c5d2591f4b146bb543d3eb330fee0f1327f6618a6a10c5bb4633ec": {
+    "signature": "218605fea7c5d2591f4b146bb543d3eb330fee0f1327f6618a6a10c5bb4633ec",
+    "originalError": "MongoServerError: GeneralMongoError (Code 3)",
+    "diagnosis": "MongoDB Error 3 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "27672747cc332bb49d4f294ef07960e7659daf6d98cac2f367e2939e9d0d9774": {
+    "signature": "27672747cc332bb49d4f294ef07960e7659daf6d98cac2f367e2939e9d0d9774",
+    "originalError": "MongoServerError: GeneralMongoError (Code 4)",
+    "diagnosis": "MongoDB Error 4 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "cf52437ce9714a409947a2901ddee1e6b7a45abd5c574fdd37bdc5320c8f9896": {
+    "signature": "cf52437ce9714a409947a2901ddee1e6b7a45abd5c574fdd37bdc5320c8f9896",
+    "originalError": "MongoServerError: GeneralMongoError (Code 5)",
+    "diagnosis": "MongoDB Error 5 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "a306ff73185baf37c32df9d5e1fa59aef18ff67783760ce6d7a9103e7902ed5d": {
+    "signature": "a306ff73185baf37c32df9d5e1fa59aef18ff67783760ce6d7a9103e7902ed5d",
+    "originalError": "MongoServerError: GeneralMongoError (Code 6)",
+    "diagnosis": "MongoDB Error 6 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "f459adbeb1a05398fce0cb812eac20b17debba1117952cb5efd074193e966eb7": {
+    "signature": "f459adbeb1a05398fce0cb812eac20b17debba1117952cb5efd074193e966eb7",
+    "originalError": "MongoServerError: GeneralMongoError (Code 7)",
+    "diagnosis": "MongoDB Error 7 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "aa64ecca7c957f9f115864d3c6d43c519f9e1d59d537b5a3b553de909697be23": {
+    "signature": "aa64ecca7c957f9f115864d3c6d43c519f9e1d59d537b5a3b553de909697be23",
+    "originalError": "MongoServerError: GeneralMongoError (Code 9)",
+    "diagnosis": "MongoDB Error 9 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "e3a977efbba04d1bef4e44702e639d123f7d89bf684b081c78037075981cf2dd": {
+    "signature": "e3a977efbba04d1bef4e44702e639d123f7d89bf684b081c78037075981cf2dd",
+    "originalError": "MongoServerError: GeneralMongoError (Code 10)",
+    "diagnosis": "MongoDB Error 10 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "d255b36c5f39ebd3512c729baa6398c87425040387fcf283b7169495bbc90d47": {
+    "signature": "d255b36c5f39ebd3512c729baa6398c87425040387fcf283b7169495bbc90d47",
+    "originalError": "MongoServerError: GeneralMongoError (Code 11)",
+    "diagnosis": "MongoDB Error 11 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "e453480560b7f1e10ae551dd8c51447960d367ca9e41ae2625a7ce5bbc4515a0": {
+    "signature": "e453480560b7f1e10ae551dd8c51447960d367ca9e41ae2625a7ce5bbc4515a0",
+    "originalError": "MongoServerError: GeneralMongoError (Code 12)",
+    "diagnosis": "MongoDB Error 12 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "46a2c3912ccc7d3a4c2249440364db48011bc41a3a9f59affee03a589f9d3176": {
+    "signature": "46a2c3912ccc7d3a4c2249440364db48011bc41a3a9f59affee03a589f9d3176",
+    "originalError": "MongoServerError: GeneralMongoError (Code 13)",
+    "diagnosis": "MongoDB Error 13 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "a2618866cb68e9b383df944a979c9b292daf5b1dd381b5fedb37d52e882a8a4a": {
+    "signature": "a2618866cb68e9b383df944a979c9b292daf5b1dd381b5fedb37d52e882a8a4a",
+    "originalError": "MongoServerError: GeneralMongoError (Code 14)",
+    "diagnosis": "MongoDB Error 14 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "c2c261858dd3bf1685bc02fab0f373977e12048adc00b8dc3b5d191f4a018e43": {
+    "signature": "c2c261858dd3bf1685bc02fab0f373977e12048adc00b8dc3b5d191f4a018e43",
+    "originalError": "MongoServerError: GeneralMongoError (Code 15)",
+    "diagnosis": "MongoDB Error 15 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "567b9f0ddac0ae880ef00f7afcf1d367e49b3989522b60509bf1837faed4af7b": {
+    "signature": "567b9f0ddac0ae880ef00f7afcf1d367e49b3989522b60509bf1837faed4af7b",
+    "originalError": "MongoServerError: GeneralMongoError (Code 16)",
+    "diagnosis": "MongoDB Error 16 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "43681f412b51c226c42fd33005bf364161c7ab9cd2caf2e09a7607841d596eac": {
+    "signature": "43681f412b51c226c42fd33005bf364161c7ab9cd2caf2e09a7607841d596eac",
+    "originalError": "MongoServerError: GeneralMongoError (Code 17)",
+    "diagnosis": "MongoDB Error 17 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "aa53e5bd5b491c9a2bd0104fb124518fdda5afca51f5bdfcab56ef5bf1e13451": {
+    "signature": "aa53e5bd5b491c9a2bd0104fb124518fdda5afca51f5bdfcab56ef5bf1e13451",
+    "originalError": "MongoServerError: GeneralMongoError (Code 19)",
+    "diagnosis": "MongoDB Error 19 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "ca314c7ae7107b4dca2825b7aa98a7e99d9a3ee2c9193cee05ef6e891a1db1ce": {
+    "signature": "ca314c7ae7107b4dca2825b7aa98a7e99d9a3ee2c9193cee05ef6e891a1db1ce",
+    "originalError": "MongoServerError: GeneralMongoError (Code 20)",
+    "diagnosis": "MongoDB Error 20 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "ce9614e3d351b8a7daf899839aeb8dd57c26c8fbd937c986b85b13c45f5e0d61": {
+    "signature": "ce9614e3d351b8a7daf899839aeb8dd57c26c8fbd937c986b85b13c45f5e0d61",
+    "originalError": "MongoServerError: GeneralMongoError (Code 21)",
+    "diagnosis": "MongoDB Error 21 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "80874f68afc042a1cb3038606ed7cf4173d2fd213caf58b2ac012d21794010c8": {
+    "signature": "80874f68afc042a1cb3038606ed7cf4173d2fd213caf58b2ac012d21794010c8",
+    "originalError": "MongoServerError: GeneralMongoError (Code 22)",
+    "diagnosis": "MongoDB Error 22 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "5971f80e8492fbb4e85251c97ae53c34a0fbd2389c1a7477f3f96100f6885d11": {
+    "signature": "5971f80e8492fbb4e85251c97ae53c34a0fbd2389c1a7477f3f96100f6885d11",
+    "originalError": "MongoServerError: GeneralMongoError (Code 23)",
+    "diagnosis": "MongoDB Error 23 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "8388eec5fe7a6bffa2e21e65a3b1c864e0defdcb6a29d73fcb368f0a341f3e39": {
+    "signature": "8388eec5fe7a6bffa2e21e65a3b1c864e0defdcb6a29d73fcb368f0a341f3e39",
+    "originalError": "MongoServerError: GeneralMongoError (Code 24)",
+    "diagnosis": "MongoDB Error 24 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "3933fdf5a626fb67728b3c274edb1a34a1412c4cad5c9cac9a67fd0c9e58f8d9": {
+    "signature": "3933fdf5a626fb67728b3c274edb1a34a1412c4cad5c9cac9a67fd0c9e58f8d9",
+    "originalError": "MongoServerError: GeneralMongoError (Code 25)",
+    "diagnosis": "MongoDB Error 25 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "3c6554aaf7146884858ea33ae93753b7141719ababc71890b4da6dd93dd8ae29": {
+    "signature": "3c6554aaf7146884858ea33ae93753b7141719ababc71890b4da6dd93dd8ae29",
+    "originalError": "MongoServerError: GeneralMongoError (Code 26)",
+    "diagnosis": "MongoDB Error 26 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "bdacff7d7f797d83395e2b9e6d50a2d6f514e0c2f6519e6b892c841efcdf38b2": {
+    "signature": "bdacff7d7f797d83395e2b9e6d50a2d6f514e0c2f6519e6b892c841efcdf38b2",
+    "originalError": "MongoServerError: GeneralMongoError (Code 27)",
+    "diagnosis": "MongoDB Error 27 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "8962e0d9989fc929a95e081cddecd4c061a5135006496c6bdc38054921eaa319": {
+    "signature": "8962e0d9989fc929a95e081cddecd4c061a5135006496c6bdc38054921eaa319",
+    "originalError": "MongoServerError: GeneralMongoError (Code 28)",
+    "diagnosis": "MongoDB Error 28 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "4e85a2ddf70c8329278b204295f8f7677bf7689fdb2c5fa5219bc7164075c6cd": {
+    "signature": "4e85a2ddf70c8329278b204295f8f7677bf7689fdb2c5fa5219bc7164075c6cd",
+    "originalError": "MongoServerError: GeneralMongoError (Code 29)",
+    "diagnosis": "MongoDB Error 29 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "5a4f9cb1336dc4ea95ebd6702b114a39bfdf4cafcf22dcaea71302f1019a3632": {
+    "signature": "5a4f9cb1336dc4ea95ebd6702b114a39bfdf4cafcf22dcaea71302f1019a3632",
+    "originalError": "MongoServerError: GeneralMongoError (Code 30)",
+    "diagnosis": "MongoDB Error 30 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "35b1debda5632d027a4cb21d8051d53221d971b11dea0cfe7a425a361c289142": {
+    "signature": "35b1debda5632d027a4cb21d8051d53221d971b11dea0cfe7a425a361c289142",
+    "originalError": "MongoServerError: GeneralMongoError (Code 31)",
+    "diagnosis": "MongoDB Error 31 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "ea103e865f671ad26adf5631e01afb7bd8bf79a3974c2e595f9118a2912cdf29": {
+    "signature": "ea103e865f671ad26adf5631e01afb7bd8bf79a3974c2e595f9118a2912cdf29",
+    "originalError": "MongoServerError: GeneralMongoError (Code 32)",
+    "diagnosis": "MongoDB Error 32 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "c9b6cfdbd079b8119471023c615e00228efd1c0880cacc0571d4a62bc4f13d9a": {
+    "signature": "c9b6cfdbd079b8119471023c615e00228efd1c0880cacc0571d4a62bc4f13d9a",
+    "originalError": "MongoServerError: GeneralMongoError (Code 33)",
+    "diagnosis": "MongoDB Error 33 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "8301cc0c98ee8b9a670d5c1b5c52b417403224436ead94d73bf76e561cc43bba": {
+    "signature": "8301cc0c98ee8b9a670d5c1b5c52b417403224436ead94d73bf76e561cc43bba",
+    "originalError": "MongoServerError: GeneralMongoError (Code 34)",
+    "diagnosis": "MongoDB Error 34 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "1bde54c80c12cba937960ff315d0c6762a0c380bb6f60b41e16338f4481f1fc4": {
+    "signature": "1bde54c80c12cba937960ff315d0c6762a0c380bb6f60b41e16338f4481f1fc4",
+    "originalError": "MongoServerError: GeneralMongoError (Code 35)",
+    "diagnosis": "MongoDB Error 35 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "1d5ee64520609bfc3dcea2d6bb4c44c193f300546ec446c1e9269ec01a68001e": {
+    "signature": "1d5ee64520609bfc3dcea2d6bb4c44c193f300546ec446c1e9269ec01a68001e",
+    "originalError": "MongoServerError: GeneralMongoError (Code 36)",
+    "diagnosis": "MongoDB Error 36 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "a4e943cd22a72ae91b3f913ddf654d1c9f75ac61895490cb04bfa81ec70776ca": {
+    "signature": "a4e943cd22a72ae91b3f913ddf654d1c9f75ac61895490cb04bfa81ec70776ca",
+    "originalError": "MongoServerError: GeneralMongoError (Code 37)",
+    "diagnosis": "MongoDB Error 37 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "edc68ea98cdde48948523a0e13c3a88fc7719d281b995dfb4b268ffd3c69cff3": {
+    "signature": "edc68ea98cdde48948523a0e13c3a88fc7719d281b995dfb4b268ffd3c69cff3",
+    "originalError": "MongoServerError: GeneralMongoError (Code 38)",
+    "diagnosis": "MongoDB Error 38 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "00105ec42e6f10c62d38e1d9016265d4550361e7e7f96cb075d150852341fd4f": {
+    "signature": "00105ec42e6f10c62d38e1d9016265d4550361e7e7f96cb075d150852341fd4f",
+    "originalError": "MongoServerError: GeneralMongoError (Code 39)",
+    "diagnosis": "MongoDB Error 39 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "94dad15b740fe156d22b9aeacda76a096bad3d82cef4fdcb5a3e42ccc19922f5": {
+    "signature": "94dad15b740fe156d22b9aeacda76a096bad3d82cef4fdcb5a3e42ccc19922f5",
+    "originalError": "MongoServerError: GeneralMongoError (Code 40)",
+    "diagnosis": "MongoDB Error 40 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "18f6e9a71eb801fc40904ae3b07bf501f78d8482ce5ec1f7b77fffb1106ea6fd": {
+    "signature": "18f6e9a71eb801fc40904ae3b07bf501f78d8482ce5ec1f7b77fffb1106ea6fd",
+    "originalError": "MongoServerError: GeneralMongoError (Code 41)",
+    "diagnosis": "MongoDB Error 41 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "061cc789afe2c169a4a3c8af6113ecaf72a0e0255add023e4a1f0cdfaa7cb4d2": {
+    "signature": "061cc789afe2c169a4a3c8af6113ecaf72a0e0255add023e4a1f0cdfaa7cb4d2",
+    "originalError": "MongoServerError: GeneralMongoError (Code 42)",
+    "diagnosis": "MongoDB Error 42 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "c43b6f21797a78972dcb40be6099195d4615eadc7dab1c38fc635a0c176c7e35": {
+    "signature": "c43b6f21797a78972dcb40be6099195d4615eadc7dab1c38fc635a0c176c7e35",
+    "originalError": "MongoServerError: GeneralMongoError (Code 43)",
+    "diagnosis": "MongoDB Error 43 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "84ca2cd2a18cc1b902226a93da5d9c8fbe40906269fb3d0eb0ab98877bffb462": {
+    "signature": "84ca2cd2a18cc1b902226a93da5d9c8fbe40906269fb3d0eb0ab98877bffb462",
+    "originalError": "MongoServerError: GeneralMongoError (Code 44)",
+    "diagnosis": "MongoDB Error 44 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "6dbe80f1093b8416e455f6aca7408cb2be159b6cd681d01a1e686ea49136f681": {
+    "signature": "6dbe80f1093b8416e455f6aca7408cb2be159b6cd681d01a1e686ea49136f681",
+    "originalError": "MongoServerError: GeneralMongoError (Code 45)",
+    "diagnosis": "MongoDB Error 45 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "f91ca32cb6ecc12ef525022824d372f31c777bdea0b6c5d27666f022d96b35b1": {
+    "signature": "f91ca32cb6ecc12ef525022824d372f31c777bdea0b6c5d27666f022d96b35b1",
+    "originalError": "MongoServerError: GeneralMongoError (Code 46)",
+    "diagnosis": "MongoDB Error 46 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "9b519b720d23c9201c3104d5503655d7cd60e7896bd4fc1bc0ab3fbd32deee39": {
+    "signature": "9b519b720d23c9201c3104d5503655d7cd60e7896bd4fc1bc0ab3fbd32deee39",
+    "originalError": "MongoServerError: GeneralMongoError (Code 47)",
+    "diagnosis": "MongoDB Error 47 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "645f3fd1ee22b72b8b4e000dbef44babd1154301d3a8df89e58b1aa2f0086670": {
+    "signature": "645f3fd1ee22b72b8b4e000dbef44babd1154301d3a8df89e58b1aa2f0086670",
+    "originalError": "MongoServerError: GeneralMongoError (Code 48)",
+    "diagnosis": "MongoDB Error 48 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "b308fd420e92e5f711b18030eea07a60d2c4e54548f33f5f653a2d90abcbb582": {
+    "signature": "b308fd420e92e5f711b18030eea07a60d2c4e54548f33f5f653a2d90abcbb582",
+    "originalError": "MongoServerError: GeneralMongoError (Code 49)",
+    "diagnosis": "MongoDB Error 49 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "d6ac80ca2eefcb55e58f72ae954ceb37bc06a30dcf0fabf951e43bffdf6435b9": {
+    "signature": "d6ac80ca2eefcb55e58f72ae954ceb37bc06a30dcf0fabf951e43bffdf6435b9",
+    "originalError": "MongoServerError: GeneralMongoError (Code 51)",
+    "diagnosis": "MongoDB Error 51 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "8c91d60de97eb29ce5ff9a18a1478b4879bdabf12533a7aedb21164768df9c92": {
+    "signature": "8c91d60de97eb29ce5ff9a18a1478b4879bdabf12533a7aedb21164768df9c92",
+    "originalError": "MongoServerError: GeneralMongoError (Code 52)",
+    "diagnosis": "MongoDB Error 52 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "14471b5e02bfb586c3ecd7714381425967991119b7eb56c29233a97f71016a67": {
+    "signature": "14471b5e02bfb586c3ecd7714381425967991119b7eb56c29233a97f71016a67",
+    "originalError": "MongoServerError: GeneralMongoError (Code 53)",
+    "diagnosis": "MongoDB Error 53 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "5c0384075b9124c700c02389da7ac7e4961e0c7c10ce27df42da4aa956897596": {
+    "signature": "5c0384075b9124c700c02389da7ac7e4961e0c7c10ce27df42da4aa956897596",
+    "originalError": "MongoServerError: GeneralMongoError (Code 54)",
+    "diagnosis": "MongoDB Error 54 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "143a700f80dc0fae9407a04f86d92252d518c50b3170b65c07a70069189ce8ba": {
+    "signature": "143a700f80dc0fae9407a04f86d92252d518c50b3170b65c07a70069189ce8ba",
+    "originalError": "MongoServerError: GeneralMongoError (Code 55)",
+    "diagnosis": "MongoDB Error 55 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "cec7a6df4984f69160a0cef1030b04d40fb7b622356d93769a20c3e67f25133e": {
+    "signature": "cec7a6df4984f69160a0cef1030b04d40fb7b622356d93769a20c3e67f25133e",
+    "originalError": "MongoServerError: GeneralMongoError (Code 56)",
+    "diagnosis": "MongoDB Error 56 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "ff3788debb2a5f7c12f98239935b00864466efd737025e001a47f367a66cb3b0": {
+    "signature": "ff3788debb2a5f7c12f98239935b00864466efd737025e001a47f367a66cb3b0",
+    "originalError": "MongoServerError: GeneralMongoError (Code 57)",
+    "diagnosis": "MongoDB Error 57 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "103a64f28d7a77529841d72edbb505b4eca6fe4be3824656cf4bcb6851b40cbd": {
+    "signature": "103a64f28d7a77529841d72edbb505b4eca6fe4be3824656cf4bcb6851b40cbd",
+    "originalError": "MongoServerError: GeneralMongoError (Code 58)",
+    "diagnosis": "MongoDB Error 58 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "795db7431dd819679aa289df5de2cee405941ba6d5dbeee01d5614da5e5eaf88": {
+    "signature": "795db7431dd819679aa289df5de2cee405941ba6d5dbeee01d5614da5e5eaf88",
+    "originalError": "MongoServerError: GeneralMongoError (Code 59)",
+    "diagnosis": "MongoDB Error 59 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "4ded2e0e0d735f80b00cf91245aa3a2f880b15ac897667062e0eda2a9c245bd2": {
+    "signature": "4ded2e0e0d735f80b00cf91245aa3a2f880b15ac897667062e0eda2a9c245bd2",
+    "originalError": "MongoServerError: GeneralMongoError (Code 60)",
+    "diagnosis": "MongoDB Error 60 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "9964d94ff9c69cbbe9c5c7eb9a75e6a8bfecb580f6a3c8c3bb44e4a156ad2d44": {
+    "signature": "9964d94ff9c69cbbe9c5c7eb9a75e6a8bfecb580f6a3c8c3bb44e4a156ad2d44",
+    "originalError": "MongoServerError: GeneralMongoError (Code 61)",
+    "diagnosis": "MongoDB Error 61 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "cda77805635df4eb449152ae5a9f55003411145c7f649b631801bfb5fa952ec5": {
+    "signature": "cda77805635df4eb449152ae5a9f55003411145c7f649b631801bfb5fa952ec5",
+    "originalError": "MongoServerError: GeneralMongoError (Code 62)",
+    "diagnosis": "MongoDB Error 62 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "5c21afb847ceda51adee2e92ce6b19b36a7420f57e5ae9de033cf220aeefa344": {
+    "signature": "5c21afb847ceda51adee2e92ce6b19b36a7420f57e5ae9de033cf220aeefa344",
+    "originalError": "MongoServerError: GeneralMongoError (Code 63)",
+    "diagnosis": "MongoDB Error 63 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "47dc9915d5e4e61b05de1c3201708c8e07ab304f46cde509f1dd9450804131bc": {
+    "signature": "47dc9915d5e4e61b05de1c3201708c8e07ab304f46cde509f1dd9450804131bc",
+    "originalError": "MongoServerError: GeneralMongoError (Code 64)",
+    "diagnosis": "MongoDB Error 64 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "1f31b5aa216dd1ec5aa0b7f1b3e38fd7217f7c46faaef64f25fa77f90110f98c": {
+    "signature": "1f31b5aa216dd1ec5aa0b7f1b3e38fd7217f7c46faaef64f25fa77f90110f98c",
+    "originalError": "MongoServerError: GeneralMongoError (Code 65)",
+    "diagnosis": "MongoDB Error 65 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "dccd3e82c3bc6971bd689790dda5d9133aa004fbd73512bec3d8b9e55dee31a5": {
+    "signature": "dccd3e82c3bc6971bd689790dda5d9133aa004fbd73512bec3d8b9e55dee31a5",
+    "originalError": "MongoServerError: GeneralMongoError (Code 66)",
+    "diagnosis": "MongoDB Error 66 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "ed69b00dce1a7b24e301cfc14c62238a33356943123ae56509978f5572328f20": {
+    "signature": "ed69b00dce1a7b24e301cfc14c62238a33356943123ae56509978f5572328f20",
+    "originalError": "MongoServerError: GeneralMongoError (Code 67)",
+    "diagnosis": "MongoDB Error 67 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "3f7ca76aad7a5b8a6886b8fddf05d41a359a2bbb1b44259c077e86a9994b9bc6": {
+    "signature": "3f7ca76aad7a5b8a6886b8fddf05d41a359a2bbb1b44259c077e86a9994b9bc6",
+    "originalError": "MongoServerError: GeneralMongoError (Code 68)",
+    "diagnosis": "MongoDB Error 68 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "b87188f54e24c0ab43816263bc14fdaad3c0e73965f2e6f0a16862164eaee948": {
+    "signature": "b87188f54e24c0ab43816263bc14fdaad3c0e73965f2e6f0a16862164eaee948",
+    "originalError": "MongoServerError: GeneralMongoError (Code 69)",
+    "diagnosis": "MongoDB Error 69 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "aae24688d758cb62865c4a47f793c1ab42254680a7b741643d5596d5e9af7477": {
+    "signature": "aae24688d758cb62865c4a47f793c1ab42254680a7b741643d5596d5e9af7477",
+    "originalError": "MongoServerError: GeneralMongoError (Code 70)",
+    "diagnosis": "MongoDB Error 70 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "c0256cedbbe9fff64c3c54c4f2bc16b107be7880252c20cf95fdd6901f1ef1d9": {
+    "signature": "c0256cedbbe9fff64c3c54c4f2bc16b107be7880252c20cf95fdd6901f1ef1d9",
+    "originalError": "MongoServerError: GeneralMongoError (Code 71)",
+    "diagnosis": "MongoDB Error 71 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "7f9485714e47a0b465d6d38351713abe3ee16fa5d40377de2474e9b9df6bf529": {
+    "signature": "7f9485714e47a0b465d6d38351713abe3ee16fa5d40377de2474e9b9df6bf529",
+    "originalError": "MongoServerError: GeneralMongoError (Code 72)",
+    "diagnosis": "MongoDB Error 72 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "1bf0d43a4697430ef24bcaf5ac21c6ff3833f8ed5cdfdeab1d092d6292fead15": {
+    "signature": "1bf0d43a4697430ef24bcaf5ac21c6ff3833f8ed5cdfdeab1d092d6292fead15",
+    "originalError": "MongoServerError: GeneralMongoError (Code 73)",
+    "diagnosis": "MongoDB Error 73 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "c90575935b8eadfd43e905695fd7ec3556da6ee9968cdf0206402e4cc00a1b83": {
+    "signature": "c90575935b8eadfd43e905695fd7ec3556da6ee9968cdf0206402e4cc00a1b83",
+    "originalError": "MongoServerError: GeneralMongoError (Code 74)",
+    "diagnosis": "MongoDB Error 74 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "9339b14e34c298487f9246b548543a95e299dc604ff85be3a289ddb6d37bdae0": {
+    "signature": "9339b14e34c298487f9246b548543a95e299dc604ff85be3a289ddb6d37bdae0",
+    "originalError": "MongoServerError: GeneralMongoError (Code 75)",
+    "diagnosis": "MongoDB Error 75 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "c9413c5b84b62508fbe02dbd0eac0de8805f9f5840eafa8cfc27af2a3bc8ccf6": {
+    "signature": "c9413c5b84b62508fbe02dbd0eac0de8805f9f5840eafa8cfc27af2a3bc8ccf6",
+    "originalError": "MongoServerError: GeneralMongoError (Code 76)",
+    "diagnosis": "MongoDB Error 76 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "6ebe1fdae9410224b71e89c2f658cf67622f27bd119ca5e9aa947c8edf822501": {
+    "signature": "6ebe1fdae9410224b71e89c2f658cf67622f27bd119ca5e9aa947c8edf822501",
+    "originalError": "MongoServerError: GeneralMongoError (Code 77)",
+    "diagnosis": "MongoDB Error 77 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "154cbd831c32ae94062370b47feb4dcf654a5ae7cad572ace14b52abd0a91cf7": {
+    "signature": "154cbd831c32ae94062370b47feb4dcf654a5ae7cad572ace14b52abd0a91cf7",
+    "originalError": "MongoServerError: GeneralMongoError (Code 78)",
+    "diagnosis": "MongoDB Error 78 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "b74a0a60ebbabdd50a4d635215e0ed016ded0d7f43713a759979158d2028d8f0": {
+    "signature": "b74a0a60ebbabdd50a4d635215e0ed016ded0d7f43713a759979158d2028d8f0",
+    "originalError": "MongoServerError: GeneralMongoError (Code 79)",
+    "diagnosis": "MongoDB Error 79 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "573ec9c1431bb983506f481028360a58eb5070543e3627bc0bda1a4785aa01ef": {
+    "signature": "573ec9c1431bb983506f481028360a58eb5070543e3627bc0bda1a4785aa01ef",
+    "originalError": "MongoServerError: GeneralMongoError (Code 80)",
+    "diagnosis": "MongoDB Error 80 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "da675b4ebe8b40da23239621a778de53a5d9532b68d4480b60921a90d08a725c": {
+    "signature": "da675b4ebe8b40da23239621a778de53a5d9532b68d4480b60921a90d08a725c",
+    "originalError": "MongoServerError: GeneralMongoError (Code 81)",
+    "diagnosis": "MongoDB Error 81 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "068b36b34e56e552fe70a644214dbf0520ca98089acfd33a2ead22c5bc452b10": {
+    "signature": "068b36b34e56e552fe70a644214dbf0520ca98089acfd33a2ead22c5bc452b10",
+    "originalError": "MongoServerError: GeneralMongoError (Code 82)",
+    "diagnosis": "MongoDB Error 82 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "3a2a9330a2a14fb9c07fc0d8a26559c9b0b735cf7233fe4f6bfabff448d34d5e": {
+    "signature": "3a2a9330a2a14fb9c07fc0d8a26559c9b0b735cf7233fe4f6bfabff448d34d5e",
+    "originalError": "MongoServerError: GeneralMongoError (Code 83)",
+    "diagnosis": "MongoDB Error 83 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "322a054ed154e7c0c22e92d7189a9593e470facc3acbb098309fa0320ec60c50": {
+    "signature": "322a054ed154e7c0c22e92d7189a9593e470facc3acbb098309fa0320ec60c50",
+    "originalError": "MongoServerError: GeneralMongoError (Code 84)",
+    "diagnosis": "MongoDB Error 84 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "d6ae29d003a8b3647611ac6d9019992ff067f82a7412a26afcf66188cbbfbc03": {
+    "signature": "d6ae29d003a8b3647611ac6d9019992ff067f82a7412a26afcf66188cbbfbc03",
+    "originalError": "MongoServerError: GeneralMongoError (Code 85)",
+    "diagnosis": "MongoDB Error 85 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "1bee33069cbbf0a96b95ddc138d86f5563022ba009d5b9dc49144339af17be44": {
+    "signature": "1bee33069cbbf0a96b95ddc138d86f5563022ba009d5b9dc49144339af17be44",
+    "originalError": "MongoServerError: GeneralMongoError (Code 86)",
+    "diagnosis": "MongoDB Error 86 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "7f1749c47a2081a66428079ecce51e6d5d49254b0ccf92cd5d2e4d2d36148a14": {
+    "signature": "7f1749c47a2081a66428079ecce51e6d5d49254b0ccf92cd5d2e4d2d36148a14",
+    "originalError": "MongoServerError: GeneralMongoError (Code 87)",
+    "diagnosis": "MongoDB Error 87 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "1dec26f6f10a596a6ad928bc9ac74178df3fde8247a9da2e1ce6c09202c96d6b": {
+    "signature": "1dec26f6f10a596a6ad928bc9ac74178df3fde8247a9da2e1ce6c09202c96d6b",
+    "originalError": "MongoServerError: GeneralMongoError (Code 88)",
+    "diagnosis": "MongoDB Error 88 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "438a1b5c73fd2285ba285db21bff442c5f834539308086c1158a988e4117afe3": {
+    "signature": "438a1b5c73fd2285ba285db21bff442c5f834539308086c1158a988e4117afe3",
+    "originalError": "MongoServerError: GeneralMongoError (Code 89)",
+    "diagnosis": "MongoDB Error 89 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "b5b51e17facc6a975e5b1ae4ad35929a3e09607351bf618efc4cc2182800d06c": {
+    "signature": "b5b51e17facc6a975e5b1ae4ad35929a3e09607351bf618efc4cc2182800d06c",
+    "originalError": "MongoServerError: GeneralMongoError (Code 90)",
+    "diagnosis": "MongoDB Error 90 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "72e517f9714381bc3c4f26d9777e0fc3e7542dab366b4cb1813148f2376db8db": {
+    "signature": "72e517f9714381bc3c4f26d9777e0fc3e7542dab366b4cb1813148f2376db8db",
+    "originalError": "MongoServerError: GeneralMongoError (Code 91)",
+    "diagnosis": "MongoDB Error 91 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "b1194f8edb128b6c6619dfcf97d1b99318dd8637b1abb026ec09da86ba1b9293": {
+    "signature": "b1194f8edb128b6c6619dfcf97d1b99318dd8637b1abb026ec09da86ba1b9293",
+    "originalError": "MongoServerError: GeneralMongoError (Code 92)",
+    "diagnosis": "MongoDB Error 92 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "b4715e9d5d89edb8f0a61371e407e9c79eec7de519151f0f28dd9c91888ab352": {
+    "signature": "b4715e9d5d89edb8f0a61371e407e9c79eec7de519151f0f28dd9c91888ab352",
+    "originalError": "MongoServerError: GeneralMongoError (Code 93)",
+    "diagnosis": "MongoDB Error 93 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "0959a93a7081daaa50abd7cbd77005f1cb648597ea14b676bef3e3c6f1d73334": {
+    "signature": "0959a93a7081daaa50abd7cbd77005f1cb648597ea14b676bef3e3c6f1d73334",
+    "originalError": "MongoServerError: GeneralMongoError (Code 94)",
+    "diagnosis": "MongoDB Error 94 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "dce4a70f8e9045fa23901844fea79fb851fa45cc777f8fe835a6b4588be9d25a": {
+    "signature": "dce4a70f8e9045fa23901844fea79fb851fa45cc777f8fe835a6b4588be9d25a",
+    "originalError": "MongoServerError: GeneralMongoError (Code 95)",
+    "diagnosis": "MongoDB Error 95 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "773b9f8bd3e21246690e9e904d300aee824ef54278ae0bfd1a9b634406adad66": {
+    "signature": "773b9f8bd3e21246690e9e904d300aee824ef54278ae0bfd1a9b634406adad66",
+    "originalError": "MongoServerError: GeneralMongoError (Code 96)",
+    "diagnosis": "MongoDB Error 96 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "9f4eae98bb2979f8660d3a8c7169d2bcb208acce4ed0e327ba56df28890aaefc": {
+    "signature": "9f4eae98bb2979f8660d3a8c7169d2bcb208acce4ed0e327ba56df28890aaefc",
+    "originalError": "MongoServerError: GeneralMongoError (Code 97)",
+    "diagnosis": "MongoDB Error 97 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "0a3b95e5fa1d0a4afee431c752c9f678b8172dc987588ace0dec980031344f4f": {
+    "signature": "0a3b95e5fa1d0a4afee431c752c9f678b8172dc987588ace0dec980031344f4f",
+    "originalError": "MongoServerError: GeneralMongoError (Code 98)",
+    "diagnosis": "MongoDB Error 98 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "c1f189b555304ceb05952455f3356d046229f4622211afa6ea80ecc4b3879a1c": {
+    "signature": "c1f189b555304ceb05952455f3356d046229f4622211afa6ea80ecc4b3879a1c",
+    "originalError": "MongoServerError: GeneralMongoError (Code 99)",
+    "diagnosis": "MongoDB Error 99 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "d6ee4090101aa7f24eccf46f700182507f0ac341cfaaf081bba6cb06343fd118": {
+    "signature": "d6ee4090101aa7f24eccf46f700182507f0ac341cfaaf081bba6cb06343fd118",
+    "originalError": "MongoServerError: GeneralMongoError (Code 100)",
+    "diagnosis": "MongoDB Error 100 (GeneralMongoError). Database operation failed due to a constraint violation or connection issue.",
+    "suggestedFix": "// Check mongoose connection state\n// Verify schema validation rules",
+    "severity": "HIGH",
+    "cached": true,
+    "source": "GENERATOR_MONGO"
+  },
+  "dc4be1b7efbffdbfa9a4b6040b6d4256ebc4364b4d6d7c87335c782d0058d76d": {
+    "signature": "dc4be1b7efbffdbfa9a4b6040b6d4256ebc4364b4d6d7c87335c782d0058d76d",
+    "originalError": "Hydration failed because the initial UI does not match",
+    "diagnosis": "React Hydration Mismatch. Detailed framework-specific error indicating a configuration or lifecycle mismatch.",
+    "suggestedFix": "// Keep initial render deterministic\n// Avoid using new Date() or window directly in JSX\nconst [mounted, setMounted] = useState(false);\nuseEffect(() => setMounted(true), []);\nif (!mounted) return null;",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "GENERATOR_EDGE"
+  },
+  "0fbb01407437e79289eba0313c93dfc917b6f7669b28140b52412076b73f15e1": {
+    "signature": "0fbb01407437e79289eba0313c93dfc917b6f7669b28140b52412076b73f15e1",
+    "originalError": "Firebase: Error (auth/id-token-expired)",
+    "diagnosis": "Firebase Auth Token. Detailed framework-specific error indicating a configuration or lifecycle mismatch.",
+    "suggestedFix": "// Force token refresh\nconst user = auth.currentUser;\nif (user) {\n  const token = await user.getIdToken(true);\n}",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "GENERATOR_EDGE"
+  },
+  "9fdb439f45587b3da9835ce2586d1be0da1ef197765010bad77a040373cb0c73": {
+    "signature": "9fdb439f45587b3da9835ce2586d1be0da1ef197765010bad77a040373cb0c73",
+    "originalError": "MulterError: Unexpected field",
+    "diagnosis": "Multer Unexpected Field. Detailed framework-specific error indicating a configuration or lifecycle mismatch.",
+    "suggestedFix": "// Match input name in frontend and backend\n// Frontend: formData.append('avatar', file)\n// Backend: upload.single('avatar')",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "GENERATOR_EDGE"
+  },
+  "392e50085df427771a30a267079f7367ce4f5f9803b4171c2cf4c7e4984adaeb": {
+    "signature": "392e50085df427771a30a267079f7367ce4f5f9803b4171c2cf4c7e4984adaeb",
+    "originalError": "Response to preflight request doesn't pass access control check",
+    "diagnosis": "CORS Preflight. Detailed framework-specific error indicating a configuration or lifecycle mismatch.",
+    "suggestedFix": "// Handle OPTIONS method\napp.options('*', cors());\n// Verify Allowed Headers include 'Authorization' and 'Content-Type'",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "GENERATOR_EDGE"
+  },
+  "68ccc644b449be8c5be0b55ea00bc2baf1193c8cc6f318b64c852cb2fc544d06": {
+    "signature": "68ccc644b449be8c5be0b55ea00bc2baf1193c8cc6f318b64c852cb2fc544d06",
+    "originalError": "ReferenceError: window is not defined",
+    "diagnosis": "Next.js Window Undefined. Detailed framework-specific error indicating a configuration or lifecycle mismatch.",
+    "suggestedFix": "// Access window only in useEffect or event handlers\nif (typeof window !== 'undefined') {\n  // Client-side logic\n}",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "GENERATOR_EDGE"
+  },
+  "cb22d1c69eddda85ff20b9c945a066bed6f416be7f63cf81307815450d915d7f": {
+    "signature": "cb22d1c69eddda85ff20b9c945a066bed6f416be7f63cf81307815450d915d7f",
+    "originalError": "Tailwind CSS: Missing configuration",
+    "diagnosis": "Tailwind Unknown Config. Detailed framework-specific error indicating a configuration or lifecycle mismatch.",
+    "suggestedFix": "// Check tailwind.config.js content property\ncontent: [\"./src/**/*.{js,jsx,ts,tsx}\"]",
+    "severity": "MEDIUM",
+    "cached": true,
+    "source": "GENERATOR_EDGE"
+  },
+  "78f9fc6f668b808546c3542373cf0b3deb9ae8da1e9b8849e424254acd833eaa": {
+    "originalError": "Email and role are required",
+    "diagnosis": "Unknown system error. Please check logs.",
+    "suggestedFix": "// Check server logs for details",
+    "severity": "HIGH",
+    "timestamp": "2026-03-17T02:04:03.662Z"
+  }
+}

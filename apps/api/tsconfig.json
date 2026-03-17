@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@servx/errors": ["../../packages/errors/index.ts"],
+      "@servx/crypto": ["../../packages/crypto/index.ts"],
+      "@servx/types": ["../../packages/types/index.ts"],
+      "@servx/config": ["../../packages/config/index.ts"],
+      "core/*": ["src/core/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
