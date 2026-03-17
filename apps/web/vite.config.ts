@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@servx/types": path.resolve(__dirname, "../../packages/types/index.ts"),
     },
   },
 }));

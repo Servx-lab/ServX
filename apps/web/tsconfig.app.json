@@ -19,6 +19,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@servx/types": [
+        "../../packages/types/index.ts"
       ]
     },
     "skipLibCheck": true,

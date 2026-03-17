@@ -2,6 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import cors from 'cors';
 
 import { isAppError } from '@servx/errors';
+import errorHandler from './core/middleware/errorHandler';
 
 import authRouter from './domains/auth/router';
 import githubRouter from './domains/github/router';
@@ -71,12 +72,5 @@ export function registerApiRoutes(app: Express): void {
 }
 
 export function registerErrorHandler(app: Express): void {
-  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    if (isAppError(err)) {
-      res.status(err.statusCode).json({ code: err.code, message: err.message });
-      return;
-    }
-    console.error('[unhandled error]', err);
-    res.status(500).json({ code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' });
-  });
+  app.use(errorHandler);
 }

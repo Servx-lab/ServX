@@ -90,6 +90,7 @@
     "browserslist": "^4.28.1",
     "caniuse-lite": "^1.0.30001779",
     "eslint": "^9.32.0",
+    "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",

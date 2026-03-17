@@ -2,7 +2,7 @@ import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Activity } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
-import { AutoMedicPipeline } from '@/components/AutoMedicPipeline';
+import { AutoMedicPipeline } from '@/features/operations/AutoMedicPipeline';
 
 const AutoMedic = () => {
   const [searchParams] = useSearchParams();

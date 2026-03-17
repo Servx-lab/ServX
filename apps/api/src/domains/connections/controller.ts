@@ -10,6 +10,13 @@ interface AuthenticatedRequest extends Request {
   user: { uid: string };
 }
 
+function getSingleParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) {
+    return value[0] ?? '';
+  }
+  return value ?? '';
+}
+
 // POST /api/connections
 export async function createConnection(
   req: AuthenticatedRequest,
@@ -74,7 +81,7 @@ export async function deleteConnection(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { id } = req.params;
+    const id = getSingleParam(req.params.id as string | string[] | undefined);
     await svc.deleteConnection(id, req.user.uid);
     res.json({ message: 'Connection deleted successfully' });
   } catch (err) {
@@ -93,7 +100,7 @@ export async function getHostingStatus(
   next: NextFunction
 ): Promise<void> {
   try {
-    const providerKey = req.params.provider.toLowerCase();
+    const providerKey = getSingleParam(req.params.provider as string | string[] | undefined).toLowerCase();
     if (!HOSTING_PROVIDERS[providerKey]) {
       throw new ValidationError(`Unknown hosting provider: ${providerKey}`);
     }
@@ -111,7 +118,7 @@ export async function saveHostingConnection(
   next: NextFunction
 ): Promise<void> {
   try {
-    const providerKey = req.params.provider?.toLowerCase() ?? '';
+    const providerKey = getSingleParam(req.params.provider as string | string[] | undefined).toLowerCase();
     if (!HOSTING_PROVIDERS[providerKey]) {
       throw new ValidationError(`Unknown hosting provider: ${providerKey}`);
     }

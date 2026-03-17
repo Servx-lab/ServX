@@ -9,8 +9,10 @@ export interface EncryptedPayload {
 	content: string;
 }
 
-function resolveEncryptionKey(): Buffer {
-	const rawKey = process.env.ENCRYPTION_KEY;
+export const ENCRYPTION_KEY_RAW = process.env.ENCRYPTION_KEY;
+
+export function resolveEncryptionKey(): Buffer {
+	const rawKey = ENCRYPTION_KEY_RAW;
 
 	if (!rawKey) {
 		throw new Error('ENCRYPTION_KEY is required');

@@ -23,11 +23,11 @@ router.post('/hosting/:provider', requireAuth, saveHostingConnection);
 
 // Legacy Vercel aliases — delegate to the same handlers with provider forced to 'vercel'
 router.get('/vercel/status', requireAuth, (req, res, next) => {
-  req.params.provider = 'vercel';
+  (req.params as Record<string, string>).provider = 'vercel';
   getHostingStatus(req as any, res, next);
 });
 router.post('/vercel', requireAuth, (req, res, next) => {
-  req.params.provider = 'vercel';
+  (req.params as Record<string, string>).provider = 'vercel';
   saveHostingConnection(req as any, res, next);
 });
 
