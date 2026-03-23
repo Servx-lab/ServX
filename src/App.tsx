@@ -9,6 +9,7 @@ import Databases from "./pages/Databases";
 import GitHub from "./pages/GitHub";
 import HostingRender from "./pages/HostingRender";
 import InfraSettings from "./pages/InfraSettings";
+import ProfileSettings from "./pages/ProfileSettings";
 import AutoMedic from "./pages/AutoMedic";
 import Operations from "./pages/Operations";
 import NotFound from "./pages/NotFound";
@@ -19,6 +20,8 @@ import Administrator from "./pages/Administrator";
 import AttackPath from "./pages/AttackPath";
 import ComingSoon from "./pages/ComingSoon";
 import Emails from "./pages/Emails";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "@/components/RequireAuth";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -36,6 +39,8 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
 
             {/* Protected routes with persistent Sidebar (no blink on navigation) */}
             <Route
@@ -57,6 +62,7 @@ const App = () => (
               <Route path="/scenarios" element={<ComingSoon />} />
               <Route path="/emails" element={<Emails />} />
               <Route path="/reports" element={<ComingSoon />} />
+              <Route path="/settings/profile" element={<ProfileSettings />} />
             </Route>
 
             {/* Protected routes without sidebar layout */}
@@ -76,7 +82,6 @@ const App = () => (
                 </RequireAuth>
               }
             />
-
             {/* Special Protected Route (Requires Auth, but allows No GitHub Link) */}
             <Route
               path="/bridge"

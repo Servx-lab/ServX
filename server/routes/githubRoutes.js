@@ -243,6 +243,12 @@ router.post('/collaborator/role', requireAuth, authenticate, async (req, res) =>
     return res.status(400).json({ error: 'Invalid repoName format. Expected owner/repo' });
   }
 
+  if (githubUsername.toLowerCase() === owner.toLowerCase()) {
+    return res.status(400).json({
+      error: 'Cannot change the repository owner\'s access. The owner always has full permissions.',
+    });
+  }
+
   try {
     const octokit = new Octokit({ auth: req.githubToken });
 

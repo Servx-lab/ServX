@@ -617,6 +617,7 @@ const GitHubIntegration = () => {
                     >
                         <RepositoryAccess 
                             repoName={repoDetails.full_name} 
+                            ownerLogin={repoDetails.owner?.login}
                             contributors={repoDetails.contributors || []} 
                             onClose={() => setIsAccessPanelOpen(false)}
                         />

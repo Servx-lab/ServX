@@ -7,16 +7,17 @@ import { Contributor } from './types';
 
 interface RepositoryAccessProps {
   repoName: string; // owner/repo
+  ownerLogin?: string; // explicit owner to exclude (from API)
   contributors: Contributor[];
   onClose: () => void;
 }
 
-export const RepositoryAccess: React.FC<RepositoryAccessProps> = ({ repoName, contributors, onClose }) => {
-  // Local state to track access status. Default to 'unlocked' for now, or we could fetch actual permissions.
-  // The GitHub API for contributors doesn't return permissions directly without a specific call per user.
-  // Assuming they have write access by default if they are contributors, or we manage it locally.
+export const RepositoryAccess: React.FC<RepositoryAccessProps> = ({ repoName, ownerLogin, contributors, onClose }) => {
+  const owner = (ownerLogin || repoName.split('/')[0] || '').toLowerCase();
+  const collaboratorsOnly = contributors.filter((c) => c.login.toLowerCase() !== owner);
+
   const [accessStates, setAccessStates] = useState<Record<string, 'locked' | 'unlocked'>>(
-    contributors.reduce((acc, curr) => ({ ...acc, [curr.login]: 'unlocked' }), {})
+    collaboratorsOnly.reduce((acc, curr) => ({ ...acc, [curr.login]: 'unlocked' }), {})
   );
   const [loadingUser, setLoadingUser] = useState<string | null>(null);
 
@@ -63,7 +64,7 @@ export const RepositoryAccess: React.FC<RepositoryAccessProps> = ({ repoName, co
       </div>
       
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {contributors.map((contributor) => {
+        {collaboratorsOnly.map((contributor) => {
           const status = accessStates[contributor.login] || 'unlocked';
           const isLocked = status === 'locked';
           const isLoading = loadingUser === contributor.login;
@@ -130,9 +131,11 @@ export const RepositoryAccess: React.FC<RepositoryAccessProps> = ({ repoName, co
           );
         })}
         
-        {contributors.length === 0 && (
+        {collaboratorsOnly.length === 0 && (
           <div className="text-center py-8 text-gray-400">
-            No contributors found for this repository.
+            {contributors.length > 0
+              ? 'Only collaborators can have their access managed. The repository owner always has full access.'
+              : 'No contributors found for this repository.'}
           </div>
         )}
       </div>
