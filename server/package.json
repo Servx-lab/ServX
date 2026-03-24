@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "sync-users": "node scripts/syncUsersToSheets.js"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.1",

@@ -85,4 +85,56 @@ async function logNewUserToSheet(userData) {
   }
 }
 
-module.exports = { logNewUserToSheet };
+/**
+ * Logs multiple users to the first sheet of the configured Google Spreadsheet.
+ * @param {Array<Object>} usersData - Array of user data objects
+ * @returns {Promise<void>}
+ */
+async function batchLogUsersToSheet(usersData) {
+  if (!SPREADSHEET_ID || !CREDENTIALS) {
+    console.warn('[Sheets] Skipping batch log: SPREADSHEET_ID or service account not set');
+    return;
+  }
+
+  if (!usersData || usersData.length === 0) {
+    console.log('[Sheets] No users to log');
+    return;
+  }
+
+  try {
+    const auth = new JWT({
+      email: CREDENTIALS.email,
+      key: CREDENTIALS.key,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+
+    const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
+    await doc.loadInfo();
+
+    const sheet = doc.sheetsByIndex[0];
+    try {
+      await sheet.loadHeaderRow();
+    } catch {
+      await sheet.setHeaderRow(HEADERS);
+    }
+
+    const rows = usersData.map(userData => {
+      const { uid, email, role = 'user', createdAt } = userData;
+      const dateJoined = createdAt ? new Date(createdAt).toISOString() : new Date().toISOString();
+      return {
+        [HEADERS[0]]: dateJoined,
+        [HEADERS[1]]: uid,
+        [HEADERS[2]]: email,
+        [HEADERS[3]]: role,
+      };
+    });
+
+    await sheet.addRows(rows);
+    console.log(`[Sheets] Batch export complete: ${rows.length} users added.`);
+  } catch (err) {
+    console.error('[Sheets] Failed to batch append rows:', err.message);
+    throw err;
+  }
+}
+
+module.exports = { logNewUserToSheet, batchLogUsersToSheet };
