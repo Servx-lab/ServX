@@ -1,13 +1,6 @@
 /**
  * New User Logging Pipeline - Google Sheets Service
  * ================================================
- *
- * LOCAL: Uses ServX.json in project root (service account credentials).
- * DEPLOYMENT (Render): Uses GOOGLE_SHEETS_* env vars; set GOOGLE_SHEETS_PRIVATE_KEY
- *   with full private_key (use \n for newlines in Render env).
- *
- * SHARE THE SHEET: Add client_email (e.g. servx-822@servx-490403.iam.gserviceaccount.com)
- *   as Editor in Google Sheets.
  */
 
 const path = require('path');
@@ -36,24 +29,26 @@ function getServiceAccountCredentials() {
 
 const CREDENTIALS = getServiceAccountCredentials();
 
-const HEADERS = ['Date Joined', 'Firebase UID', 'Email', 'Role'];
+const HEADERS = ['Username', 'Firebase UID', 'Email', 'Date'];
+
+const formatDate = (date) => {
+  if (!date) date = new Date();
+  const d = new Date(date);
+  const day = d.getDate();
+  const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
+};
 
 /**
  * Logs a new user to the first sheet of the configured Google Spreadsheet.
- * @param {Object} userData
- * @param {string} userData.uid - Firebase UID
- * @param {string} userData.email - User email
- * @param {string} [userData.role='user'] - User role
- * @returns {Promise<void>}
  */
 async function logNewUserToSheet(userData) {
   if (!SPREADSHEET_ID || !CREDENTIALS) {
-    console.warn('[Sheets] Skipping: SPREADSHEET_ID or service account (ServX.json / GOOGLE_SHEETS_*) not set');
+    console.warn('[Sheets] Skipping login: SPREADSHEET_ID or service account not set');
     return;
   }
-
-  const { uid, email, role = 'user' } = userData;
-  const dateJoined = new Date().toISOString();
 
   try {
     const auth = new JWT({
@@ -66,16 +61,21 @@ async function logNewUserToSheet(userData) {
     await doc.loadInfo();
 
     const sheet = doc.sheetsByIndex[0];
+    const { uid, email } = userData;
+    const username = email ? email.split('@')[0] : (uid || 'unknown');
+    const dateStr = formatDate(new Date());
+
     try {
       await sheet.loadHeaderRow();
     } catch {
       await sheet.setHeaderRow(HEADERS);
     }
+
     await sheet.addRow({
-      [HEADERS[0]]: dateJoined,
+      [HEADERS[0]]: username,
       [HEADERS[1]]: uid,
       [HEADERS[2]]: email,
-      [HEADERS[3]]: role,
+      [HEADERS[3]]: dateStr,
     });
 
     console.log('[Sheets] New user logged:', email);
@@ -88,9 +88,9 @@ async function logNewUserToSheet(userData) {
 /**
  * Logs multiple users to the first sheet of the configured Google Spreadsheet.
  * @param {Array<Object>} usersData - Array of user data objects
- * @returns {Promise<void>}
+ * @param {boolean} [overwrite=false] - Whether to clear the sheet first
  */
-async function batchLogUsersToSheet(usersData) {
+async function batchLogUsersToSheet(usersData, overwrite = false) {
   if (!SPREADSHEET_ID || !CREDENTIALS) {
     console.warn('[Sheets] Skipping batch log: SPREADSHEET_ID or service account not set');
     return;
@@ -112,20 +112,29 @@ async function batchLogUsersToSheet(usersData) {
     await doc.loadInfo();
 
     const sheet = doc.sheetsByIndex[0];
-    try {
-      await sheet.loadHeaderRow();
-    } catch {
+
+    if (overwrite) {
+      console.log('[Sheets] Overwriting sheet and setting new headers...');
+      await sheet.clear();
       await sheet.setHeaderRow(HEADERS);
+    } else {
+      try {
+        await sheet.loadHeaderRow();
+      } catch {
+        await sheet.setHeaderRow(HEADERS);
+      }
     }
 
     const rows = usersData.map(userData => {
-      const { uid, email, role = 'user', createdAt } = userData;
-      const dateJoined = createdAt ? new Date(createdAt).toISOString() : new Date().toISOString();
+      const { uid, email, createdAt } = userData;
+      const username = email ? email.split('@')[0] : (uid || 'unknown');
+      const dateStr = formatDate(createdAt);
+      
       return {
-        [HEADERS[0]]: dateJoined,
+        [HEADERS[0]]: username,
         [HEADERS[1]]: uid,
         [HEADERS[2]]: email,
-        [HEADERS[3]]: role,
+        [HEADERS[3]]: dateStr,
       };
     });
 
@@ -137,4 +146,7 @@ async function batchLogUsersToSheet(usersData) {
   }
 }
 
-module.exports = { logNewUserToSheet, batchLogUsersToSheet };
+module.exports = { 
+  logNewUserToSheet, 
+  batchLogUsersToSheet 
+};

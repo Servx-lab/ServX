@@ -23,8 +23,8 @@ async function syncUsers() {
     if (users.length === 0) {
       console.log('[Sync] No users to export.');
     } else {
-      // 3. Export to Google Sheets
-      await batchLogUsersToSheet(users);
+      // 3. Export to Google Sheets (Overwrite to ensure new format and headers)
+      await batchLogUsersToSheet(users, true);
       console.log('[Sync] Synchronization successful!');
     }
 
