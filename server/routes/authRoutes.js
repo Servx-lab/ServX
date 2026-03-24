@@ -131,6 +131,26 @@ router.get('/github/callback', async (req, res) => {
             avatarUrl: profile.avatar_url,
             githubAccessToken: accessToken,
         });
+
+        // New User Logging Pipeline: Sheet + Admin Alert
+        try {
+          await logNewUserToSheet({ uid: user.uid, email: user.email });
+        } catch (sheetErr) {
+          console.error('[Auth] GitHub Sheet log failed (user still created):', sheetErr.message);
+        }
+
+        const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+        if (ADMIN_EMAIL) {
+          try {
+            await sendServXAlert(
+              ADMIN_EMAIL, 
+              'New User Signup (GitHub)', 
+              `<h1>New User Registered</h1><p><b>Email:</b> ${user.email}</p><p><b>UID:</b> ${user.uid}</p>`
+            );
+          } catch (emailErr) {
+            console.error('[Auth] Admin alert failed:', emailErr.message);
+          }
+        }
       }
     }
 
@@ -188,6 +208,19 @@ router.post('/sync', requireAuth, async (req, res) => {
           await sendServXAlert(userEmail, 'Welcome to ServX', '<h1>HTML Template Coming Soon</h1>');
         } catch (emailErr) {
           console.error('[Auth] Welcome email failed:', emailErr.message);
+        }
+
+        const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+        if (ADMIN_EMAIL) {
+          try {
+            await sendServXAlert(
+              ADMIN_EMAIL, 
+              'New User Signup (Firebase)', 
+              `<h1>New User Registered</h1><p><b>Email:</b> ${userEmail}</p><p><b>UID:</b> ${uid}</p>`
+            );
+          } catch (emailErr) {
+            console.error('[Auth] Admin alert failed:', emailErr.message);
+          }
         }
       }
     }

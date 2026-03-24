@@ -11,11 +11,6 @@ const { JWT } = require('google-auth-library');
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 
 function getServiceAccountCredentials() {
-  const servxPath = path.join(__dirname, '..', '..', 'ServX.json');
-  if (fs.existsSync(servxPath)) {
-    const cred = require(servxPath);
-    return { email: cred.client_email, key: cred.private_key };
-  }
   const envKey = process.env.GOOGLE_SHEETS_PRIVATE_KEY;
   const envEmail = process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
   if (envKey && envEmail) {
