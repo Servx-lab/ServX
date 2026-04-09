@@ -8,7 +8,7 @@ import {
   findFirebaseConnectionId,
   getFirebaseApp,
   logNewUserToSheetService,
-  sendServXAlertService,
+  sendServXAlert,
 } from './service';
 
 interface AuthenticatedRequest {
@@ -139,7 +139,7 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
         const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
         if (ADMIN_EMAIL) {
           try {
-            await sendServXAlertService(
+            await sendServXAlert(
               ADMIN_EMAIL,
               'New User Signup (GitHub)',
               `<h1>New User Registered</h1><p><b>Email:</b> ${newUser.email}</p><p><b>UID:</b> ${newUser.uid}</p>`
@@ -202,7 +202,7 @@ export async function syncUser(req: AuthenticatedRequest, res: any, next: any): 
       }
 
       try {
-        await sendServXAlertService(email, 'Welcome to ServX', '<h1>HTML Template Coming Soon</h1>');
+        await sendServXAlert(email, 'Welcome to ServX', '<h1>HTML Template Coming Soon</h1>');
       } catch (emailError) {
         console.error('[Auth] Welcome email failed:', (emailError as Error).message);
       }
@@ -210,7 +210,7 @@ export async function syncUser(req: AuthenticatedRequest, res: any, next: any): 
       const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
       if (ADMIN_EMAIL) {
         try {
-          await sendServXAlertService(
+          await sendServXAlert(
             ADMIN_EMAIL,
             'New User Signup (Firebase)',
             `<h1>New User Registered</h1><p><b>Email:</b> ${email}</p><p><b>UID:</b> ${uid}</p>`

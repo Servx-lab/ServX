@@ -40,6 +40,9 @@ export interface User {
 	githubId?: string;
 	githubAccessToken?: string;
 	avatarUrl?: string;
+	username?: string;
+	surname?: string;
+	emailVerified?: boolean;
 	role: string;
 	createdAt?: string | Date;
 }
