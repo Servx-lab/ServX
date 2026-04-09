@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-import isAdmin from 'core/middleware/isAdmin';
+import isAdmin from '../../core/middleware/isAdmin';
 import {
   inviteAdmin,
   listAdmins,
