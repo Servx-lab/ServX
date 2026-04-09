@@ -6,6 +6,7 @@ import type {
   DbInfo,
   FirebaseUser,
   FirebaseUserListResponse,
+  DatabaseType,
 } from './types';
 
 export async function getConnections(): Promise<ConnectionListItem[]> {
@@ -47,6 +48,16 @@ export async function exploreDocuments(
     dbName,
     collectionName,
   });
+  return res.data;
+}
+
+export async function testConnection(payload: { connectionId?: string; provider?: DatabaseType; config?: any }): Promise<{ ok: boolean; latencyMs?: number; message?: string }> {
+  const res = await apiClient.post('/db/test-connection', payload);
+  return res.data;
+}
+
+export async function getStats(connectionId: string): Promise<{ stats: any }> {
+  const res = await apiClient.get(`/db/stats?connectionId=${connectionId}`);
   return res.data;
 }
 
