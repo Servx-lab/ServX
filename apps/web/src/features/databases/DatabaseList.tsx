@@ -1,9 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { DatabaseType, UniversalRecord } from './types';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
+import { DatabaseType } from './types';
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { 
     AlertDialog,
@@ -17,166 +14,36 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Search, Filter, Eye, Plus, Database, RefreshCw, Table as TableIcon, Loader2, Trash2, AlertTriangle, ChevronDown, HardDrive } from 'lucide-react';
+import { Plus, Database, RefreshCw, Table as TableIcon, Loader2, Trash2, AlertTriangle, HardDrive } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { QuickViewDrawer } from './QuickViewDrawer';
-import { FileUpload } from './FileUpload';
 import AddDatabaseForm from './AddDatabaseForm';
 import { DatabaseLogo } from './DatabaseLogo';
 import DataGrid from './DataGrid';
-import { FirebaseUserManager } from './FirebaseUserManager';
+import { StatsPanel } from './StatsPanel';
 import apiClient from '@/lib/apiClient';
-
-const SOURCE_COLORS: Record<string, string> = {
-    MongoDB: '#00EC65',
-    Firebase: '#FEA001',
-    Supabase: '#3ECE8F',
-    PostgreSQL: '#326691',
-    MySQL: '#01748F',
-    'AWS RDS': '#FE9901',
-    Oracle: '#F80101',
-    MariaDB: '#C0775B',
-};
-
-const MOCK_DATA: UniversalRecord[] = [
-  {
-    id: '1',
-    source: 'Firebase',
-    collection: 'users',
-    createdAt: '2024-03-01T10:00:00Z',
-    updatedAt: '2024-03-01T10:00:00Z',
-    data: { name: 'Alice', email: 'alice@example.com', role: 'admin' }
-  },
-  {
-    id: '1b',
-    source: 'Firebase',
-    collection: 'users',
-    createdAt: '2024-03-03T09:00:00Z',
-    updatedAt: '2024-03-03T09:30:00Z',
-    data: { name: 'Bob', email: 'bob@example.com', role: 'user' }
-  },
-  {
-    id: '2',
-    source: 'MongoDB',
-    collection: 'logs',
-    createdAt: '2024-03-02T12:30:00Z',
-    updatedAt: '2024-03-02T12:30:00Z',
-    data: { level: 'error', message: 'Connection timeout', service: 'auth' }
-  },
-  {
-    id: '2b',
-    source: 'MongoDB',
-    collection: 'logs',
-    createdAt: '2024-03-02T12:35:00Z',
-    updatedAt: '2024-03-02T12:35:00Z',
-    data: { level: 'info', message: 'User logged in', service: 'auth', userId: 'usr_123' }
-  },
-  {
-    id: '3',
-    source: 'MySQL',
-    collection: 'products',
-    createdAt: '2024-01-15T08:15:00Z',
-    updatedAt: '2024-03-05T09:20:00Z',
-    data: { sku: 'PROD-123', price: 99.99, stock: 150 }
-  },
-  {
-    id: '3b',
-    source: 'MySQL',
-    collection: 'products',
-    createdAt: '2024-01-16T10:00:00Z',
-    updatedAt: '2024-03-05T09:20:00Z',
-    data: { sku: 'PROD-456', price: 149.99, stock: 85 }
-  },
-  {
-    id: '4',
-    source: 'Supabase',
-    collection: 'profiles',
-    createdAt: '2024-02-20T14:45:00Z',
-    updatedAt: '2024-02-28T16:10:00Z',
-    data: { username: 'dev_master', bio: 'Full stack developer', avatar_url: 'https://github.com/u/1.png' }
-  },
-  {
-    id: '4b',
-    source: 'Supabase',
-    collection: 'posts',
-    createdAt: '2024-02-21T09:00:00Z',
-    updatedAt: '2024-02-21T09:00:00Z',
-    data: { title: 'Hello World', content: 'First post content...', author_id: 'user_1' }
-  },
-   {
-    id: '5',
-    source: 'AWS RDS',
-    collection: 's3-objects',
-    createdAt: '2024-03-08T11:00:00Z',
-    updatedAt: '2024-03-08T11:00:00Z',
-    data: { key: 'report-2024.pdf', size: 102450, bucket: 'reports-bucket' }
-  },
-  {
-    id: '5b',
-    source: 'AWS RDS',
-    collection: 'dynamodb-items',
-    createdAt: '2024-03-09T14:20:00Z',
-    updatedAt: '2024-03-09T14:20:00Z',
-    data: { pk: 'USER#123', sk: 'PROFILE', displayName: 'John Doe', plan: 'premium' }
-  },
-  {
-    id: '6',
-    source: 'PostgreSQL',
-    collection: 'transactions',
-    createdAt: '2024-03-10T08:00:00Z',
-    updatedAt: '2024-03-10T08:05:00Z',
-    data: { tx_id: 'tx_999', amount: 500.00, currency: 'USD', status: 'completed' }
-  },
-  {
-    id: '7',
-    source: 'Oracle',
-    collection: 'employees',
-    createdAt: '2024-01-01T09:00:00Z',
-    updatedAt: '2024-01-01T09:00:00Z',
-    data: { emp_id: 1001, last_name: 'Smith', dept_id: 20, salary: 85000 }
-  },
-  {
-    id: '8',
-    source: 'Redis',
-    collection: 'cache',
-    createdAt: '2024-03-10T15:30:00Z',
-    updatedAt: '2024-03-10T15:30:05Z',
-    data: { key: 'session:xyz', ttl: 3600, value: '{"user_id": 42}' }
-  },
-  {
-    id: '9',
-    source: 'MariaDB',
-    collection: 'comments',
-    createdAt: '2024-03-05T11:15:00Z',
-    updatedAt: '2024-03-05T11:20:00Z',
-    data: { comment_id: 55, post_id: 102, content: 'Great article!', approved: true }
-  }
-];
 
 interface DatabaseControllerProps {
     initialSource?: DatabaseType;
 }
 
 export const DatabaseController = ({ initialSource }: DatabaseControllerProps) => {
-  const [selectedSource, setSelectedSource] = useState<DatabaseType | 'All'>(initialSource || 'All');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [records, setRecords] = useState<UniversalRecord[]>(MOCK_DATA);
-  const [selectedRecord, setSelectedRecord] = useState<UniversalRecord | null>(null);
-  const [showUpload, setShowUpload] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<string | null>(initialSource || null);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [connections, setConnections] = useState<any[]>([]);
   const [loadingConnections, setLoadingConnections] = useState(false);
 
   // Explorer State
-  const [explorerMode, setExplorerMode] = useState(false);
-  const [showFirebaseUsers, setShowFirebaseUsers] = useState(false);
   const [databases, setDatabases] = useState<{name: string; sizeOnDisk: number}[]>([]);
   const [selectedDatabase, setSelectedDatabase] = useState<string | null>(null);
-  const [collections, setCollections] = useState<string[]>([]);
+  const [collections, setCollections] = useState<{name: string; type: string; rowCount?: number}[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [explorerDocuments, setExplorerDocuments] = useState<any[]>([]);
-  const [loadingExplorer, setLoadingExplorer] = useState(false);
+  
+  const [loadingDatabases, setLoadingDatabases] = useState(false);
   const [loadingCollections, setLoadingCollections] = useState(false);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
 
   // Delete Connection State
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
@@ -195,12 +62,10 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       setIsDeleting(true);
       try {
           await apiClient.delete(`/connections/${deleteTarget.id}`);
-          
-          toast({ title: "Connection Deleted", description: "The database connection has been removed." });
+          toast({ title: "Connection Deleted" });
           fetchConnections();
           if (selectedSource === deleteTarget.id) {
-              setSelectedSource('All');
-              setExplorerMode(false);
+              setSelectedSource(null);
           }
           setDeleteTarget(null);
       } catch (err) {
@@ -210,45 +75,28 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       }
   };
 
+  const loadDatabases = async (connectionId: string) => {
+      setLoadingDatabases(true);
+      setDatabases([]);
+      setSelectedDatabase(null);
+      setCollections([]); 
+      setSelectedCollection(null);
+      setExplorerDocuments([]);
+
+      try {
+        const res = await apiClient.get(`/db/explore/databases?connectionId=${connectionId}`);
+        setDatabases(res.data.databases || []);
+      } catch(err) {
+          toast({ title: "Error", description: "Failed to explore databases.", variant: "destructive" });
+      } finally {
+          setLoadingDatabases(false);
+      }
+  };
+
   const handleSourceSelect = async (option: any) => {
       setSelectedSource(option.id);
-      
-      const isRealConnection = option.group === 'Your Connections';
-      const isMongoDB = option.provider === 'MongoDB';
-      const isFirebase = option.provider === 'Firebase';
-
-      // Reset
-      setExplorerMode(false);
-      setShowFirebaseUsers(false);
-
-      if (isRealConnection) {
-          if (isMongoDB) {
-              setExplorerMode(true);
-              setLoadingExplorer(true);
-              setDatabases([]);
-              setSelectedDatabase(null);
-              setCollections([]); 
-              setSelectedCollection(null);
-              setExplorerDocuments([]);
-
-              try {
-                const res = await apiClient.get(`/db/explore/databases?connectionId=${option.id}`);
-                setDatabases(res.data.databases || []);
-              } catch(err) {
-                  console.error(err);
-              } finally {
-                  setLoadingExplorer(false);
-              }
-          } else if (isFirebase) {
-              setShowFirebaseUsers(true);
-          }
-      }
-
-      if (option.id === 'Google Sheets') {
-        if(!showUpload) setShowUpload(true)
-      } else {
-        setShowUpload(false);
-      }
+      setSelectedProvider(option.provider);
+      loadDatabases(option.id);
   };
 
   const handleDatabaseSelect = async (dbName: string) => {
@@ -259,9 +107,13 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       setLoadingCollections(true);
       try {
           const res = await apiClient.get(`/db/explore/collections?connectionId=${selectedSource}&dbName=${encodeURIComponent(dbName)}`);
-          setCollections(res.data.collections || []);
+          // Adapters return an array of objects or strings, map to object here
+          const normalized = (res.data.collections || []).map((c: any) => 
+            typeof c === 'string' ? { name: c, type: 'table' } : c
+          );
+          setCollections(normalized);
       } catch(err) {
-          console.error(err);
+          toast({ title: "Error", description: "Failed to list collections.", variant: "destructive" });
       } finally {
           setLoadingCollections(false);
       }
@@ -271,7 +123,7 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       if (!selectedSource || !selectedDatabase) return;
       
       setSelectedCollection(colName);
-      setLoadingExplorer(true);
+      setLoadingDocuments(true);
       try {
           const res = await apiClient.post(`/db/explore/documents`, { 
               connectionId: selectedSource,
@@ -280,9 +132,9 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
           });
           setExplorerDocuments(res.data.documents || []);
       } catch(err) {
-          console.error(err);
+          toast({ title: "Error", description: "Failed to query rows.", variant: "destructive" });
       } finally {
-          setLoadingExplorer(false);
+          setLoadingDocuments(false);
       }
   };
 
@@ -307,68 +159,24 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
       fetchConnections();
   };
 
-  // Computed properties
-  const filteredRecords = useMemo(() => {
-    return records.filter(record => {
-      // Source filter
-      let sourceMatch = true;
-      if (selectedSource !== 'All') {
-          // Check if selectedSource is a provider name from mock (e.g. MongoDB) or connection ID
-          const connection = connections.find(c => c._id === selectedSource);
-          const targetProvider = connection ? connection.provider : selectedSource;
-          
-          if (record.source !== targetProvider && record.source !== selectedSource) {
-              sourceMatch = false;
-          }
-      }
-      if (!sourceMatch) return false;
-      
-      // Text search
-      if (!searchQuery) return true;
-      const searchLower = searchQuery.toLowerCase();
-      // Search in data keys and values
-      const inData = Object.values(record.data).some(val => 
-        String(val).toLowerCase().includes(searchLower)
-      );
-      // Search in collection name or ID
-      const inMeta = record.collection.toLowerCase().includes(searchLower) || 
-                     record.id.toLowerCase().includes(searchLower);
-                     
-      return inData || inMeta;
-    });
-  }, [records, selectedSource, searchQuery, connections]);
-
-  const handleDataLoaded = (newRecords: UniversalRecord[]) => {
-      setRecords(prev => [...prev, ...newRecords]);
-      setSelectedSource('Google Sheets');
-  };
-
   const HOSTING_PROVIDERS = ['vercel', 'render', 'railway', 'digitalocean', 'fly.io', 'aws'];
 
-  const currentDatabaseOptions = useMemo(() => {
-      const options: { id: string, label: string, provider?: string, group: string }[] = [
-          { id: 'All', label: 'All Databases', group: 'General' }
-      ];
+  const connectionOptions = useMemo(() => {
+      const options: { id: string, label: string, provider: string }[] = [];
 
-      if (connections.length > 0) {
-          connections
-              .filter(conn => {
-                  const provider = (conn.provider || '').trim().toLowerCase();
-                  const name = (conn.name || '').trim().toLowerCase();
-                  // Filter out if provider is a hosting provider, OR if the name explicitly contains 'hosting'
-                  return !HOSTING_PROVIDERS.includes(provider) && !name.includes('hosting');
-              })
-              .forEach(conn => {
-                  options.push({ 
-                      id: conn._id, 
-                      label: conn.name, 
-                      provider: conn.provider,
-                      group: 'Your Connections' 
-                  });
+      connections
+          .filter(conn => {
+              const provider = (conn.provider || '').trim().toLowerCase();
+              const name = (conn.name || '').trim().toLowerCase();
+              return !HOSTING_PROVIDERS.includes(provider) && !name.includes('hosting');
+          })
+          .forEach(conn => {
+              options.push({ 
+                  id: conn._id, 
+                  label: conn.name, 
+                  provider: conn.provider
               });
-      }
-      
-      options.push({ id: 'Google Sheets', label: 'Google Sheets', provider: 'Google Sheets', group: 'Uploads' });
+          });
 
       return options;
   }, [connections]);
@@ -376,22 +184,7 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
 
   return (
     <div className="flex flex-col h-full gap-6">
-      {/* Header Controls - Just Search now */}
-      <div className="flex items-center gap-2 w-full md:w-auto">
-            <div className="relative flex-1 md:w-96">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-                type="search"
-                placeholder="Search records..."
-                className="pl-8 bg-background max-w-lg"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            </div>
-            <Button variant="outline" size="icon">
-            <Filter className="h-4 w-4" />
-            </Button>
-            
+      <div className="flex items-center gap-2 justify-end w-full">
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
                     <Button variant="default" className="gap-2">
@@ -411,162 +204,12 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
             </Dialog>
       </div>
 
-     {/* Main Content Area with sidebar on the RIGHT */}
      <div className="flex flex-1 gap-6 overflow-hidden">
-         {/* Right: Scrollable Content - Table or Explorer */}
-         <div className="flex-1 overflow-hidden h-full pr-2">
-            {explorerMode ? (
-                 <div className="flex flex-col h-full gap-0">
-                     {/* Database Tabs - horizontal bar at top */}
-                     <div className="flex items-center gap-1 px-2 py-2 border-b border-border/50 overflow-x-auto flex-none">
-                         <div className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mr-2 flex-shrink-0 flex items-center gap-1.5">
-                            <HardDrive className="w-3 h-3" /> Databases
-                            {loadingExplorer && <Loader2 className="h-3 w-3 animate-spin"/>}
-                         </div>
-                         {databases.map(db => (
-                             <Button 
-                                key={db.name} 
-                                variant={selectedDatabase === db.name ? "secondary" : "outline"} 
-                                size="sm" 
-                                className={`h-7 px-3 text-xs flex-shrink-0 ${selectedDatabase === db.name ? 'bg-secondary font-medium shadow-sm' : 'text-muted-foreground border-border/50'}`}
-                                onClick={() => handleDatabaseSelect(db.name)}
-                             >
-                                 {db.name}
-                             </Button>
-                         ))}
-                         {databases.length === 0 && !loadingExplorer && (
-                             <span className="text-[11px] text-muted-foreground">No databases found.</span>
-                         )}
-                     </div>
-
-                     {/* Collections sidebar + Documents area */}
-                     <div className="flex flex-1 overflow-hidden">
-                         {/* Documents Explorer */}
-                         <div className="flex-1 overflow-hidden h-full rounded-md border bg-card/50 mr-2">
-                             {selectedCollection ? (
-                                 loadingExplorer ? (
-                                     <div className="flex items-center justify-center h-full text-muted-foreground gap-2">
-                                         <Loader2 className="h-4 w-4 animate-spin"/> Loading data...
-                                     </div>
-                                 ) : (
-                                     <DataGrid data={explorerDocuments} collectionName={selectedCollection} />
-                                 )
-                             ) : (
-                                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
-                                     <Database className="h-12 w-12 opacity-20 mb-4" />
-                                     <p className="text-sm">{!selectedDatabase ? 'Select a database to get started' : 'Select a collection to browse documents'}</p>
-                                 </div>
-                             )}
-                         </div>
-
-                         {/* Collections Sidebar */}
-                         {selectedDatabase && (
-                             <div className="w-48 border-l overflow-y-auto pt-3 px-2 flex-none">
-                                 <div className="text-[10px] font-bold text-muted-foreground/60 mb-2 px-1 uppercase tracking-wider flex items-center justify-between">
-                                    <span>Collections</span>
-                                    {loadingCollections && <Loader2 className="h-3 w-3 animate-spin"/>}
-                                 </div>
-                                 <div className="flex flex-col gap-0.5">
-                                     {collections.map(col => (
-                                         <Button 
-                                            key={col} 
-                                            variant={selectedCollection === col ? "secondary" : "ghost"} 
-                                            size="sm" 
-                                            className={`justify-start h-7 px-2 text-xs ${selectedCollection === col ? 'bg-secondary font-medium' : 'text-muted-foreground'}`}
-                                            onClick={() => handleCollectionSelect(col)}
-                                         >
-                                             <TableIcon className="w-3 h-3 mr-2 opacity-70 flex-shrink-0" />
-                                             <span className="truncate" title={col}>{col}</span>
-                                         </Button>
-                                     ))}
-                                     {collections.length === 0 && !loadingCollections && (
-                                         <div className="text-[11px] text-muted-foreground px-2 py-1">No collections.</div>
-                                     )}
-                                 </div>
-                             </div>
-                         )}
-                     </div>
-                 </div>
-            ) : showFirebaseUsers ? (
-                <FirebaseUserManager connectionId={selectedSource !== 'All' ? selectedSource as string : undefined} />
-            ) : (
-                <div className="h-full overflow-y-auto no-scrollbar">
-                    {/* Upload Area (Conditional) */}
-                    {showUpload && selectedSource === 'Google Sheets' && (
-                        <div className="mb-6 animate-in slide-in-from-top-4 fade-in duration-300">
-                            <FileUpload onDataLoaded={handleDataLoaded} onClose={() => setShowUpload(false)} />
-                       </div>
-                    )}
-                    
-                    {/* Main Table */}
-                    <div className="rounded-md border bg-card/50 backdrop-blur-sm">
-                        <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead className="w-[100px]">ID</TableHead>
-                            <TableHead className="w-[120px]">Source</TableHead>
-                            <TableHead>Collection</TableHead>
-                            <TableHead>Preview Data</TableHead>
-                            <TableHead className="w-[150px]">Last Updated</TableHead>
-                            <TableHead className="w-[80px]"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredRecords.length > 0 ? (
-                                filteredRecords.map((record) => (
-                                <TableRow key={record.id} className="group cursor-pointer hover:bg-muted/50" onClick={() => setSelectedRecord(record)}>
-                                    <TableCell className="font-mono text-xs text-muted-foreground">{record.id}</TableCell>
-                                    <TableCell>
-                                        <Badge 
-                                            className="font-normal text-white px-2 py-0.5 rounded-full text-xs"
-                                            style={{ backgroundColor: SOURCE_COLORS[record.source] || '#6B7280' }}
-                                        >
-                                            {record.source}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="font-medium">{record.collection}</TableCell>
-                                    <TableCell className="max-w-[300px]">
-                                        <div className="truncate text-muted-foreground text-xs font-mono opacity-80">
-                                            {JSON.stringify(record.data || {})}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-xs">
-                                        {record.updatedAt ? new Date(record.updatedAt).toLocaleDateString() : '-'}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Eye className="h-4 w-4" />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="h-24 text-center">
-                                        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                                            <Database className="h-8 w-8 opacity-20" />
-                                            <p>{selectedSource === 'All' ? 'No records found.' : 'No mock records available for this connection.'}</p>
-                                            {selectedSource !== 'All' && selectedSource !== 'Google Sheets' && !['Firebase', 'MongoDB', 'Supabase', 'MySQL', 'AWS RDS', 'PostgreSQL', 'Oracle', 'Redis', 'MariaDB'].includes(selectedSource as string) && (
-                                                <p className="text-xs text-muted-foreground/60 max-w-xs">
-                                                    (Since this is a demo, we only have mock data for specific providers.)
-                                                </p>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                        </Table>
-                    </div>
-                </div>
-            )}
-         </div>
-
-         {/* Right Sidebar: Connection Selection - always visible now but on the right */}
-         <div className="w-64 flex-none border-l pl-6 pt-1 hidden md:block overflow-y-auto no-scrollbar">
+         {/* Right Sidebar: Connection Selection - kept on the left for DB controller natively? Let's keep it on the right to match layout context */}
+         <div className="w-64 flex-none border-r pr-6 pt-1 hidden md:block overflow-y-auto no-scrollbar order-first">
              <div className="flex items-center justify-between mb-4 pr-2">
                  <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                     Databases
+                     Connections
                  </div>
                  <Button 
                     variant="ghost" 
@@ -579,49 +222,122 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
                  </Button>
              </div>
              <div className="flex flex-col gap-1">
-                {currentDatabaseOptions.map((option, index) => {
-                    const isFirstInGroup = index > 0 && option.group !== currentDatabaseOptions[index - 1].group;
-                    return (
-                    <div key={option.id}>
-                        {isFirstInGroup && (
-                            <div className="text-[10px] font-bold text-muted-foreground/60 mb-2 mt-4 px-2 uppercase tracking-wider">
-                                {option.group}
+                {connectionOptions.map((option) => (
+                    <div key={option.id} className="relative group/item">
+                        <Button
+                            variant={selectedSource === option.id ? "secondary" : "ghost"}
+                            className={`w-full justify-start gap-3 h-auto py-2 px-3 pr-8 ${selectedSource === option.id ? 'bg-secondary font-medium shadow-sm border-blue-500/20' : 'text-muted-foreground'}`}
+                            onClick={() => handleSourceSelect(option)}
+                        >
+                            <div className="flex-shrink-0">
+                                <DatabaseLogo type={option.provider} className="w-5 h-5" />
                             </div>
-                        )}
-                        <div className="relative group/item">
-                            <Button
-                                variant={selectedSource === option.id ? "secondary" : "ghost"}
-                                className={`w-full justify-start gap-3 h-auto py-2 px-3 pr-8 ${selectedSource === option.id ? 'bg-secondary font-medium shadow-sm' : 'text-muted-foreground'}`}
-                                onClick={() => handleSourceSelect(option)}
-                            >
-                                <div className="flex-shrink-0">
-                                    <DatabaseLogo type={option.provider || option.id} className="w-5 h-5" />
-                                </div>
-                                <span className="truncate text-sm">{option.label}</span>
-                            </Button>
-                            
-                            {option.group === 'Your Connections' && (
-                                <Button
-                                    variant="ghost" 
-                                    size="icon"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover/item:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={(e) => initiateDelete(e, option)}
-                                >
-                                    <Trash2 className="h-3 w-3" />
-                                </Button>
-                            )}
-                        </div>
+                            <span className="truncate text-sm">{option.label}</span>
+                        </Button>
+                        
+                        <Button
+                            variant="ghost" 
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover/item:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => initiateDelete(e, option)}
+                        >
+                            <Trash2 className="h-3 w-3" />
+                        </Button>
                     </div>
-                )})}
+                ))}
             </div>
          </div>
-     </div>
 
-      <QuickViewDrawer 
-        record={selectedRecord} 
-        isOpen={!!selectedRecord} 
-        onClose={() => setSelectedRecord(null)} 
-      />
+         {/* Center Content: Explorer */}
+         <div className="flex-1 overflow-hidden h-full flex flex-col gap-0 border rounded-xl bg-card/50">
+             {selectedSource ? (
+                 <>
+                     {/* Stats Panel */}
+                     <StatsPanel connectionId={selectedSource} />
+                     
+                     {/* Database Selection Bar */}
+                     <div className="flex items-center gap-1 px-4 py-2 border-b border-border/50 overflow-x-auto flex-none bg-muted/10">
+                         <div className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mr-2 flex-shrink-0 flex items-center gap-1.5">
+                            <HardDrive className="w-3 h-3" /> Databases
+                            {loadingDatabases && <Loader2 className="h-3 w-3 animate-spin"/>}
+                         </div>
+                         {databases.map(db => (
+                             <Button 
+                                key={db.name} 
+                                variant={selectedDatabase === db.name ? "secondary" : "outline"} 
+                                size="sm" 
+                                className={`h-7 px-3 text-xs flex-shrink-0 ${selectedDatabase === db.name ? 'bg-secondary font-medium shadow-sm' : 'text-muted-foreground border-border/50 bg-background/50'}`}
+                                onClick={() => handleDatabaseSelect(db.name)}
+                             >
+                                 {db.name}
+                             </Button>
+                         ))}
+                         {databases.length === 0 && !loadingDatabases && (
+                             <span className="text-[11px] text-muted-foreground">No schemas/databases found.</span>
+                         )}
+                     </div>
+
+                     <div className="flex flex-1 overflow-hidden">
+                         {/* Collections Sidebar */}
+                         {selectedDatabase && (
+                             <div className="w-52 border-r overflow-y-auto pt-3 px-2 flex-none bg-muted/5">
+                                 <div className="text-[10px] font-bold text-muted-foreground/60 mb-2 px-1 uppercase tracking-wider flex items-center justify-between">
+                                    <span>Tables / Collections</span>
+                                    {loadingCollections && <Loader2 className="h-3 w-3 animate-spin"/>}
+                                 </div>
+                                 <div className="flex flex-col gap-0.5">
+                                     {collections.map(col => (
+                                         <Button 
+                                            key={col.name} 
+                                            variant={selectedCollection === col.name ? "secondary" : "ghost"} 
+                                            size="sm" 
+                                            className={`justify-start h-8 px-2 text-xs ${selectedCollection === col.name ? 'bg-secondary font-medium' : 'text-muted-foreground'}`}
+                                            onClick={() => handleCollectionSelect(col.name)}
+                                         >
+                                             <TableIcon className="w-3.5 h-3.5 mr-2 opacity-50 flex-shrink-0" />
+                                             <span className="truncate" title={col.name}>{col.name}</span>
+                                             {col.rowCount !== undefined && (
+                                                <span className="ml-auto text-[9px] opacity-50 font-mono">{col.rowCount}</span>
+                                             )}
+                                         </Button>
+                                     ))}
+                                     {collections.length === 0 && !loadingCollections && (
+                                         <div className="text-[11px] text-muted-foreground px-2 py-1">No collections.</div>
+                                     )}
+                                 </div>
+                             </div>
+                         )}
+
+                         {/* Documents Viewer */}
+                         <div className="flex-1 overflow-hidden h-full">
+                             {selectedCollection ? (
+                                 loadingDocuments ? (
+                                     <div className="flex items-center justify-center h-full text-muted-foreground gap-2">
+                                         <Loader2 className="h-4 w-4 animate-spin"/> Querying rows...
+                                     </div>
+                                 ) : (
+                                     <DataGrid data={explorerDocuments} collectionName={selectedCollection} />
+                                 )
+                             ) : (
+                                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
+                                     <Database className="h-12 w-12 opacity-20 mb-4" />
+                                     <p className="text-sm">{!selectedDatabase ? 'Select a database' : 'Select a table to view data'}</p>
+                                 </div>
+                             )}
+                         </div>
+                     </div>
+                 </>
+             ) : (
+                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8 bg-muted/10">
+                     <Database className="h-16 w-16 opacity-20 mb-4 text-blue-500" />
+                     <h3 className="text-lg font-medium text-foreground">Universal Database Controller</h3>
+                     <p className="text-sm mt-2 max-w-md text-center opacity-80">
+                         Select a connection from the sidebar to monitor live stats, view schemas, and query data directly from your database.
+                     </p>
+                 </div>
+             )}
+         </div>
+     </div>
 
         <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
             <AlertDialogContent className="sm:max-w-[425px]">
@@ -631,7 +347,7 @@ export const DatabaseController = ({ initialSource }: DatabaseControllerProps) =
                         Delete Connection?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                        This will permanently delete the connection "<strong>{deleteTarget?.label}</strong>" and its configuration. This action cannot be undone.
+                        This will permanently delete the connection "<strong>{deleteTarget?.label}</strong>".
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 

@@ -95,7 +95,7 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                 return;
             }
 
-            // Firebase-specific: validate the pasted JSON before sending
+            // Firebase-specific validation
             if (selectedProvider === 'Firebase') {
                 const raw = formData.serviceAccountJson;
                 if (!raw) {
@@ -106,12 +106,12 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
                 try {
                     const parsed = JSON.parse(raw);
                     if (!parsed.project_id || !parsed.private_key || !parsed.client_email) {
-                        setError('Service Account JSON is missing required fields: project_id, private_key, or client_email.');
+                        setError('Service Account JSON is missing required fields.');
                         setIsTesting(false);
                         return;
                     }
                 } catch {
-                    setError('Invalid JSON format. Please paste the raw JSON from Firebase.');
+                    setError('Invalid JSON format. Please paste the raw JSON.');
                     setIsTesting(false);
                     return;
                 }
@@ -135,12 +135,9 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
 
             const res = await apiClient.post(endpoint, payload);
             
-            if (res.status !== 201) {
-                throw new Error('Failed to save');
+            if (res.status !== 201 && res.status !== 200) {
+                throw new Error('Failed to save connection');
             }
-            
-            // Small delay for UX
-            await new Promise(resolve => setTimeout(resolve, 500));
             
             if (onSuccess) onSuccess();
         } catch (err: any) {
@@ -152,16 +149,38 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
 
   const handleTestConnection = async () => {
     if (!validateInput()) {
-        // You might want a better UI for error feedback
-        alert("Invalid format detected. Please check the Help section for the correct format.");
+        setError("Invalid format detected. Please check your credentials.");
         return;
     }
 
     setIsTesting(true);
-    // Simulate API call for testing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsTesting(false);
-    setTestSuccess(true);
+    setError(null);
+
+    // If it's Vercel, we can't test using the database ping, skipping or custom testing
+    if (selectedProvider === 'Vercel') {
+        // Just mock success for now as it's not a DB adapter
+        await new Promise(r => setTimeout(r, 500));
+        setIsTesting(false);
+        setTestSuccess(true);
+        return;
+    }
+
+    try {
+        const res = await apiClient.post('/db/test-connection', {
+            provider: selectedProvider,
+            config: formData
+        });
+        
+        if (res.data.ok) {
+            setTestSuccess(true);
+        } else {
+            setError(res.data.message || "Connection failed. Check your credentials.");
+        }
+    } catch (err: any) {
+        setError(err.response?.data?.message || err.message || "Network error while testing connection.");
+    } finally {
+        setIsTesting(false);
+    }
   };
 
   const renderFields = () => {
