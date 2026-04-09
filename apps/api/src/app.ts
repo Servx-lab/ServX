@@ -12,6 +12,7 @@ import hostingRouter from './domains/hosting/router';
 import gmailRouter from './domains/gmail/router';
 import operationsRouter from './domains/operations/router';
 import adminRouter from './domains/admin/router';
+import profileRouter from './domains/profile/router';
 
 export function createApp(): Express {
   const app = express();
@@ -69,6 +70,7 @@ export function registerApiRoutes(app: Express): void {
   app.use('/api/admin', adminRouter);
   app.use('/api/operations', operationsRouter);
   app.use('/api/tasks', operationsRouter);
+  app.use('/api/profile', profileRouter);
 }
 
 export function registerErrorHandler(app: Express): void {

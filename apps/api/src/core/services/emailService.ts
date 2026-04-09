@@ -1,12 +1,4 @@
-/**
- * ServX Email Dispatcher
- * Sends transactional emails (e.g. welcome) via Gmail API using OAuth tokens from env.
- *
- * VERCEL_CLIENT_ID / VERCEL_CLIENT_SECRET are used as Google OAuth credentials.
- * refresh_token, access_token: From Gmail OAuth flow.
- */
-
-const { google } = require('googleapis');
+import { google } from 'googleapis';
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.VERCEL_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || process.env.VERCEL_CLIENT_SECRET;
@@ -23,15 +15,11 @@ function getOAuth2Client() {
 }
 
 /**
- * Sends an HTML email via Gmail API.
- * @param {string} to - Recipient email
- * @param {string} subject - Email subject
- * @param {string} htmlBody - HTML body
- * @returns {Promise<void>}
+ * Sends an HTML email via Gmail API using global credentials.
  */
-async function sendServXAlert(to, subject, htmlBody) {
+export async function sendServXAlertService(to: string, subject: string, htmlBody: string): Promise<void> {
   if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN) {
-    console.warn('[Email] Skipping: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, or refresh_token not set');
+    console.warn('[Email] Skipping: Google OAuth credentials or refresh_token not set in environment');
     return;
   }
 
@@ -55,21 +43,17 @@ async function sendServXAlert(to, subject, htmlBody) {
       requestBody: { raw },
     });
 
-    console.log('[Email] Welcome email sent to:', to);
+    console.log('[Email] Transactional email sent to:', to);
   } catch (err) {
-    console.error('[Email] Failed to send:', err.message);
+    console.error('[Email] Failed to send:', (err as Error).message);
     throw err;
   }
 }
 
 /**
  * Sends an OTP email for email verification.
- * Uses the same Gmail API with refresh_token from env.
- * @param {string} to - Recipient email
- * @param {string} otp - 6-digit OTP code
- * @returns {Promise<void>}
  */
-async function sendOTPEmail(to, otp) {
+export async function sendOTPEmailService(to: string, otp: string): Promise<void> {
   const subject = 'ServX – Verify your email';
   const htmlBody = `
     <div style="font-family: system-ui, sans-serif; max-width: 400px; margin: 0 auto;">
@@ -79,8 +63,6 @@ async function sendOTPEmail(to, otp) {
       <p style="color: #94a3b8; font-size: 12px;">This code expires in 5 minutes. If you didn't request this, you can ignore this email.</p>
     </div>
   `;
-  await sendServXAlert(to, subject, htmlBody);
+  await sendServXAlertService(to, subject, htmlBody);
   console.log('[Email] OTP sent to:', to);
 }
-
-module.exports = { sendServXAlert, sendOTPEmail };

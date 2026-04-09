@@ -120,7 +120,7 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
         }
         await user.save();
       } else {
-        await User.create({
+        const newUser = await User.create({
           uid: ownerUid || `legacy-${profile.id}`,
           githubId: profile.id.toString(),
           name: profile.name || profile.login,
@@ -128,6 +128,26 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
           avatarUrl: profile.avatar_url,
           githubAccessToken: accessToken,
         });
+
+        // New User Logging Pipeline: Sheet + Admin Alert
+        try {
+          await logNewUserToSheetService({ uid: newUser.uid, email: newUser.email });
+        } catch (sheetErr) {
+          console.error('[Auth] GitHub Sheet log failed (user still created):', (sheetErr as Error).message);
+        }
+
+        const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+        if (ADMIN_EMAIL) {
+          try {
+            await sendServXAlertService(
+              ADMIN_EMAIL,
+              'New User Signup (GitHub)',
+              `<h1>New User Registered</h1><p><b>Email:</b> ${newUser.email}</p><p><b>UID:</b> ${newUser.uid}</p>`
+            );
+          } catch (emailErr) {
+            console.error('[Auth] Admin alert failed:', (emailErr as Error).message);
+          }
+        }
       }
     }
 
@@ -185,6 +205,19 @@ export async function syncUser(req: AuthenticatedRequest, res: any, next: any): 
         await sendServXAlertService(email, 'Welcome to ServX', '<h1>HTML Template Coming Soon</h1>');
       } catch (emailError) {
         console.error('[Auth] Welcome email failed:', (emailError as Error).message);
+      }
+
+      const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+      if (ADMIN_EMAIL) {
+        try {
+          await sendServXAlertService(
+            ADMIN_EMAIL,
+            'New User Signup (Firebase)',
+            `<h1>New User Registered</h1><p><b>Email:</b> ${email}</p><p><b>UID:</b> ${uid}</p>`
+          );
+        } catch (emailErr) {
+          console.error('[Auth] Admin alert failed:', (emailErr as Error).message);
+        }
       }
     }
 

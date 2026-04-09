@@ -18,6 +18,9 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [react()].filter(Boolean),
+  define: {
+    __BUNDLED_DEV__: mode === "development",
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "tsx server.js",
-    "dev": "tsx --watch server.js"
+    "dev": "tsx --watch server.js",
+    "sync-users": "tsx scripts/syncUsersToSheets.js"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.1",

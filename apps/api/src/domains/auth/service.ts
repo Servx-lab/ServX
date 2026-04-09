@@ -3,7 +3,7 @@ import admin from '../../../utils/firebaseAdmin';
 const UserConnection = require('../../../models/UserConnection');
 import { decrypt } from '@servx/crypto';
 const { logNewUserToSheet } = require('../../../services/sheetsService');
-const { sendServXAlert } = require('../../../services/emailService');
+import { sendServXAlertService } from '../../core/services/emailService';
 
 export interface NewUserLogParams {
   uid: string;
@@ -15,12 +15,12 @@ export async function logNewUserToSheetService(params: NewUserLogParams): Promis
   await logNewUserToSheet(params);
 }
 
-export async function sendServXAlertService(
+export async function sendServXAlert(
   to: string,
   subject: string,
   htmlBody: string
 ): Promise<void> {
-  await sendServXAlert(to, subject, htmlBody);
+  await sendServXAlertService(to, subject, htmlBody);
 }
 
 export async function getFirebaseApp(connectionId?: string | null): Promise<any> {

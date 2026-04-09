@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "preview": "vite preview apps/web --config apps/web/vite.config.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "sync-users": "npm run sync-users --workspace servx-api"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -85,7 +86,7 @@
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "@types/three": "^0.160.0",
-    "@vitejs/plugin-react-swc": "^3.11.0",
+    "@vitejs/plugin-react-swc": "^4.3.0",
     "autoprefixer": "^10.4.21",
     "browserslist": "^4.28.1",
     "caniuse-lite": "^1.0.30001779",
@@ -94,12 +95,15 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
-    "jsdom": "^20.0.3",
+    "jsdom": "^29.0.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "^5.4.19",
-    "vitest": "^3.2.4"
+    "vite": "^6.0.1",
+    "vitest": "^3.1.0"
+  },
+  "overrides": {
+    "@tootallnate/once": "^3.0.1"
   }
 }
