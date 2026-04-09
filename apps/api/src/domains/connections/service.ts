@@ -1,0 +1,382 @@
+import axios from 'axios';
+
+import { encrypt, decrypt } from '@servx/crypto';
+import { HOSTING_PROVIDERS } from '@servx/config';
+import type { HostingProviderKey } from '@servx/config';
+import type {
+  ConnectionResponse,
+  ConnectionListItem,
+  HostingStatusResponse,
+  HostingUser,
+  HostingService,
+  HostingDeployment,
+  UserConnectionProvider,
+} from '@servx/types';
+import { NotFoundError } from '@servx/errors';
+
+import UserConnection from './model';
+
+// ─── Generic connections ──────────────────────────────────────────────────────
+
+export async function saveConnection(
+  ownerUid: string,
+  name: string,
+  provider: UserConnectionProvider,
+  config: Record<string, unknown>
+): Promise<ConnectionResponse> {
+  const configString = JSON.stringify(config);
+  const encrypted = encrypt(configString);
+
+  const newConnection = new (UserConnection as any)({
+    name,
+    provider,
+    encryptedConfig: encrypted.content,
+    iv: encrypted.iv,
+    isEncrypted: true,
+    ownerUid,
+  });
+
+  await newConnection.save();
+
+  return {
+    message: 'Connection saved successfully',
+    connection: {
+      _id: String(newConnection._id),
+      name: newConnection.name as string,
+      provider: newConnection.provider as UserConnectionProvider,
+      createdAt: String(newConnection.createdAt),
+    },
+  };
+}
+
+export async function getUserConnections(ownerUid: string): Promise<ConnectionListItem[]> {
+  const connections = await (UserConnection as any).find(
+    { ownerUid },
+    'name provider createdAt isActive lastTestedAt'
+  );
+  return connections as ConnectionListItem[];
+}
+
+export async function deleteConnection(id: string, ownerUid: string): Promise<void> {
+  const deleted = await (UserConnection as any).findOneAndDelete({ _id: id, ownerUid });
+  if (!deleted) {
+    throw new NotFoundError('Connection not found or unauthorized');
+  }
+}
+
+// ─── Hosting providers ────────────────────────────────────────────────────────
+
+export async function getHostingProviderStatus(
+  ownerUid: string,
+  providerKey: HostingProviderKey
+): Promise<HostingStatusResponse> {
+  const providerInfo = HOSTING_PROVIDERS[providerKey];
+
+  const connection = await (UserConnection as any).findOne({
+    ownerUid,
+    provider: providerInfo.dbName,
+  });
+
+  if (!connection) {
+    return { connected: false };
+  }
+
+  let token: string;
+  try {
+    const decrypted = decrypt({ iv: connection.iv as string, content: connection.encryptedConfig as string });
+    const parsed = JSON.parse(decrypted) as { token?: string; apiKey?: string };
+    token = (parsed.token ?? parsed.apiKey) as string;
+  } catch {
+    return {
+      connected: true,
+      connectionId: String(connection._id),
+      createdAt: String(connection.createdAt),
+      services: [],
+      deployments: [],
+      error: 'Failed to decrypt token',
+    };
+  }
+
+  let services: HostingService[] = [];
+  let deployments: HostingDeployment[] = [];
+  let user: HostingUser | null = null;
+
+  try {
+    if (providerKey === 'vercel') {
+      ({ user, services, deployments } = await fetchVercel(token));
+    } else if (providerKey === 'render') {
+      ({ user, services, deployments } = await fetchRender(token));
+    } else if (providerKey === 'railway') {
+      ({ user, services } = await fetchRailway(token));
+    } else if (providerKey === 'digitalocean') {
+      ({ user, services } = await fetchDigitalOcean(token));
+    } else if (providerKey === 'fly') {
+      ({ user, services } = await fetchFly(token));
+    }
+  } catch (apiErr) {
+    console.error(`${providerInfo.label} API fetch error:`, (apiErr as Error).message);
+  }
+
+  return {
+    connected: true,
+    connectionId: String(connection._id),
+    createdAt: String(connection.createdAt),
+    user,
+    services,
+    deployments,
+  };
+}
+
+export async function saveHostingToken(
+  ownerUid: string,
+  providerKey: HostingProviderKey,
+  name: string,
+  token: string,
+  extras: { edgeConfigId?: string } = {}
+): Promise<ConnectionResponse> {
+  const providerInfo = HOSTING_PROVIDERS[providerKey];
+
+  const config: Record<string, unknown> = { token };
+  if (providerKey === 'vercel' && extras.edgeConfigId) {
+    config.edgeConfigId = extras.edgeConfigId;
+  }
+
+  const encrypted = encrypt(JSON.stringify(config));
+
+  const existing = await (UserConnection as any).findOne({ ownerUid, provider: providerInfo.dbName });
+  if (existing) {
+    existing.encryptedConfig = encrypted.content;
+    existing.iv = encrypted.iv;
+    existing.name = name;
+    await existing.save();
+    return {
+      message: `${providerInfo.label} connection updated successfully`,
+      connection: {
+        _id: String(existing._id),
+        name: existing.name as string,
+        provider: providerInfo.dbName as UserConnectionProvider,
+        createdAt: String(existing.createdAt),
+      },
+    };
+  }
+
+  const newConnection = new (UserConnection as any)({
+    name,
+    provider: providerInfo.dbName,
+    encryptedConfig: encrypted.content,
+    iv: encrypted.iv,
+    isEncrypted: true,
+    ownerUid,
+  });
+  await newConnection.save();
+
+  return {
+    message: `${providerInfo.label} connection saved successfully`,
+    connection: {
+      _id: String(newConnection._id),
+      name: newConnection.name as string,
+      provider: providerInfo.dbName as UserConnectionProvider,
+      createdAt: String(newConnection.createdAt),
+    },
+  };
+}
+
+// ─── Per-provider fetch helpers ───────────────────────────────────────────────
+
+async function fetchVercel(token: string): Promise<{
+  user: HostingUser | null;
+  services: HostingService[];
+  deployments: HostingDeployment[];
+}> {
+  const headers = { Authorization: `Bearer ${token}` };
+  const [userRes, projRes, deplRes] = await Promise.all([
+    axios.get('https://api.vercel.com/v2/user', { headers }).catch(() => null),
+    axios.get('https://api.vercel.com/v9/projects?limit=20', { headers }).catch(() => null),
+    axios.get('https://api.vercel.com/v6/deployments?limit=15', { headers }).catch(() => null),
+  ]);
+
+  let user: HostingUser | null = null;
+  if (userRes?.data?.user) {
+    user = {
+      username: userRes.data.user.username,
+      name: userRes.data.user.name,
+      email: userRes.data.user.email,
+      avatar: userRes.data.user.avatar,
+    };
+  }
+
+  const services: HostingService[] = projRes?.data?.projects
+    ? projRes.data.projects.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        type: p.framework || 'project',
+        status: p.latestDeployments?.[0]?.readyState || 'unknown',
+        url: p.alias?.[0] ? `https://${p.alias[0]}` : null,
+        updatedAt: p.updatedAt,
+      }))
+    : [];
+
+  const deployments: HostingDeployment[] = deplRes?.data?.deployments
+    ? deplRes.data.deployments.map((d: any) => ({
+        id: d.uid,
+        name: d.name,
+        url: d.url ? `https://${d.url}` : null,
+        state: d.state || d.readyState,
+        created: d.created || d.createdAt,
+        commit: d.meta?.githubCommitMessage || null,
+        branch: d.meta?.githubCommitRef || null,
+      }))
+    : [];
+
+  return { user, services, deployments };
+}
+
+async function fetchRender(token: string): Promise<{
+  user: HostingUser | null;
+  services: HostingService[];
+  deployments: HostingDeployment[];
+}> {
+  const headers = { Authorization: `Bearer ${token}` };
+  const [svcRes, deplData] = await Promise.all([
+    axios.get('https://api.render.com/v1/services?limit=20', { headers }).catch(() => null),
+    axios
+      .get('https://api.render.com/v1/services?limit=5', { headers })
+      .then(async (svcList: any) => {
+        if (!svcList?.data?.length) return [];
+        const allDeploys = await Promise.all(
+          svcList.data.slice(0, 5).map((s: any) =>
+            axios
+              .get(`https://api.render.com/v1/services/${s.service.id}/deploys?limit=3`, { headers })
+              .catch(() => ({ data: [] }))
+          )
+        );
+        return allDeploys.flatMap((r: any, i: number) =>
+          (r.data || []).map((d: any) => ({ ...d, serviceName: svcList.data[i].service.name }))
+        );
+      })
+      .catch(() => []),
+  ]);
+
+  let user: HostingUser | null = null;
+  const services: HostingService[] = svcRes?.data
+    ? svcRes.data.map((s: any) => ({
+        id: s.service.id,
+        name: s.service.name,
+        type: s.service.type || 'web_service',
+        status: s.service.suspended === 'suspended' ? 'suspended' : 'active',
+        url: s.service.serviceDetails?.url || null,
+        updatedAt: new Date(s.service.updatedAt).getTime(),
+      }))
+    : [];
+
+  if (svcRes?.data?.[0]?.service?.ownerId) {
+    user = { username: svcRes.data[0].service.ownerId, name: '', email: '' };
+  }
+
+  const deployments: HostingDeployment[] = Array.isArray(deplData)
+    ? deplData.map((d: any) => ({
+        id: d.deploy?.id || d.id,
+        name: d.serviceName || '',
+        url: null,
+        state: d.deploy?.status || 'unknown',
+        created: new Date(d.deploy?.createdAt || d.deploy?.finishedAt || Date.now()).getTime(),
+        commit: d.deploy?.commit?.message || null,
+        branch: null,
+      }))
+    : [];
+
+  return { user, services, deployments };
+}
+
+async function fetchRailway(token: string): Promise<{
+  user: HostingUser | null;
+  services: HostingService[];
+}> {
+  const gql = `{ me { name email } projects(first: 20) { edges { node { id name services { edges { node { id name } } } updatedAt } } } }`;
+  const res = await axios
+    .post(
+      'https://backboard.railway.app/graphql/v2',
+      { query: gql },
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+    )
+    .catch(() => null);
+
+  let user: HostingUser | null = null;
+  if (res?.data?.data?.me) {
+    user = { username: res.data.data.me.name, name: res.data.data.me.name, email: res.data.data.me.email || '' };
+  }
+
+  const services: HostingService[] = res?.data?.data?.projects?.edges
+    ? res.data.data.projects.edges.map((e: any) => ({
+        id: e.node.id,
+        name: e.node.name,
+        type: 'project',
+        status: 'active',
+        url: null,
+        updatedAt: new Date(e.node.updatedAt).getTime(),
+      }))
+    : [];
+
+  return { user, services };
+}
+
+async function fetchDigitalOcean(token: string): Promise<{
+  user: HostingUser | null;
+  services: HostingService[];
+}> {
+  const headers = { Authorization: `Bearer ${token}` };
+  const [acctRes, appRes] = await Promise.all([
+    axios.get('https://api.digitalocean.com/v2/account', { headers }).catch(() => null),
+    axios.get('https://api.digitalocean.com/v2/apps?per_page=20', { headers }).catch(() => null),
+  ]);
+
+  let user: HostingUser | null = null;
+  if (acctRes?.data?.account) {
+    user = { username: acctRes.data.account.email, name: '', email: acctRes.data.account.email };
+  }
+
+  const services: HostingService[] = appRes?.data?.apps
+    ? appRes.data.apps.map((a: any) => ({
+        id: a.id,
+        name: a.spec?.name || a.id,
+        type: 'app',
+        status: a.active_deployment?.phase || 'unknown',
+        url: a.live_url || null,
+        updatedAt: new Date(a.updated_at).getTime(),
+      }))
+    : [];
+
+  return { user, services };
+}
+
+async function fetchFly(token: string): Promise<{
+  user: HostingUser | null;
+  services: HostingService[];
+}> {
+  const gql = `{ viewer { name email } apps(first: 20) { nodes { id name status hostname } } }`;
+  const res = await axios
+    .post(
+      'https://api.fly.io/graphql',
+      { query: gql },
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+    )
+    .catch(() => null);
+
+  let user: HostingUser | null = null;
+  if (res?.data?.data?.viewer) {
+    user = { username: res.data.data.viewer.name, name: res.data.data.viewer.name, email: res.data.data.viewer.email || '' };
+  }
+
+  const services: HostingService[] = res?.data?.data?.apps?.nodes
+    ? res.data.data.apps.nodes.map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        type: 'app',
+        status: a.status || 'unknown',
+        url: a.hostname ? `https://${a.hostname}` : null,
+        updatedAt: Date.now(),
+      }))
+    : [];
+
+  return { user, services };
+}

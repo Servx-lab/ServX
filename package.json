@@ -1,17 +1,25 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "servx-web",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
+    "dev": "concurrently -n \"api,web\" -c \"cyan,magenta\" \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm run dev --workspace servx-api",
+    "dev:web": "vite apps/web --config apps/web/vite.config.ts",
+    "dev:full": "concurrently -n \"api,web,worker\" -c \"cyan,magenta,yellow\" \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:worker\"",
+    "dev:worker": "npm run dev --workspace servx-worker",
+    "build": "vite build apps/web --config apps/web/vite.config.ts",
+    "build:dev": "vite build apps/web --config apps/web/vite.config.ts --mode development",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "sync-users": "npm run sync-users --prefix server"
+    "preview": "vite preview apps/web --config apps/web/vite.config.ts",
+    "test": "vitest run --config apps/web/vitest.config.ts",
+    "test:watch": "vitest --config apps/web/vitest.config.ts",
+    "sync-users": "npm run sync-users --workspace servx-api"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -62,6 +70,7 @@
     "react-dom": "^18.3.1",
     "react-github-calendar": "^5.0.5",
     "react-hook-form": "^7.61.1",
+    "react-icons": "^5.6.0",
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.1",
     "recharts": "^2.15.4",
@@ -84,7 +93,11 @@
     "@types/three": "^0.160.0",
     "@vitejs/plugin-react-swc": "^4.3.0",
     "autoprefixer": "^10.4.21",
+    "browserslist": "^4.28.1",
+    "caniuse-lite": "^1.0.30001779",
+    "concurrently": "^9.2.1",
     "eslint": "^9.32.0",
+    "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
@@ -93,7 +106,10 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "^8.0.1",
-    "vitest": "^4.1.0"
+    "vite": "^6.0.1",
+    "vitest": "^3.1.0"
+  },
+  "overrides": {
+    "@tootallnate/once": "^3.0.1"
   }
 }

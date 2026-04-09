@@ -1,0 +1,14 @@
+{
+  "name": "servx-worker",
+  "version": "0.0.1",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.ts"
+  },
+  "dependencies": {
+    "@servx/config": "*",
+    "@servx/errors": "*",
+    "@servx/crypto": "*"
+  }
+}

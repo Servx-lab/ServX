@@ -27,3 +27,11 @@ ServX.json
 *.njsproj
 *.sln
 *.sw?
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+apps/*/.env
+apps/*/.env.*
+!apps/*/.env.example
