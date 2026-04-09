@@ -172,3 +172,31 @@ export type HostingStatusResponse =
 			deployments: HostingDeployment[];
 			error?: string;
 		};
+
+export interface AdapterDatabase {
+	name: string;
+	sizeOnDisk?: number;
+}
+
+export interface AdapterTable {
+	name: string;
+	rowCount?: number;
+	sizeBytes?: number;
+	type?: string;
+}
+
+export interface DbStats {
+	version?: string;
+	uptime?: number;
+	totalConnections?: number;
+	memoryUsedBytes?: number;
+	storageUsedBytes?: number;
+	queryCount?: number;
+	extra?: Record<string, unknown>;
+}
+
+export interface ConnectionTestResult {
+	ok: boolean;
+	latencyMs?: number;
+	message?: string;
+}
