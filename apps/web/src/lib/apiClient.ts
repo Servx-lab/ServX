@@ -14,7 +14,22 @@ declare module 'axios' {
  * Custom Axios instance for ServX API with automatic Firebase Auth injection
  */
 const rawUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '';
-const baseURL = rawUrl ? `${rawUrl.replace(/\/+$/, '')}/api` : '/api';
+
+export function buildApiBaseUrl(inputUrl: string): string {
+  const trimmedUrl = inputUrl.trim().replace(/\/+$/, '');
+
+  if (!trimmedUrl) {
+    return '/api';
+  }
+
+  if (/\/api$/i.test(trimmedUrl)) {
+    return trimmedUrl;
+  }
+
+  return `${trimmedUrl}/api`;
+}
+
+const baseURL = buildApiBaseUrl(rawUrl);
 
 const apiClient = axios.create({
   baseURL,
