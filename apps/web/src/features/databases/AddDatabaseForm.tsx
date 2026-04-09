@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Database, 
-  Server, 
+  Database,
   Cloud, 
-  HardDrive, 
   Check, 
   Eye, 
   EyeOff, 
   HelpCircle, 
   Loader2, 
-  Wifi, 
+  Wifi,
   ShieldCheck 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -49,17 +47,17 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [error, setError] = useState<string | null>(null);
   const [jsonMasked, setJsonMasked] = useState(false);
 
-  const providers: { id: Provider; icon: any }[] = [
-    { id: 'MongoDB', icon: Database },
-    { id: 'Firebase', icon: Cloud },
-    { id: 'Supabase', icon: Database },
-    { id: 'MySQL', icon: Server },
-    { id: 'PostgreSQL', icon: Database },
-    { id: 'AWS RDS', icon: Cloud },
-    { id: 'Oracle', icon: HardDrive },
-    { id: 'Redis', icon: Server },
-    { id: 'MariaDB', icon: Database },
-    { id: 'Vercel', icon: Cloud },
+  const providers: { id: Provider }[] = [
+    { id: 'MongoDB' },
+    { id: 'Firebase' },
+    { id: 'Supabase' },
+    { id: 'MySQL' },
+    { id: 'PostgreSQL' },
+    { id: 'AWS RDS' },
+    { id: 'Oracle' },
+    { id: 'Redis' },
+    { id: 'MariaDB' },
+    { id: 'Vercel' },
   ];
 
   const handleInputChange = (field: keyof DatabaseConfig, value: string) => {
