@@ -17,8 +17,8 @@
     "build:dev": "vite build apps/web --config apps/web/vite.config.ts --mode development",
     "lint": "eslint .",
     "preview": "vite preview apps/web --config apps/web/vite.config.ts",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run --config apps/web/vitest.config.ts",
+    "test:watch": "vitest --config apps/web/vitest.config.ts",
     "sync-users": "npm run sync-users --workspace servx-api"
   },
   "dependencies": {
