@@ -1,7 +1,6 @@
-import { MongoClient } from 'mongodb';
-
 import { NotFoundError } from '@servx/errors';
 import { decrypt } from '@servx/crypto';
+import type { UserConnectionProvider } from '@servx/types';
 
 import UserConnection from './model';
 
@@ -16,50 +15,24 @@ export async function getConnectionString(connectionId: string, ownerUid: string
   });
   const config = JSON.parse(decrypted) as { connectionUri?: string };
   if (!config.connectionUri) {
-    throw new NotFoundError('Invalid connection configuration');
+    throw new NotFoundError('Invalid connection configuration - missing connectionUri');
   }
   return config.connectionUri;
 }
 
-export async function listDatabases(
-  connectionString: string
-): Promise<{ name: string; sizeOnDisk: number }[]> {
-  const client = new MongoClient(connectionString);
-  try {
-    await client.connect();
-    const result = await client.db().admin().listDatabases();
-    return result.databases
-      .map((db) => ({ name: db.name as string, sizeOnDisk: (db.sizeOnDisk ?? 0) as number }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  } finally {
-    await client.close();
+export async function getDecryptedConfig(connectionId: string, ownerUid: string): Promise<{ provider: UserConnectionProvider; config: Record<string, unknown> }> {
+  const connection = await UserConnection.findOne({ _id: connectionId, ownerUid });
+  if (!connection) {
+    throw new NotFoundError('Connection not found or access denied');
   }
-}
-
-export async function listCollections(
-  connectionString: string,
-  dbName: string
-): Promise<string[]> {
-  const client = new MongoClient(connectionString);
-  try {
-    await client.connect();
-    const collections = await client.db(dbName).listCollections().toArray();
-    return collections.map((c) => c.name).sort();
-  } finally {
-    await client.close();
-  }
-}
-
-export async function listDocuments(
-  connectionString: string,
-  dbName: string,
-  collectionName: string
-): Promise<unknown[]> {
-  const client = new MongoClient(connectionString);
-  try {
-    await client.connect();
-    return await client.db(dbName).collection(collectionName).find({}).limit(50).toArray();
-  } finally {
-    await client.close();
-  }
+  
+  const decrypted = decrypt({
+    content: (connection as any).encryptedConfig as string,
+    iv: (connection as any).iv as string,
+  });
+  
+  return {
+    provider: (connection as any).provider as UserConnectionProvider,
+    config: JSON.parse(decrypted) as Record<string, unknown>,
+  };
 }

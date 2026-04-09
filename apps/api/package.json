@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@octokit/rest": "^22.0.1",
+    "@supabase/supabase-js": "^2.103.0",
     "axios": "^1.13.6",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
@@ -19,10 +20,15 @@
     "googleapis": "^171.4.0",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.1.0",
-    "mongoose": "^9.2.4"
+    "mongoose": "^9.2.4",
+    "mysql2": "^3.21.0",
+    "node-oracledb": "^1.0.2",
+    "pg": "^8.20.0",
+    "redis": "^5.11.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "@types/pg": "^8.20.0",
     "tsx": "^4.21.0"
   }
 }
