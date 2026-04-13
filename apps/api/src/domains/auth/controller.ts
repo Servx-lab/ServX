@@ -10,6 +10,8 @@ import {
   logNewUserToSheetService,
   sendServXAlert,
 } from './service';
+import { cacheDelPattern } from '../../core/services/redisCache';
+import { userGhCachePattern } from '../github/controller';
 
 interface AuthenticatedRequest {
   user: {
@@ -82,13 +84,19 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
       }
     );
 
-    const accessToken = tokenResponse.data.access_token as string | undefined;
+    const { 
+      access_token: accessToken, 
+      refresh_token: refreshToken, 
+      expires_in: expiresIn 
+    } = tokenResponse.data;
 
     if (!accessToken) {
       throw new AuthError(
         `Failed to obtain access token from GitHub: ${tokenResponse.data.error_description || tokenResponse.data.error || 'Unknown error'}`
       );
     }
+
+    const expiryDate = expiresIn ? new Date(Date.now() + expiresIn * 1000) : undefined;
 
     const userProfileResponse = await axios.get('https://api.github.com/user', {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -101,20 +109,24 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
       avatar_url?: string;
     };
 
-    let user = ownerUid ? await User.findOne({ uid: ownerUid }) : null;
+    let user = ownerUid ? await User.findOne({ uid: ownerUid }).select('+githubAccessToken +githubRefreshToken +githubTokenExpiry') : null;
 
     if (user) {
       user.githubAccessToken = accessToken;
+      user.githubRefreshToken = refreshToken || user.githubRefreshToken;
+      user.githubTokenExpiry = expiryDate || user.githubTokenExpiry;
       user.githubId = profile.id.toString();
       await user.save();
     } else {
-      user = await User.findOne({ githubId: profile.id.toString() });
+      user = await User.findOne({ githubId: profile.id.toString() }).select('+githubAccessToken +githubRefreshToken +githubTokenExpiry');
       if (!user && profile.email) {
-        user = await User.findOne({ email: profile.email });
+        user = await User.findOne({ email: profile.email }).select('+githubAccessToken +githubRefreshToken +githubTokenExpiry');
       }
 
       if (user) {
         user.githubAccessToken = accessToken;
+        user.githubRefreshToken = refreshToken || user.githubRefreshToken;
+        user.githubTokenExpiry = expiryDate || user.githubTokenExpiry;
         if (!user.githubId) {
           user.githubId = profile.id.toString();
         }
@@ -127,6 +139,8 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
           email: profile.email || `${profile.login}@users.noreply.github.com`,
           avatarUrl: profile.avatar_url,
           githubAccessToken: accessToken,
+          githubRefreshToken: refreshToken,
+          githubTokenExpiry: expiryDate,
         });
 
         // New User Logging Pipeline: Sheet + Admin Alert
@@ -162,29 +176,63 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
 export async function syncUser(req: AuthenticatedRequest, res: any, next: any): Promise<void> {
   try {
     const { uid, email } = req.user;
-    const { name, avatarUrl, githubAccessToken, githubId } = req.body as {
+    const { 
+      name, 
+      avatarUrl, 
+      githubAccessToken, 
+      githubRefreshToken,
+      githubTokenExpiry,
+      githubId 
+    } = req.body as {
       name?: string;
       avatarUrl?: string;
       githubAccessToken?: string;
+      githubRefreshToken?: string;
+      githubTokenExpiry?: number | string | Date;
       githubId?: string;
     };
 
-    let user = await User.findOne({ uid }).select('+githubAccessToken');
+    let user = await User.findOne({ uid }).select('+githubAccessToken +githubRefreshToken +githubTokenExpiry');
 
     if (user) {
-      if (name) {
+      let isModified = false;
+
+      if (name && user.name !== name) {
         user.name = name;
+        isModified = true;
       }
-      if (avatarUrl) {
+      if (avatarUrl && user.avatarUrl !== avatarUrl) {
         user.avatarUrl = avatarUrl;
+        isModified = true;
       }
-      if (githubAccessToken) {
+      if (githubAccessToken && user.githubAccessToken !== githubAccessToken) {
         user.githubAccessToken = githubAccessToken;
+        isModified = true;
       }
-      if (githubId) {
+      if (githubRefreshToken && user.githubRefreshToken !== githubRefreshToken) {
+        user.githubRefreshToken = githubRefreshToken;
+        isModified = true;
+      }
+      if (githubTokenExpiry) {
+        const expiryDate = new Date(githubTokenExpiry);
+        if (user.githubTokenExpiry?.getTime() !== expiryDate.getTime()) {
+          user.githubTokenExpiry = expiryDate;
+          isModified = true;
+        }
+      }
+      if (githubId && user.githubId !== githubId) {
         user.githubId = githubId;
+        isModified = true;
       }
-      await user.save();
+
+      if (isModified) {
+        console.log(`[Auth] Syncing profile for user ${uid}: ${Object.keys(user.toObject()).filter(k => user.isDirectModified(k)).join(', ')}`);
+        await user.save();
+
+        if (githubAccessToken) {
+          await cacheDelPattern(userGhCachePattern(uid));
+        }
+      }
     } else {
       user = await User.create({
         uid,
@@ -192,6 +240,8 @@ export async function syncUser(req: AuthenticatedRequest, res: any, next: any): 
         name: name || email.split('@')[0],
         avatarUrl: avatarUrl || '',
         githubAccessToken: githubAccessToken || undefined,
+        githubRefreshToken: githubRefreshToken || undefined,
+        githubTokenExpiry: githubTokenExpiry ? new Date(githubTokenExpiry) : undefined,
         githubId: githubId || undefined,
       });
 
@@ -237,8 +287,12 @@ export async function disconnectGitHub(req: AuthenticatedRequest, res: any, next
     }
 
     user.githubAccessToken = undefined;
+    user.githubRefreshToken = undefined;
+    user.githubTokenExpiry = undefined;
     user.githubId = undefined;
     await user.save();
+
+    await cacheDelPattern(userGhCachePattern(ownerUid));
 
     res.json({ message: 'GitHub connection removed successfully' });
   } catch (error) {

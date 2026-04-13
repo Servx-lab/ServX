@@ -19,7 +19,25 @@ async function connectDB() {
   }
 }
 
-connectDB().then(() => {
+async function connectRedis() {
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    console.warn('Redis URL not found in environment, skipping Redis log.');
+    return;
+  }
+
+  try {
+    const { getRedisClient } = require('./src/core/services/redisCache');
+    const client = await getRedisClient();
+    if (client) {
+      console.log('Redis Cache Connected (persistent)');
+    }
+  } catch (error) {
+    console.error(`Redis Connection Error: ${error.message}`);
+  }
+}
+
+Promise.all([connectDB(), connectRedis()]).then(() => {
   app.listen(PORT, () => {
     console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
   });

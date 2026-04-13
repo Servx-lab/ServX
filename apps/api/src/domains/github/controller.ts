@@ -5,8 +5,48 @@ import {
   fetchRepoDetails,
   fetchRepos,
   getGithubToken,
+  refreshGithubToken,
   updateCollaboratorRole as updateCollaboratorRoleService,
 } from './service';
+import { cacheGet, cacheSet, cacheDel, cacheDelPattern } from '../../core/services/redisCache';
+
+const REPOS_TTL = 300;       // 5 minutes
+const DETAILS_TTL = 180;     // 3 minutes
+
+function reposCacheKey(uid: string) { return `gh:repos:${uid}`; }
+function detailsCacheKey(uid: string, owner: string, repo: string) { return `gh:details:${uid}:${owner}/${repo}`; }
+export function userGhCachePattern(uid: string) { return `gh:*:${uid}*`; }
+
+async function handleGithubRequest<T>(
+  uid: string,
+  requestFn: (token: string) => Promise<T>
+): Promise<T> {
+  const { accessToken, refreshToken, expiry } = await getGithubToken(uid);
+  
+  if (expiry && expiry.getTime() < Date.now() && refreshToken) {
+    try {
+      const newToken = await refreshGithubToken(uid, refreshToken);
+      return await requestFn(newToken);
+    } catch (refreshErr) {
+      console.error(`[GitHub Auth] Pre-emptive refresh failed for user ${uid}:`, refreshErr);
+    }
+  }
+
+  try {
+    return await requestFn(accessToken);
+  } catch (error: any) {
+    if (error?.response?.status === 401 && refreshToken) {
+      try {
+        console.log(`[GitHub Auth] 401 detected for user ${uid}, attempting refresh...`);
+        const newToken = await refreshGithubToken(uid, refreshToken);
+        return await requestFn(newToken);
+      } catch (refreshErr) {
+        console.error(`[GitHub Auth] Refresh attempt failed after 401 for user ${uid}:`, refreshErr);
+      }
+    }
+    throw error;
+  }
+}
 
 export async function getRepos(req: any, res: any, next: any): Promise<void> {
   const uid = req.user?.uid;
@@ -17,20 +57,16 @@ export async function getRepos(req: any, res: any, next: any): Promise<void> {
   }
 
   try {
-    const token = await getGithubToken(uid);
-    const repos = await fetchRepos(token);
-    res.json(repos);
-  } catch (error: any) {
-    if (error?.response?.status === 401) {
-      try {
-        await clearInvalidToken(uid);
-      } catch (dbErr: any) {
-        console.error('[GitHub Auth] Failed to clear invalid token from DB:', dbErr.message);
-      }
-      next(new AuthError('GitHub token invalid or expired.'));
+    const cached = await cacheGet<any[]>(reposCacheKey(uid));
+    if (cached) {
+      res.json(cached);
       return;
     }
 
+    const repos = await handleGithubRequest(uid, (token) => fetchRepos(token));
+    await cacheSet(reposCacheKey(uid), repos, REPOS_TTL);
+    res.json(repos);
+  } catch (error) {
     next(error);
   }
 }
@@ -47,10 +83,38 @@ export async function getRepoDetails(req: any, res: any, next: any): Promise<voi
   const repo = req.params?.repo as string;
 
   try {
-    const token = await getGithubToken(uid);
-    const details = await fetchRepoDetails(token, owner, repo);
-    res.json({ details });
+    const cacheKey = detailsCacheKey(uid, owner, repo);
+    const cached = await cacheGet<any>(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
+    const result = await handleGithubRequest(uid, (token) => fetchRepoDetails(token, owner, repo));
+    await cacheSet(cacheKey, result, DETAILS_TTL);
+    res.json(result);
   } catch (error) {
+    next(error);
+  }
+}
+
+export async function getGitHubStatus(req: any, res: any, next: any): Promise<void> {
+  const uid = req.user?.uid;
+
+  if (!uid) {
+    next(new AuthError('Missing authenticated user context'));
+    return;
+  }
+
+  try {
+    const { accessToken, expiry } = await getGithubToken(uid);
+    const isExpired = expiry ? expiry.getTime() < Date.now() : false;
+    res.json({ connected: true, tokenPresent: !!accessToken, expired: isExpired });
+  } catch (error: any) {
+    if (error?.message?.includes('not connected') || error?.message?.includes('not found')) {
+      res.json({ connected: false, tokenPresent: false, expired: false });
+      return;
+    }
     next(error);
   }
 }
@@ -71,8 +135,9 @@ export async function updateCollaboratorRole(req: any, res: any, next: any): Pro
   }
 
   try {
-    const token = await getGithubToken(uid);
-    await updateCollaboratorRoleService(token, repoName, githubUsername, status);
+    await handleGithubRequest(uid, (token) => 
+      updateCollaboratorRoleService(token, repoName, githubUsername, status)
+    );
     const permission = status === 'locked' ? 'pull' : 'push';
 
     res.json({

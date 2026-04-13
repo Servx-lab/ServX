@@ -38,6 +38,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     select: false // Hide by default
   },
+  githubRefreshToken: {
+    type: String,
+    select: false
+  },
+  githubTokenExpiry: Date,
   avatarUrl: String,
   role: {
     type: String,

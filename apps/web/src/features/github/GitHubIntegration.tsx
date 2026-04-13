@@ -54,9 +54,9 @@ const GitHubIntegration = () => {
   const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null);
   const [isAccessPanelOpen, setIsAccessPanelOpen] = useState(false);
 
-  const { linkGitHub, signInWithGitHub, isGitHubLinked } = useAuth();
+  const { linkGitHub, signInWithGitHub, isGitHubLinked, refreshGitHubConnection, githubTokenValid } = useAuth();
 
-  const { repos, setRepos, error: reposError, setError: setReposError } = useIntegrationRepos(isAuthenticated);
+  const { repos, setRepos, error: reposError, setError: setReposError, refetch: refetchRepos } = useIntegrationRepos(isAuthenticated, githubTokenValid);
   const {
     repoDetails,
     setRepoDetails,
@@ -129,17 +129,26 @@ const GitHubIntegration = () => {
     return Math.max(...commitData.map(d => d.count));
   }, [commitData]);
 
+  const [isConnecting, setIsConnecting] = useState(false);
+
   const handleConnectGitHub = async () => {
+    setIsConnecting(true);
     try {
       if (isGitHubLinked) {
-        await signInWithGitHub(false);
+        await refreshGitHubConnection();
       } else {
         await linkGitHub(false);
       }
-      window.location.reload();
+      
+      setReposError(null);
+      setDetailsError(null);
+      setSelectedRepoId(null);
+      await refetchRepos();
     } catch (err: any) {
       console.error('Failed to connect GitHub:', err);
       setReposError("Failed to initiate GitHub connection. Please try again.");
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -149,9 +158,9 @@ const GitHubIntegration = () => {
       await disconnectGitHub();
       setRepos([]);
       setRepoDetails(null);
+      setSelectedRepoId(null);
       setReposError(null);
       setDetailsError(null);
-      window.location.reload();
     } catch (err: any) {
       console.error('Failed to disconnect GitHub:', err);
       setReposError("Failed to disconnect. Please try again.");
@@ -161,13 +170,14 @@ const GitHubIntegration = () => {
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[500px] gap-4">
-        <Github className="w-16 h-16 opacity-50" />
+        <Github className={`w-16 h-16 ${isConnecting ? 'animate-pulse text-blue-500' : 'opacity-50'}`} />
         <h2 className="text-xl font-semibold">Connect GitHub to view Analytics</h2>
         <button
           onClick={handleConnectGitHub}
-          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all font-medium"
+          disabled={isConnecting}
+          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all font-medium disabled:opacity-50"
         >
-          Connect GitHub
+          {isConnecting ? 'Connecting...' : 'Connect GitHub'}
         </button>
       </div>
     );
@@ -505,16 +515,17 @@ const GitHubIntegration = () => {
                 <h3 className="text-xl font-semibold mb-2 text-black">Error Loading Analysis</h3>
                 <p className="text-gray-500 max-w-sm mb-6">{error}</p>
                 <div className="flex gap-3">
-                    {error.includes("not connected") ? (
+                    {error.includes("not connected") || error.includes("expired") || error.includes("Unauthorized") ? (
                         <button 
                             onClick={handleConnectGitHub}
-                            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-all font-medium shadow-sm"
+                            disabled={isConnecting}
+                            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-all font-medium shadow-sm disabled:opacity-50"
                         >
-                            Connect GitHub
+                            {isConnecting ? 'Connecting...' : 'Reconnect GitHub'}
                         </button>
                     ) : (
                         <button 
-                            onClick={() => window.location.reload()}
+                            onClick={() => { setReposError(null); setDetailsError(null); refetchRepos(); }}
                             className="px-6 py-2 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg text-sm transition-all text-black shadow-sm"
                         >
                             Retry

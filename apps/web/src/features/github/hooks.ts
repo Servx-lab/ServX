@@ -1,16 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocalCache } from '@/hooks/useLocalCache';
 import type { RepoSummary } from '@servx/types';
 import type { Repository, Commit, RepoDetails } from './types';
 import { getDashboardRepos, getRepoStack, getRepoCommits, getRepos, getRepoDetails } from './api';
 
 /** Fetches all repos for the dashboard view and enriches each with its tech stack. */
 export function useGitHubDashboardRepos() {
-  const [repos, setRepos] = useState<Repository[]>([]);
+  const { data: cachedData, updateCache } = useLocalCache();
+  const [repos, setRepos] = useState<Repository[]>(cachedData?.githubRepos || []);
 
   useEffect(() => {
     getDashboardRepos()
       .then((data) => {
         setRepos(data);
+        updateCache({ githubRepos: data });
         data.forEach(async (repo) => {
           try {
             const stack = await getRepoStack(repo.name);
@@ -45,36 +48,72 @@ export function useRepoCommits(repoName: string | null) {
   return commits;
 }
 
-/** Fetches the list of repos for the integration view. Handles 401 error messages. */
-export function useIntegrationRepos(isAuthenticated: boolean) {
-  const [repos, setRepos] = useState<RepoSummary[]>([]);
+/** Fetches the list of repos for the integration view. Shows cached data first, then refreshes in background. */
+export function useIntegrationRepos(isAuthenticated: boolean, githubTokenValid?: boolean | null) {
+  const { data: cachedData, updateCache } = useLocalCache();
+  const [repos, setRepos] = useState<RepoSummary[]>(cachedData?.githubRepos || []);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const fetchIdRef = useRef(0);
+  const reposRef = useRef(repos);
+  reposRef.current = repos;
+
+  const fetchRepos = useCallback(async () => {
+    if (!isAuthenticated) return;
+
+    const hasCachedRepos = reposRef.current.length > 0;
+    if (!hasCachedRepos) setIsRefreshing(true);
+
+    const id = ++fetchIdRef.current;
+
+    try {
+      const data = await getRepos();
+      if (id !== fetchIdRef.current) return;
+      setRepos(data);
+      updateCache({ githubRepos: data });
+      setError(null);
+    } catch (err: any) {
+      if (id !== fetchIdRef.current) return;
+
+      if (hasCachedRepos) {
+        console.warn('[GitHub] Background refresh failed, keeping cached data');
+        return;
+      }
+
+      console.error('Failed to fetch repos:', err);
+      if (err.response?.status === 401) {
+        const serverError: string = err.response?.data?.error ?? '';
+        if (
+          serverError === 'User record not found in database.' ||
+          serverError === 'GitHub account not connected.'
+        ) {
+          setError('GitHub not connected. Please connect your account.');
+        } else if (serverError === 'GitHub token invalid or expired.') {
+          setError('Your GitHub connection has expired. Please reconnect.');
+        } else {
+          setError(serverError || 'GitHub not connected. Please connect your account.');
+        }
+      } else {
+        setError('Failed to fetch repositories.');
+      }
+    } finally {
+      if (id === fetchIdRef.current) setIsRefreshing(false);
+    }
+  }, [isAuthenticated, updateCache]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
-    getRepos()
-      .then(setRepos)
-      .catch((err) => {
-        console.error('Failed to fetch repos:', err);
-        if (err.response?.status === 401) {
-          const serverError: string = err.response?.data?.error ?? '';
-          if (
-            serverError === 'User record not found in database.' ||
-            serverError === 'GitHub account not connected.'
-          ) {
-            setError('GitHub not connected. Please connect your account.');
-          } else if (serverError === 'GitHub token invalid or expired.') {
-            setError('Your GitHub connection has expired. Please reconnect.');
-          } else {
-            setError(serverError || 'GitHub not connected. Please connect your account.');
-          }
-        } else {
-          setError('Failed to fetch repositories.');
-        }
-      });
-  }, [isAuthenticated]);
+    if (githubTokenValid === false) {
+      if (reposRef.current.length === 0) {
+        setError('GitHub not connected. Please connect your account.');
+      }
+      return;
+    }
+    if (githubTokenValid === null) return;
 
-  return { repos, setRepos, error, setError };
+    fetchRepos();
+  }, [fetchRepos, githubTokenValid]);
+
+  return { repos, setRepos, error, setError, refetch: fetchRepos, isRefreshing };
 }
 
 /** Fetches enriched details for the selected repo. Resets state on each new selection. */
@@ -100,7 +139,6 @@ export function useRepoDetails(selectedRepoId: number | null, repos: RepoSummary
         setError('Failed to load repository details.');
       })
       .finally(() => setLoadingDetails(false));
-  // repos is intentionally omitted — we only re-fetch when the selected repo id changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRepoId]);
 
