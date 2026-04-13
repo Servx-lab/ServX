@@ -32,7 +32,8 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
 
   try {
     const raw = await redis.get(key);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw || typeof raw !== 'string') return null;
+    return JSON.parse(raw);
   } catch {
     return null;
   }
@@ -65,14 +66,12 @@ export async function cacheDelPattern(pattern: string): Promise<void> {
   if (!redis) return;
 
   try {
-    let cursor = 0;
-    do {
-      const result = await redis.scan(cursor, { MATCH: pattern, COUNT: 100 });
-      cursor = result.cursor;
-      if (result.keys.length > 0) {
-        await redis.del(result.keys);
-      }
-    } while (cursor !== 0);
+    for await (const key of redis.scanIterator({
+      MATCH: pattern,
+      COUNT: 100
+    })) {
+      await redis.del(key);
+    }
   } catch {
     // Non-critical
   }

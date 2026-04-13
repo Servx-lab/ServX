@@ -39,6 +39,8 @@ export interface User {
 	email: string;
 	githubId?: string;
 	githubAccessToken?: string;
+	githubRefreshToken?: string;
+	githubTokenExpiry?: Date | string;
 	avatarUrl?: string;
 	username?: string;
 	surname?: string;
