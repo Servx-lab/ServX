@@ -143,7 +143,7 @@ const GitHubIntegration = () => {
       setReposError(null);
       setDetailsError(null);
       setSelectedRepoId(null);
-      await refetchRepos();
+      await refetchRepos({ forceRefresh: true });
     } catch (err: any) {
       console.error('Failed to connect GitHub:', err);
       setReposError("Failed to initiate GitHub connection. Please try again.");
@@ -525,7 +525,7 @@ const GitHubIntegration = () => {
                         </button>
                     ) : (
                         <button 
-                            onClick={() => { setReposError(null); setDetailsError(null); refetchRepos(); }}
+                            onClick={() => { setReposError(null); setDetailsError(null); refetchRepos({ forceRefresh: true }); }}
                             className="px-6 py-2 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg text-sm transition-all text-black shadow-sm"
                         >
                             Retry
