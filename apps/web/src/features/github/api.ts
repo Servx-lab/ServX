@@ -2,6 +2,17 @@ import apiClient from '@/lib/apiClient';
 import type { RepoSummary } from '@servx/types';
 import type { Repository, RepoDetails, Commit } from './types';
 
+export interface GitHubConnectionStatus {
+  connected: boolean;
+  tokenPresent: boolean;
+  expired: boolean;
+}
+
+export async function getGitHubStatus(): Promise<GitHubConnectionStatus> {
+  const res = await apiClient.get('/github/status', { skipAuthErrorLog: true });
+  return res.data;
+}
+
 export async function getRepos(): Promise<RepoSummary[]> {
   const res = await apiClient.get('/github/repos');
   return res.data;
