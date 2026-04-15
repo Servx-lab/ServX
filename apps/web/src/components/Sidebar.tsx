@@ -61,7 +61,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="glass-sidebar w-56 h-screen flex flex-col py-6 px-3 fixed left-0 top-0 z-50 overflow-y-auto no-scrollbar">
+    <div className="glass-sidebar w-56 shrink-0 h-full min-h-0 flex flex-col py-6 px-3 relative z-40 overflow-y-auto no-scrollbar">
       {/* Logo */}
       <div className="flex flex-col items-center px-3 mb-8">
         <ServXLogo showTagline={false} size="sm" className="items-start w-full" />
