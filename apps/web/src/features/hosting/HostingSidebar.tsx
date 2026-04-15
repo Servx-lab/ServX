@@ -41,6 +41,7 @@ const HostingSidebar = () => {
           <NavLink
             key={name}
             to={path}
+            aria-label={`${name} hosting`}
             className={({ isActive }) =>
               [
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200',
