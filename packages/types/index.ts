@@ -148,6 +148,13 @@ export interface HostingDeployment {
 	branch?: string | null;
 }
 
+/** One row from Vercel or Render env APIs (values only when provider returns them). */
+export interface HostingEnvVariable {
+	key: string;
+	value: string;
+	target?: string;
+}
+
 export interface HostingCreds {
 	token: string;
 	edgeConfigId?: string;

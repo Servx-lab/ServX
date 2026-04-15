@@ -7,6 +7,7 @@ import {
   listConnections,
   deleteConnection,
   getHostingStatus,
+  getHostingEnvForService,
   saveHostingConnection,
 } from './controller';
 
@@ -18,6 +19,7 @@ router.get('/', requireAuth, listConnections);
 router.delete('/:id', requireAuth, deleteConnection);
 
 // Hosting provider routes (generic)
+router.get('/hosting/:provider/env/:serviceId', requireAuth, getHostingEnvForService);
 router.get('/hosting/:provider/status', requireAuth, getHostingStatus);
 router.post('/hosting/:provider', requireAuth, saveHostingConnection);
 

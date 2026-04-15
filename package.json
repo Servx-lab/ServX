@@ -8,10 +8,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n \"api,web\" -c \"cyan,magenta\" \"npm run dev:api\" \"npm run dev:web\"",
+    "dev": "npx concurrently -n \"api,web\" -c \"cyan,magenta\" \"npm run dev:api\" \"npm run dev:web\"",
     "dev:api": "npm run dev --workspace servx-api",
     "dev:web": "vite apps/web --config apps/web/vite.config.ts",
-    "dev:full": "concurrently -n \"api,web,worker\" -c \"cyan,magenta,yellow\" \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:worker\"",
+    "dev:full": "npx concurrently -n \"api,web,worker\" -c \"cyan,magenta,yellow\" \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:worker\"",
     "dev:worker": "npm run dev --workspace servx-worker",
     "build": "vite build apps/web --config apps/web/vite.config.ts",
     "build:dev": "vite build apps/web --config apps/web/vite.config.ts --mode development",
