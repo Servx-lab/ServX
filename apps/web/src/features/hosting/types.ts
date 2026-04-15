@@ -43,6 +43,12 @@ export interface ConnectHostingBody {
   edgeConfigId?: string;
 }
 
+export interface HostingEnvVariable {
+  key: string;
+  value: string;
+  target?: string;
+}
+
 export interface ConnectionResponse {
   id: string;
   name: string;

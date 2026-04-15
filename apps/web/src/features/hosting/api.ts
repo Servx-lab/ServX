@@ -3,6 +3,7 @@ import type {
   ConnectHostingBody,
   ConnectionListItem,
   ConnectionResponse,
+  HostingEnvVariable,
   HostingStatusResponse,
 } from './types';
 
@@ -27,4 +28,15 @@ export async function connectHostingProvider(
 export async function getConnections(): Promise<ConnectionListItem[]> {
   const res = await apiClient.get<ConnectionListItem[]>('/connections');
   return res.data;
+}
+
+/** Load env vars for a Vercel project or Render service (server uses stored encrypted API token). */
+export async function fetchHostingEnvVariables(
+  provider: string,
+  serviceId: string,
+): Promise<HostingEnvVariable[]> {
+  const res = await apiClient.get<{ variables: HostingEnvVariable[] }>(
+    `/connections/hosting/${encodeURIComponent(provider)}/env/${encodeURIComponent(serviceId)}`,
+  );
+  return res.data.variables ?? [];
 }
