@@ -67,10 +67,12 @@ export const RepositoryAccess: React.FC<RepositoryAccessProps> = ({ repoName, ow
               className="flex flex-col gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200"
             >
               <div className="flex items-center gap-4">
-                <img 
-                  src={contributor.avatar_url} 
-                  alt={contributor.login} 
+                <img
+                  src={contributor.avatar_url}
+                  alt={contributor.login}
                   className="w-10 h-10 rounded-full border border-gray-200"
+                  referrerPolicy="no-referrer"
+                  loading="lazy"
                 />
                 <div className="flex-1 min-w-0">
                   <a 

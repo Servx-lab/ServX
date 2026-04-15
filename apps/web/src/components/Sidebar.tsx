@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import SecurityInfo from "./SecurityInfo";
 import ServXLogo from "./ServXLogo";
+import { ProfilePhoto } from "@/components/ProfilePhoto";
 import {
   LayoutDashboard,
   Search,
@@ -130,20 +131,12 @@ const Sidebar = () => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <div className="glass-card px-3 py-3 flex items-center gap-3 cursor-pointer hover:bg-secondary/80 transition-colors mt-4">
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt={user.displayName || "User"} className="w-8 h-8 rounded-full object-cover" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-xs font-bold text-primary-foreground">
-                {user?.displayName
-                  ? user.displayName
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .substring(0, 2)
-                      .toUpperCase()
-                  : "U"}
-              </div>
-            )}
+            <ProfilePhoto
+              src={user?.photoURL}
+              alt={user?.displayName || "User"}
+              label={user?.displayName || user?.email}
+              className="h-8 w-8"
+            />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
                 {user?.displayName || user?.email || "User"}
