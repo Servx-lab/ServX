@@ -1,7 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import SecurityInfo from "./SecurityInfo";
-import WorkspaceBranding from "./WorkspaceBranding";
 import ServXLogo from "./ServXLogo";
 import {
   LayoutDashboard,
@@ -67,9 +66,6 @@ const Sidebar = () => {
       <div className="flex flex-col items-center px-3 mb-8">
         <ServXLogo showTagline={false} size="sm" className="items-start w-full" />
       </div>
-
-      {/* Workspace Branding */}
-      <WorkspaceBranding ownerName="Chitkul" />
 
       {/* Main Nav */}
       <nav className="flex-1 flex flex-col gap-1">
