@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Activity, ChevronDown, GitPullRequest, Laptop, Mail, Package, Users } from "lucide-react";
+import { Activity, GitPullRequest, Laptop, Mail, Package, Users } from "lucide-react";
 import { motion } from "framer-motion";
 
 import {
@@ -47,9 +47,8 @@ export default function PlatformSecurityCommandCenter() {
           <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
             <span className="text-sm text-gray-600">Repository</span>
             <Select value={repoId} onValueChange={(v) => setRepoId(v as RepoId)}>
-              <SelectTrigger className="h-11 w-[min(100vw-2rem,280px)] border-gray-200 bg-white text-gray-900 shadow-sm hover:border-[#00C2CB]/40">
+              <SelectTrigger className="h-11 w-[min(100vw-2rem,280px)] border-gray-200 bg-white text-gray-900 shadow-sm hover:border-[#00C2CB]/40 [&>svg]:hidden">
                 <SelectValue placeholder="Select repository" />
-                <ChevronDown className="h-4 w-4 text-gray-400" />
               </SelectTrigger>
               <SelectContent className="border-gray-200 bg-white text-gray-900">
                 {REPO_OPTIONS.map((o) => (
@@ -61,29 +60,6 @@ export default function PlatformSecurityCommandCenter() {
             </Select>
           </div>
         </motion.header>
-
-        {/* Colorful checkbox section */}
-        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Risk filters</h2>
-          <div className="flex flex-wrap gap-5 text-sm">
-            <label className="inline-flex items-center gap-2 text-red-600">
-              <input type="checkbox" defaultChecked className="h-4 w-4 accent-red-500" />
-              Critical
-            </label>
-            <label className="inline-flex items-center gap-2 text-green-600">
-              <input type="checkbox" defaultChecked className="h-4 w-4 accent-green-500" />
-              Healthy
-            </label>
-            <label className="inline-flex items-center gap-2 text-blue-600">
-              <input type="checkbox" defaultChecked className="h-4 w-4 accent-blue-500" />
-              Changes
-            </label>
-            <label className="inline-flex items-center gap-2 text-yellow-600">
-              <input type="checkbox" defaultChecked className="h-4 w-4 accent-yellow-400" />
-              Warnings
-            </label>
-          </div>
-        </section>
 
         {/* Row 1 — six stat cards */}
         <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6 lg:gap-4">
