@@ -3,10 +3,30 @@ import axios from 'axios';
 import { ConflictError, NotFoundError } from '@servx/errors';
 
 import { Admin, AccessControl, User } from './model';
-import type { AdminDoc, AdminRecord, DbResource, Permissions, RepoResource } from './types';
+import type {
+  AdminDoc,
+  AdminRecord,
+  DbResource,
+  Permissions,
+  RepoResource,
+  ServerResource,
+} from './types';
 
 const firebaseAdmin = require('../../../utils/firebaseAdmin');
 const UserConnection = require('../../../models/UserConnection');
+
+const HOSTING_PROVIDERS = new Set(['Vercel', 'Render', 'Railway', 'DigitalOcean', 'Fly.io', 'AWS']);
+const DATABASE_PROVIDERS = new Set([
+  'Firebase',
+  'MongoDB',
+  'Supabase',
+  'MySQL',
+  'PostgreSQL',
+  'AWS RDS',
+  'Oracle',
+  'Redis',
+  'MariaDB',
+]);
 
 function defaultPermissions(): Permissions {
   return {
@@ -17,6 +37,7 @@ function defaultPermissions(): Permissions {
       canBanIPs: false,
       canViewDeviceUUIDs: false,
     },
+    granularAllow: null,
   };
 }
 
@@ -75,7 +96,13 @@ export async function getAdminPermissions(ownerUid: string, userUid: string): Pr
   if (!found?.permissions) {
     return defaultPermissions();
   }
-  return found.permissions as Permissions;
+  const p = {
+    ...(typeof found.toObject === 'function' ? found.toObject().permissions : found.permissions),
+  } as Permissions;
+  if (p.granularAllow === undefined) {
+    p.granularAllow = null;
+  }
+  return p;
 }
 
 export async function updateAdminPermissions(
@@ -92,14 +119,28 @@ export async function updateAdminPermissions(
   return (updated?.permissions as Permissions) ?? defaultPermissions();
 }
 
-export async function updateWorkspaceLogo(ownerUid: string, logoUrl: string): Promise<void> {
-  await (AccessControl as any).updateMany({ ownerUid }, { ownerLogoUrl: logoUrl });
-}
-
 export async function getAdminResources(
   adminRecord: AdminDoc
-): Promise<{ dbs: DbResource[]; repos: RepoResource[] }> {
+): Promise<{
+  dbs: DbResource[];
+  databases: DbResource[];
+  servers: ServerResource[];
+  repos: RepoResource[];
+}> {
   const connections = await UserConnection.find({}, 'name provider');
+
+  const databases: DbResource[] = [];
+  const servers: ServerResource[] = [];
+
+  for (const c of connections as any[]) {
+    const rowBase = { id: String(c._id), name: c.name as string, provider: c.provider as string };
+    if (DATABASE_PROVIDERS.has(c.provider)) {
+      databases.push(rowBase);
+    }
+    if (HOSTING_PROVIDERS.has(c.provider)) {
+      servers.push(rowBase);
+    }
+  }
 
   let repos: RepoResource[] = [];
   const user = await (User as any).findOne({ uid: adminRecord.uid }).select('+githubAccessToken');
@@ -123,7 +164,9 @@ export async function getAdminResources(
   }
 
   return {
-    dbs: connections.map((c: any) => ({ name: c.name, provider: c.provider })),
+    dbs: databases,
+    databases,
+    servers,
     repos,
   };
 }
