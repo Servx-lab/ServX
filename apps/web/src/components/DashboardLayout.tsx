@@ -4,6 +4,9 @@ import Sidebar from "@/components/Sidebar";
 /**
  * Shared layout for all dashboard pages. Keeps the Sidebar mounted
  * across navigations so it doesn't blink when switching routes.
+ *
+ * Shell geometry: dark outer frame → rounded inner track → white main panel with
+ * its own radius so the dark layer fills the curved gaps at every corner.
  */
 const DashboardLayout = () => {
   return (
