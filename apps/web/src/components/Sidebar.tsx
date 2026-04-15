@@ -130,7 +130,7 @@ const Sidebar = () => {
       {/* User Profile with Logout */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div className="glass-card px-3 py-3 flex items-center gap-3 cursor-pointer hover:bg-secondary/80 transition-colors mt-4">
+          <div className="flex cursor-pointer items-center gap-3 rounded-xl bg-card/25 px-3 py-3 backdrop-blur-md transition-colors hover:bg-secondary/80 mt-4">
             <ProfilePhoto
               src={user?.photoURL}
               alt={user?.displayName || "User"}

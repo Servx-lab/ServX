@@ -19,6 +19,7 @@ import Onboarding from "./features/auth/Onboarding";
 import Administrator from "./features/admin";
 import AttackPath from "./pages/AttackPath";
 import ComingSoon from "./pages/ComingSoon";
+import ExposureAnalysis from "./pages/ExposureAnalysis";
 import Emails from "./features/emails";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -58,7 +59,7 @@ const App = () => (
               <Route path="/operations" element={<Operations />} />
               <Route path="/admin" element={<Administrator />} />
               <Route path="/attack-paths" element={<AttackPath />} />
-              <Route path="/exposure" element={<ComingSoon />} />
+              <Route path="/exposure" element={<ExposureAnalysis />} />
               <Route path="/scenarios" element={<ComingSoon />} />
               <Route path="/emails" element={<Emails />} />
               <Route path="/reports" element={<ComingSoon />} />

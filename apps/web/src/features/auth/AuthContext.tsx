@@ -19,6 +19,20 @@ import { getHostingStatus, getConnections } from '@/features/hosting/api';
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+        return await Promise.race<T>([
+            promise,
+            new Promise<T>((_, reject) => {
+                timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+            }),
+        ]);
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+}
+
 function extractGitHubOAuthFields(result: any) {
     const credential = GithubAuthProvider.credentialFromResult(result);
     const githubToken = credential?.accessToken;
@@ -103,21 +117,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const currentUser = auth.currentUser;
         if (!currentUser) return;
         try {
-            await syncUser({
+            await withTimeout(syncUser({
                 name: currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
                 avatarUrl: currentUser.photoURL || '',
                 githubAccessToken: opts?.githubAccessToken,
                 githubRefreshToken: opts?.githubRefreshToken,
                 githubTokenExpiry: opts?.githubTokenExpiry,
                 githubId: opts?.githubId,
-            });
+            }), 12000, 'syncUser');
             lastSyncedUid.current = currentUser.uid;
 
             if (opts?.githubAccessToken) {
                 setGithubTokenValid(true);
             }
         } catch (err) {
-            console.error('Failed to sync user to backend:', err);
+            console.error('Failed to sync user to backend (continuing auth):', err);
         }
     }, []);
 
@@ -178,7 +192,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             provider.addScope('repo');
             
             isRefreshingRef.current = true;
-            const result = await signInWithPopup(auth, provider);
+            const result = await withTimeout(signInWithPopup(auth, provider), 180000, 'GitHub popup sign-in');
             const oauthFields = extractGitHubOAuthFields(result);
             
             await syncUserToBackend(oauthFields);
@@ -208,7 +222,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const signInWithGoogle = async () => {
         try {
             const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
+            await withTimeout(signInWithPopup(auth, provider), 180000, 'Google popup sign-in');
             
             await syncUserToBackend();
             
@@ -237,7 +251,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
              provider.addScope('repo');
 
              isRefreshingRef.current = true;
-             const result = await linkWithPopup(auth.currentUser, provider);
+             const result = await withTimeout(
+                linkWithPopup(auth.currentUser, provider),
+                180000,
+                'GitHub link popup'
+            );
              const oauthFields = extractGitHubOAuthFields(result);
 
              await syncUserToBackend(oauthFields);
