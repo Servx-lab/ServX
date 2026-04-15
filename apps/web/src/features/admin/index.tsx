@@ -1,259 +1,147 @@
 import React, { useState } from "react";
-import { 
-  Shield, 
-  UserPlus, 
-  Trash2, 
-  Mail, 
-  UserCheck,
-  Settings
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import AdminPermissionMatrix from "./AdminPermissionMatrix";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Shield, Users, Trash2, Settings, UserCheck } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import { useAdminList, useInviteAdmin, useRevokeAdmin } from "./hooks";
-import { updateWorkspaceLogo } from "./api";
-import { AdminRecord, AdminRole } from "./types";
+import type { AdminRecord, AdminRole } from "./types";
+import UserSearchInviteBar from "./UserSearchInviteBar";
+import GranularAccessModal from "./GranularAccessModal";
+
+function roleBadgeClass(role: string): string {
+  if (role === "viewer") {
+    return "bg-violet-50 text-violet-700 border border-violet-200";
+  }
+  if (role === "editor") {
+    return "bg-blue-50 text-blue-700 border border-blue-200";
+  }
+  return "bg-cyan-50 text-cyan-700 border border-cyan-200";
+}
 
 const Administrator = () => {
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<AdminRole>("viewer");
-  const [selectedUser, setSelectedUser] = useState<AdminRecord | null>(null);
-  const [workspaceLogo, setWorkspaceLogo] = useState("");
+  const [accessUser, setAccessUser] = useState<AdminRecord | null>(null);
 
   const { data: admins = [], isLoading: isLoadingAdmins } = useAdminList();
   const inviteMutation = useInviteAdmin();
   const revokeMutation = useRevokeAdmin();
 
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-
-    inviteMutation.mutate({ email, role }, {
-      onSuccess: () => {
-        setEmail("");
-      }
-    });
+  const handleInvite = (email: string, role: AdminRole) => {
+    inviteMutation.mutate({ email, role });
   };
 
   const handleRevoke = (uid: string) => {
     revokeMutation.mutate(uid);
   };
 
-  const handleLogoUpdate = async () => {
-    try {
-      await updateWorkspaceLogo(workspaceLogo);
-      toast.success("Workspace branding updated");
-    } catch (error) {
-      toast.error("Failed to update branding");
-    }
-  };
-
   return (
-    <main className="flex-1 p-8 pt-24 flex flex-col min-h-full bg-white text-black font-sans">
-        <div className="max-w-6xl mx-auto w-full">
+    <main className="flex min-h-full flex-1 flex-col bg-white p-8 pt-24 font-sans text-black">
+      <div className="mx-auto w-full max-w-6xl space-y-10">
         {/* Page header */}
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 rounded-xl bg-cyan-50 border border-cyan-200 shadow-sm">
-            <Shield className="w-8 h-8 text-cyan-600" />
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3 shadow-sm">
+            <Shield className="h-8 w-8 text-cyan-600" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-black">Administrator Management</h1>
-            <p className="text-gray-500 mt-1">Manage system-level access and permissions for ServX.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-black">Team &amp; access management</h1>
+            <p className="mt-1 text-gray-500">
+              Discover users, assign global roles, and configure granular infrastructure visibility per teammate.
+            </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-          {/* Section 1: Invite Admin */}
-          <section className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-6">
-              <UserPlus className="w-5 h-5 text-cyan-600" />
-              <h2 className="text-xl font-semibold text-gray-900">Invite New Administrator</h2>
-            </div>
-            
-            <form onSubmit={handleInvite} className="flex flex-col gap-4">
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <Input 
-                  placeholder="User email address..." 
-                  className="pl-10 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-500 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  type="email"
-                  required
-                />
-              </div>
-              
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <Select value={role} onValueChange={(val: AdminRole) => setRole(val)}>
-                    <SelectTrigger className="bg-gray-50 border-gray-200 text-gray-900 focus:ring-cyan-500">
-                      <SelectValue placeholder="Select Role" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-gray-200 text-gray-900">
-                      <SelectItem value="owner">Owner</SelectItem>
-                      <SelectItem value="editor">Editor</SelectItem>
-                      <SelectItem value="viewer">Viewer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+        {/* Search & invite */}
+        <section>
+          <UserSearchInviteBar onInvite={handleInvite} inviting={inviteMutation.isPending} />
+        </section>
 
-                <Button 
-                  type="submit" 
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold px-8 transition-colors"
-                  disabled={inviteMutation.isPending}
-                >
-                  {inviteMutation.isPending ? "Inviting..." : "Invite Admin"}
-                </Button>
-              </div>
-            </form>
-          </section>
-
-          {/* Section: Workspace Settings */}
-          <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-6">
-              <Settings className="w-5 h-5 text-cyan-600" />
-              <h2 className="text-xl font-semibold text-gray-900">Workspace Settings</h2>
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Workspace Logo URL</label>
-                <Input 
-                  placeholder="https://example.com/logo.png" 
-                  className="bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-500 focus:border-cyan-500 text-xs"
-                  value={workspaceLogo}
-                  onChange={(e) => setWorkspaceLogo(e.target.value)}
-                />
-              </div>
-              <Button 
-                onClick={handleLogoUpdate}
-                variant="outline"
-                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 font-medium transition-colors"
-              >
-                Update Branding
-              </Button>
-            </div>
-          </section>
-        </div>
-
-        <AnimatePresence mode="wait">
-          {selectedUser && (
-            <motion.div 
-              key={selectedUser.uid}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-12"
-            >
-              <AdminPermissionMatrix 
-                userUid={selectedUser.uid} 
-                userEmail={selectedUser.email} 
-                onClose={() => setSelectedUser(null)} 
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Section 2: Admin List */}
-        <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+        {/* Team roster */}
+        <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50/50 px-6 py-4">
             <div className="flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-cyan-600" />
-              <h2 className="text-xl font-semibold text-gray-900">Current Administrators</h2>
+              <UserCheck className="h-5 w-5 text-cyan-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Active team</h2>
             </div>
-            <Badge variant="outline" className="border-cyan-200 text-cyan-700 bg-cyan-50">
-              {admins.length} Total
+            <Badge variant="outline" className="border-cyan-200 bg-cyan-50 text-cyan-700">
+              {admins.length} member{admins.length === 1 ? "" : "s"}
             </Badge>
           </div>
 
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-gray-200 hover:bg-transparent bg-gray-50/80">
-                  <TableHead className="text-gray-600 font-medium">Administrator</TableHead>
-                  <TableHead className="text-gray-600 font-medium">UID</TableHead>
-                  <TableHead className="text-gray-600 font-medium">Role</TableHead>
-                  <TableHead className="text-gray-600 font-medium">Added On</TableHead>
-                  <TableHead className="text-right text-gray-600 font-medium">Action</TableHead>
+                <TableRow className="border-gray-200 bg-gray-50/80 hover:bg-transparent">
+                  <TableHead className="font-medium text-gray-600">Member</TableHead>
+                  <TableHead className="font-medium text-gray-600">Global role</TableHead>
+                  <TableHead className="font-medium text-gray-600">Added</TableHead>
+                  <TableHead className="text-right font-medium text-gray-600">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoadingAdmins ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-48 text-center text-gray-500 animate-pulse">
-                      Loading administrators...
+                    <TableCell colSpan={4} className="h-40 animate-pulse text-center text-gray-500">
+                      Loading team…
                     </TableCell>
                   </TableRow>
                 ) : admins.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-48 text-center text-gray-500 italic">
-                      No administrators found.
+                    <TableCell colSpan={4} className="h-40 text-center italic text-gray-500">
+                      No team members yet. Invite someone above.
                     </TableCell>
                   </TableRow>
                 ) : (
                   admins.map((admin) => (
-                    <TableRow 
-                      key={admin.uid} 
-                      className={`border-gray-200 hover:bg-gray-50/80 transition-colors cursor-pointer ${selectedUser?.uid === admin.uid ? 'bg-cyan-50/80 border-l-2 border-l-cyan-500' : ''}`}
-                      onClick={() => setSelectedUser(admin)}
-                    >
-                      <TableCell className="font-medium text-gray-900">
+                    <TableRow key={admin.uid} className="border-gray-200 hover:bg-gray-50/80">
+                      <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-cyan-100 border border-cyan-200 flex items-center justify-center text-cyan-700 text-xs font-bold">
-                            {admin.email[0].toUpperCase()}
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200 bg-cyan-100 text-sm font-bold text-cyan-700">
+                            {admin.email[0]?.toUpperCase() ?? "?"}
                           </div>
-                          {admin.email}
+                          <div className="min-w-0">
+                            <div className="truncate font-medium text-gray-900">{admin.email}</div>
+                            <code className="text-[10px] text-gray-500">{admin.uid}</code>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <code className="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-600 border border-gray-200">
-                          {admin.uid}
-                        </code>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`
-                          capitalize font-medium
-                          ${admin.role === 'owner' ? 'bg-cyan-100 text-cyan-700 border border-cyan-200' : 
-                            admin.role === 'editor' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 
-                            'bg-gray-100 text-gray-600 border border-gray-200'}
-                        `}>
+                        <Badge variant="outline" className={`capitalize ${roleBadgeClass(admin.role)}`}>
                           {admin.role}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-gray-600 text-sm">
+                      <TableCell className="text-sm text-gray-600">
                         {new Date(admin.addedAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 transition-all"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRevoke(admin.uid);
-                          }}
-                          disabled={revokeMutation.isPending}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Revoke
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-gray-600 hover:bg-gray-100 hover:text-cyan-600"
+                            title="Edit access"
+                            onClick={() => setAccessUser(admin)}
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            title="Revoke access"
+                            onClick={() => handleRevoke(admin.uid)}
+                            disabled={revokeMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -263,6 +151,13 @@ const Administrator = () => {
           </div>
         </section>
       </div>
+
+      <GranularAccessModal
+        open={accessUser !== null}
+        onOpenChange={(o) => !o && setAccessUser(null)}
+        userUid={accessUser?.uid ?? ""}
+        userEmail={accessUser?.email ?? ""}
+      />
     </main>
   );
 };

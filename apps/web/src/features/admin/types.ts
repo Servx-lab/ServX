@@ -1,5 +1,13 @@
 export type AdminRole = 'owner' | 'editor' | 'viewer';
 
+export interface UserSearchHit {
+  id: string;
+  email: string;
+  name: string;
+  username?: string;
+  avatarUrl?: string;
+}
+
 export interface AdminRecord {
   uid: string;
   email: string;
@@ -26,14 +34,29 @@ export interface GlobalPermissions {
   canViewDeviceUUIDs: boolean;
 }
 
+export interface GranularAllow {
+  repoKeys?: string[];
+  serverIds?: string[];
+  databaseIds?: string[];
+}
+
 export interface AccessPermissions {
   repos: RepoPermissions[];
   dbs: DbPermissions[];
   global: GlobalPermissions;
+  granularAllow?: GranularAllow | null;
+}
+
+export interface ServerResource {
+  id: string;
+  name: string;
+  provider: string;
 }
 
 export interface AdminResource {
-  dbs: { name: string; provider: string }[];
+  dbs: { id: string; name: string; provider: string }[];
+  databases: { id: string; name: string; provider: string }[];
+  servers: ServerResource[];
   repos: { name: string; full_name: string }[];
 }
 
