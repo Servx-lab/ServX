@@ -7,7 +7,6 @@ import {
   revokeAdmin,
   getPermissions,
   updatePermissions,
-  updateWorkspaceLogo,
   getResources,
 } from './controller';
 
@@ -18,7 +17,6 @@ router.get('/list', listAdmins);
 router.delete('/revoke/:uid', revokeAdmin);
 router.get('/permissions/:userUid', isAdmin, getPermissions);
 router.post('/permissions/update', isAdmin, updatePermissions);
-router.post('/workspace/logo', isAdmin, updateWorkspaceLogo);
 router.get('/resources', isAdmin, getResources);
 
 export default router;

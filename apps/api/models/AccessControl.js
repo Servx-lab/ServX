@@ -27,6 +27,16 @@ const AccessControlSchema = new mongoose.Schema({
       isFullControl: { type: Boolean, default: false },
       canBanIPs: { type: Boolean, default: false },
       canViewDeviceUUIDs: { type: Boolean, default: false }
+    },
+    /**
+     * Optional per-resource allow lists. When omitted, all connected resources are allowed.
+     * When present, only listed keys/ids are visible to the team member.
+     * repoKeys: GitHub full_name; serverIds/databaseIds: UserConnection _id strings.
+     */
+    granularAllow: {
+      repoKeys: [{ type: String }],
+      serverIds: [{ type: String }],
+      databaseIds: [{ type: String }]
     }
   },
   ownerLogoUrl: {

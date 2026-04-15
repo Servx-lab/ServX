@@ -8,7 +8,6 @@ import {
   revokeAdmin as revokeAdminService,
   getAdminPermissions,
   updateAdminPermissions,
-  updateWorkspaceLogo as updateWorkspaceLogoService,
   getAdminResources,
 } from './service';
 import type { AdminDoc, Permissions } from './types';
@@ -80,20 +79,6 @@ export async function updatePermissions(
     const ownerUid = req.uid;
     const updated = await updateAdminPermissions(ownerUid, userUid, permissions);
     res.json({ ownerUid, userUid, permissions: updated });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function updateWorkspaceLogo(
-  req: AdminRequest,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  try {
-    const { logoUrl } = req.body as { logoUrl: string };
-    await updateWorkspaceLogoService(req.uid, logoUrl);
-    res.json({ message: 'Workspace logo updated successfully' });
   } catch (error) {
     next(error);
   }

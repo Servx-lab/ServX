@@ -4,7 +4,8 @@ import {
   InviteAdminBody, 
   AccessPermissions, 
   UpdatePermissionsBody, 
-  AdminResource 
+  AdminResource,
+  UserSearchHit,
 } from './types';
 
 export const getAdminList = async (): Promise<AdminRecord[]> => {
@@ -37,7 +38,9 @@ export const getAdminResources = async (): Promise<AdminResource> => {
   return res.data;
 };
 
-export const updateWorkspaceLogo = async (logoUrl: string): Promise<{ message: string }> => {
-  const res = await apiClient.post('/admin/workspace/logo', { logoUrl });
-  return res.data;
+export const searchUsers = async (q: string): Promise<UserSearchHit[]> => {
+  const res = await apiClient.get<{ users: UserSearchHit[] }>('/users/search', {
+    params: { q: q.trim() },
+  });
+  return res.data.users ?? [];
 };
