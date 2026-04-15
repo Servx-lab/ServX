@@ -4,10 +4,34 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContextValue, AuthUser } from './types';
 import { syncUser } from './api';
 import { useLocalCache } from '@/hooks/useLocalCache';
-import { getRepos, getGitHubStatus } from '@/features/github/api';
+import { getRepos, getGitHubStatus, saveGitHubInstallationToken } from '@/features/github/api';
 import { getHostingStatus, getConnections } from '@/features/hosting/api';
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+        return await Promise.race<T>([
+            promise,
+            new Promise<T>((_, reject) => {
+                timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+            }),
+        ]);
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+}
+
+function extractGitHubOAuthFields(session: any) {
+    const providerToken = session?.provider_token;
+    const providerRefreshToken = session?.provider_refresh_token;
+
+    return {
+        githubAccessToken: providerToken,
+        githubRefreshToken: providerRefreshToken,
+    };
+}
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<AuthUser | null>(null);
@@ -16,6 +40,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [githubTokenValid, setGithubTokenValid] = useState<boolean | null>(null);
     const navigate = useNavigate();
     const lastSyncedUid = React.useRef<string | null>(null);
+    const isRefreshingRef = React.useRef(false);
     const { updateCache, clearCache } = useLocalCache();
 
     const checkGitHubTokenHealth = useCallback(async (): Promise<boolean> => {
@@ -26,6 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 return true;
             }
             setGithubTokenValid(false);
+            console.log('[Auth] GitHub token missing or expired on backend.');
             return false;
         } catch {
             setGithubTokenValid(false);
@@ -63,32 +89,66 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, [updateCache]);
 
-    // Main Auth State Listener (Supabase)
+    const syncUserToBackend = useCallback(async (opts?: { 
+        githubAccessToken?: string; 
+        githubRefreshToken?: string;
+        githubTokenExpiry?: number;
+        githubId?: string 
+    }) => {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) return;
+        try {
+            if (opts?.githubAccessToken) {
+                try {
+                    await saveGitHubInstallationToken(opts.githubAccessToken);
+                } catch (tokenSaveError) {
+                    console.error('Failed to persist per-user GitHub installation token:', tokenSaveError);
+                }
+            }
+
+            await withTimeout(syncUser({
+                name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+                avatarUrl: currentUser.user_metadata?.avatar_url || '',
+                githubAccessToken: opts?.githubAccessToken,
+                githubRefreshToken: opts?.githubRefreshToken,
+                githubTokenExpiry: opts?.githubTokenExpiry,
+                githubId: opts?.githubId,
+            }), 12000, 'syncUser');
+            lastSyncedUid.current = currentUser.id;
+
+            if (opts?.githubAccessToken) {
+                setGithubTokenValid(true);
+            }
+        } catch (err) {
+            console.error('Failed to sync user to backend (continuing auth):', err);
+        }
+    }, []);
+
     useEffect(() => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            setLoading(true);
-            if (session?.user) {
+            const currentUser = session?.user;
+            if (currentUser) {
                 const mappedUser: AuthUser = {
-                    uid: session.user.id,
-                    email: session.user.email || '',
-                    displayName: session.user.user_metadata.full_name || session.user.user_metadata.name || session.user.email?.split('@')[0],
-                    photoURL: session.user.user_metadata.avatar_url,
+                    id: currentUser.id,
+                    email: currentUser.email || '',
+                    displayName: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0],
+                    photoURL: currentUser.user_metadata?.avatar_url,
                 };
                 setUser(mappedUser);
-
-                // Check if GitHub is linked (identities)
-                const identities = session.user.identities || [];
+                
+                const identities = currentUser.identities || [];
                 const hasGitHub = identities.some(id => id.provider === 'github');
                 setIsGitHubLinked(hasGitHub);
 
-                // Sync with backend if new session
-                if (lastSyncedUid.current !== session.user.id) {
+                if (isRefreshingRef.current) {
+                    setLoading(false);
+                    return;
+                }
+                
+                if (lastSyncedUid.current !== currentUser.id) {
                     try {
-                        await syncUser({
-                            name: mappedUser.displayName || 'User',
-                            avatarUrl: mappedUser.photoURL || '',
-                        });
-                        lastSyncedUid.current = session.user.id;
+                        const oauthFields = extractGitHubOAuthFields(session);
+                        await syncUserToBackend(oauthFields);
                         
                         let tokenIsGood = false;
                         if (hasGitHub) {
@@ -110,42 +170,80 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
 
         return () => subscription.unsubscribe();
-    }, [clearCache, checkGitHubTokenHealth, prefetchUserData]);
+    }, [clearCache, checkGitHubTokenHealth, prefetchUserData, syncUserToBackend]);
 
     const signInWithGitHub = async () => {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'github',
-            options: {
-                scopes: 'repo read:user',
-                redirectTo: `${window.location.origin}/auth/v1/callback`
-            }
-        });
-        if (error) throw error;
+        try {
+            isRefreshingRef.current = true;
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'github',
+                options: {
+                    redirectTo: `${window.location.origin}/dashboard`,
+                    scopes: 'repo'
+                }
+            });
+            if (error) throw error;
+        } catch (error) {
+            isRefreshingRef.current = false;
+            console.error('GitHub Login Error:', error);
+            throw error;
+        }
     };
 
     const signInWithGoogle = async () => {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: `${window.location.origin}/auth/v1/callback`
-            }
-        });
-        if (error) throw error;
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: `${window.location.origin}/dashboard`,
+                }
+            });
+            if (error) throw error;
+        } catch (error) {
+            console.error('Google Login Error:', error);
+            throw error;
+        }
+    };
+
+    const linkGitHub = async () => {
+        try {
+            isRefreshingRef.current = true;
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'github',
+                options: {
+                    redirectTo: `${window.location.origin}/onboarding`,
+                    scopes: 'repo'
+                }
+            });
+            if (error) throw error;
+        } catch (error) {
+            isRefreshingRef.current = false;
+            console.error('Link GitHub Error:', error);
+            throw error;
+        }
+    };
+
+    const refreshGitHubConnection = async () => {
+        try {
+            isRefreshingRef.current = true;
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'github',
+                options: {
+                    redirectTo: window.location.href,
+                    scopes: 'repo'
+                }
+            });
+            if (error) throw error;
+        } catch (error) {
+            isRefreshingRef.current = false;
+            console.error('[Auth] Failed to refresh GitHub connection:', error);
+            throw error;
+        }
     };
 
     const logout = async () => {
         await supabase.auth.signOut();
         navigate('/');
-    };
-
-    const linkGitHub = async () => {
-        // In Supabase, linking is essentially re-authenticating with the provider
-        // or using the same signInWithOAuth flow if already logged in.
-        await signInWithGitHub();
-    };
-
-    const refreshGitHubConnection = async () => {
-        await signInWithGitHub();
     };
 
     return (
