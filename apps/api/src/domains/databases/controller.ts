@@ -5,24 +5,19 @@ import { ValidationError } from '@servx/errors';
 import * as db from './service';
 import { resolveAdapter } from './adapters';
 
-interface AuthenticatedRequest extends Request {
-  user: { uid: string; email: string; [key: string]: any };
-}
+
 
 // Helper to get initialized adapter
 async function getAdapter(connectionId: string, ownerUid: string) {
   if (!connectionId) {
     throw new ValidationError('connectionId is required');
   }
-  if (!mongoose.isValidObjectId(connectionId)) {
-    throw new ValidationError('connectionId is not a valid identifier');
-  }
   const { provider, config } = await db.getDecryptedConfig(connectionId, ownerUid);
   return resolveAdapter(provider, config);
 }
 
 export async function listDatabases(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
@@ -37,7 +32,7 @@ export async function listDatabases(
 }
 
 export async function listCollections(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
@@ -60,7 +55,7 @@ export async function listCollections(
 }
 
 export async function listDocuments(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
@@ -84,7 +79,7 @@ export async function listDocuments(
 }
 
 export async function testConnection(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
@@ -115,7 +110,7 @@ export async function testConnection(
 }
 
 export async function getStats(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {

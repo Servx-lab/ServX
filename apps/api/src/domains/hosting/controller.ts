@@ -25,13 +25,11 @@ function redirectError(res: Response, path: string, errorCode: string): void {
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
-interface AuthenticatedRequest extends Request {
-  user: { uid: string };
-}
+
 
 // GET /api/oauth/vercel
 export async function startVercelOAuth(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {

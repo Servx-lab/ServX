@@ -1,7 +1,7 @@
 import admin from '../../../utils/firebaseAdmin';
 
-const UserConnection = require('../../../models/UserConnection');
 import { decrypt } from '@servx/crypto';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
 const { logNewUserToSheet } = require('../../../services/sheetsService');
 import { sendServXAlertService } from '../../core/services/emailService';
 
@@ -31,12 +31,18 @@ export async function getFirebaseApp(connectionId?: string | null): Promise<any>
       return existing;
     }
 
-    const connection = await UserConnection.findById(connectionId);
-    if (!connection || connection.provider !== 'Firebase') {
+    const { data: connection, error } = await supabaseAdmin
+        .from('db_vault')
+        .select('*')
+        .eq('id', connectionId)
+        .eq('provider', 'Firebase')
+        .single();
+
+    if (!connection || error) {
       throw new Error('Firebase connection not found');
     }
 
-    const decrypted = decrypt({ content: connection.encryptedConfig, iv: connection.iv });
+    const decrypted = decrypt({ content: connection.encrypted_config, iv: connection.iv });
     const config = JSON.parse(decrypted) as { serviceAccountJson?: string };
     if (!config.serviceAccountJson) {
       throw new Error('Firebase service account JSON is missing');
@@ -61,6 +67,12 @@ export async function getFirebaseApp(connectionId?: string | null): Promise<any>
 }
 
 export async function findFirebaseConnectionId(): Promise<string | null> {
-  const connection = await UserConnection.findOne({ provider: 'Firebase' });
-  return connection ? connection._id.toString() : null;
+  const { data: connection } = await supabaseAdmin
+    .from('db_vault')
+    .select('id')
+    .eq('provider', 'Firebase')
+    .limit(1)
+    .single();
+
+  return connection ? connection.id : null;
 }

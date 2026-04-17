@@ -277,6 +277,25 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     return () => { cancelled = true; };
   }, [provider, config]);
 
+  // Keep hosting data fresh while connected.
+  useEffect(() => {
+    if (status !== 'connected') return;
+
+    const onWindowFocus = () => {
+      fetchStatus(false);
+    };
+
+    const interval = setInterval(() => {
+      fetchStatus(false);
+    }, 30_000);
+
+    window.addEventListener('focus', onWindowFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onWindowFocus);
+    };
+  }, [status, fetchStatus]);
+
   const handleConnect = async () => {
     if (!tokenInput.trim()) {
       setStatus('error');

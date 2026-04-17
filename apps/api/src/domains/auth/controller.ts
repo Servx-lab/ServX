@@ -1,9 +1,11 @@
+import type { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
 import { getAuth } from 'firebase-admin/auth';
 
 import { AuthError, ValidationError } from '@servx/errors';
+import { encrypt, decrypt } from '@servx/crypto';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
-import User from './model';
 import {
   findFirebaseConnectionId,
   getFirebaseApp,
@@ -13,19 +15,12 @@ import {
 import { cacheDelPattern } from '../../core/services/redisCache';
 import { userGhCachePattern } from '../github/controller';
 
-interface AuthenticatedRequest {
-  user: {
-    uid: string;
-    email: string;
-  };
-  body: any;
-  query: Record<string, unknown>;
-}
+// Using global Express.Request extension from requireAuth.ts
 
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 
-export function getGitHubAuthUrl(req: AuthenticatedRequest, res: any): void {
+export function getGitHubAuthUrl(req: any, res: any): void {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const ownerUid = req.user.uid;
 
@@ -39,7 +34,7 @@ export function getGitHubAuthUrl(req: AuthenticatedRequest, res: any): void {
   res.json({ url: authorizeUrl });
 }
 
-export function redirectToGitHub(req: AuthenticatedRequest, res: any): void {
+export function redirectToGitHub(req: any, res: any): void {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const ownerUid = req.user.uid;
 
@@ -109,60 +104,58 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
       avatar_url?: string;
     };
 
-    let user = ownerUid ? await User.findOne({ uid: ownerUid }).select('+githubAccessToken +githubRefreshToken +githubTokenExpiry') : null;
+    const targetUid = ownerUid || `legacy-${profile.id}`;
 
-    if (user) {
-      user.githubAccessToken = accessToken;
-      user.githubRefreshToken = refreshToken || user.githubRefreshToken;
-      user.githubTokenExpiry = expiryDate || user.githubTokenExpiry;
-      user.githubId = profile.id.toString();
-      await user.save();
-    } else {
-      user = await User.findOne({ githubId: profile.id.toString() }).select('+githubAccessToken +githubRefreshToken +githubTokenExpiry');
-      if (!user && profile.email) {
-        user = await User.findOne({ email: profile.email }).select('+githubAccessToken +githubRefreshToken +githubTokenExpiry');
-      }
+    // 1. Update or Create User Profile
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+        .from('user_profiles')
+        .upsert({
+            id: targetUid,
+            email: profile.email || `${profile.login}@users.noreply.github.com`,
+            display_name: profile.name || profile.login,
+            avatar_url: profile.avatar_url,
+        })
+        .select()
+        .single();
 
-      if (user) {
-        user.githubAccessToken = accessToken;
-        user.githubRefreshToken = refreshToken || user.githubRefreshToken;
-        user.githubTokenExpiry = expiryDate || user.githubTokenExpiry;
-        if (!user.githubId) {
-          user.githubId = profile.id.toString();
-        }
-        await user.save();
-      } else {
-        const newUser = await User.create({
-          uid: ownerUid || `legacy-${profile.id}`,
-          githubId: profile.id.toString(),
-          name: profile.name || profile.login,
-          email: profile.email || `${profile.login}@users.noreply.github.com`,
-          avatarUrl: profile.avatar_url,
-          githubAccessToken: accessToken,
-          githubRefreshToken: refreshToken,
-          githubTokenExpiry: expiryDate,
+    if (profileError) throw profileError;
+
+    // 2. Encrypt and store tokens in GitHub Vault
+    const encryptedAccess = encrypt(accessToken);
+    const encryptedRefresh = refreshToken ? encrypt(refreshToken) : null;
+
+    const { error: vaultError } = await supabaseAdmin
+        .from('github_vault')
+        .upsert({
+            user_id: targetUid,
+            github_id: profile.id.toString(),
+            github_username: profile.login,
+            encrypted_access_token: encryptedAccess.content,
+            encrypted_refresh_token: encryptedRefresh?.content,
+            iv: encryptedAccess.iv, // Use access token IV for the row
+            token_expiry: expiryDate,
         });
 
-        // New User Logging Pipeline: Sheet + Admin Alert
-        try {
-          await logNewUserToSheetService({ uid: newUser.uid, email: newUser.email });
-        } catch (sheetErr) {
-          console.error('[Auth] GitHub Sheet log failed (user still created):', (sheetErr as Error).message);
-        }
+    if (vaultError) throw vaultError;
 
-        const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-        if (ADMIN_EMAIL) {
-          try {
+    // New User Logging Pipeline: Sheet + Admin Alert
+    try {
+        await logNewUserToSheetService({ uid: targetUid, email: userProfile.email });
+    } catch (sheetErr) {
+        console.error('[Auth] GitHub Sheet log failed:', (sheetErr as Error).message);
+    }
+
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+    if (ADMIN_EMAIL) {
+        try {
             await sendServXAlert(
-              ADMIN_EMAIL,
-              'New User Signup (GitHub)',
-              `<h1>New User Registered</h1><p><b>Email:</b> ${newUser.email}</p><p><b>UID:</b> ${newUser.uid}</p>`
+                ADMIN_EMAIL,
+                'User GitHub Linked',
+                `<h1>GitHub Linked</h1><p><b>Email:</b> ${userProfile.email}</p><p><b>UID:</b> ${targetUid}</p>`
             );
-          } catch (emailErr) {
+        } catch (emailErr) {
             console.error('[Auth] Admin alert failed:', (emailErr as Error).message);
-          }
         }
-      }
     }
 
     res.redirect(`${FRONTEND_URL}/github?success=true`);
@@ -173,7 +166,7 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
   }
 }
 
-export async function syncUser(req: AuthenticatedRequest, res: any, next: any): Promise<void> {
+export async function syncUser(req: any, res: any, next: any): Promise<void> {
   try {
     const { uid, email } = req.user;
     const { 
@@ -192,106 +185,81 @@ export async function syncUser(req: AuthenticatedRequest, res: any, next: any): 
       githubId?: string;
     };
 
-    let user = await User.findOne({ uid }).select('+githubAccessToken +githubRefreshToken +githubTokenExpiry');
+    // 1. Sync User Profile
+    const { error: profileError } = await supabaseAdmin
+        .from('user_profiles')
+        .upsert({
+            id: uid,
+            email: email,
+            display_name: name || email.split('@')[0],
+            avatar_url: avatarUrl || '',
+        });
 
-    if (user) {
-      let isModified = false;
+    if (profileError) throw profileError;
 
-      if (name && user.name !== name) {
-        user.name = name;
-        isModified = true;
-      }
-      if (avatarUrl && user.avatarUrl !== avatarUrl) {
-        user.avatarUrl = avatarUrl;
-        isModified = true;
-      }
-      if (githubAccessToken && user.githubAccessToken !== githubAccessToken) {
-        user.githubAccessToken = githubAccessToken;
-        isModified = true;
-      }
-      if (githubRefreshToken && user.githubRefreshToken !== githubRefreshToken) {
-        user.githubRefreshToken = githubRefreshToken;
-        isModified = true;
-      }
-      if (githubTokenExpiry) {
-        const expiryDate = new Date(githubTokenExpiry);
-        if (user.githubTokenExpiry?.getTime() !== expiryDate.getTime()) {
-          user.githubTokenExpiry = expiryDate;
-          isModified = true;
-        }
-      }
-      if (githubId && user.githubId !== githubId) {
-        user.githubId = githubId;
-        isModified = true;
-      }
+    // 2. Sync GitHub Vault if tokens are provided
+    if (githubAccessToken) {
+        const encryptedAccess = encrypt(githubAccessToken);
+        const encryptedRefresh = githubRefreshToken ? encrypt(githubRefreshToken) : null;
 
-      if (isModified) {
-        console.log(`[Auth] Syncing profile for user ${uid}: ${Object.keys(user.toObject()).filter(k => user.isDirectModified(k)).join(', ')}`);
-        await user.save();
+        const { error: vaultError } = await supabaseAdmin
+            .from('github_vault')
+            .upsert({
+                user_id: uid,
+                github_id: githubId,
+                encrypted_access_token: encryptedAccess.content,
+                encrypted_refresh_token: encryptedRefresh?.content,
+                iv: encryptedAccess.iv,
+                token_expiry: githubTokenExpiry ? new Date(githubTokenExpiry) : undefined,
+            });
 
-        if (githubAccessToken) {
-          await cacheDelPattern(userGhCachePattern(uid));
-        }
-      }
-    } else {
-      user = await User.create({
-        uid,
-        email,
-        name: name || email.split('@')[0],
-        avatarUrl: avatarUrl || '',
-        githubAccessToken: githubAccessToken || undefined,
-        githubRefreshToken: githubRefreshToken || undefined,
-        githubTokenExpiry: githubTokenExpiry ? new Date(githubTokenExpiry) : undefined,
-        githubId: githubId || undefined,
-      });
-
-      try {
-        await logNewUserToSheetService({ uid, email, role: user.role || 'user' });
-      } catch (sheetError) {
-        console.error('[Auth] Sheet log failed (user still created):', (sheetError as Error).message);
-      }
-
-      try {
-        await sendServXAlert(email, 'Welcome to ServX', '<h1>HTML Template Coming Soon</h1>');
-      } catch (emailError) {
-        console.error('[Auth] Welcome email failed:', (emailError as Error).message);
-      }
-
-      const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-      if (ADMIN_EMAIL) {
-        try {
-          await sendServXAlert(
-            ADMIN_EMAIL,
-            'New User Signup (Firebase)',
-            `<h1>New User Registered</h1><p><b>Email:</b> ${email}</p><p><b>UID:</b> ${uid}</p>`
-          );
-        } catch (emailErr) {
-          console.error('[Auth] Admin alert failed:', (emailErr as Error).message);
-        }
-      }
+        if (vaultError) throw vaultError;
+        await cacheDelPattern(userGhCachePattern(uid));
     }
 
-    res.json({ message: 'User synced', userId: user._id });
+    // New User Logging & Alerts (only if user profile was just created)
+    if (profileError === null) {
+        try {
+            await logNewUserToSheetService({ uid, email });
+        } catch (sheetError) {
+            console.error('[Auth] Sheet log failed:', (sheetError as Error).message);
+        }
+
+        try {
+            await sendServXAlert(email, 'Welcome to ServX', '<h1>Welcome to the Command Center</h1><p>Your account is now synced with Supabase.</p>');
+        } catch (emailError) {
+            console.error('[Auth] Welcome email failed:', (emailError as Error).message);
+        }
+
+        const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+        if (ADMIN_EMAIL) {
+            try {
+                await sendServXAlert(
+                    ADMIN_EMAIL,
+                    'New User Signup (Supabase)',
+                    `<h1>New User Registered</h1><p><b>Email:</b> ${email}</p><p><b>UID:</b> ${uid}</p>`
+                );
+            } catch (emailErr) {
+                console.error('[Auth] Admin alert failed:', (emailErr as Error).message);
+            }
+        }
+    }
+
+    res.json({ message: 'User synced', uid });
   } catch (error) {
     next(error);
   }
 }
 
-export async function disconnectGitHub(req: AuthenticatedRequest, res: any, next: any): Promise<void> {
+export async function disconnectGitHub(req: any, res: any, next: any): Promise<void> {
   try {
     const ownerUid = req.user.uid;
-    const user = await User.findOne({ uid: ownerUid });
+    const { error } = await supabaseAdmin
+        .from('github_vault')
+        .delete()
+        .eq('user_id', ownerUid);
 
-    if (!user) {
-      throw new AuthError('User not found');
-    }
-
-    user.githubAccessToken = undefined;
-    user.githubRefreshToken = undefined;
-    user.githubTokenExpiry = undefined;
-    user.githubId = undefined;
-    await user.save();
-
+    if (error) throw error;
     await cacheDelPattern(userGhCachePattern(ownerUid));
 
     res.json({ message: 'GitHub connection removed successfully' });

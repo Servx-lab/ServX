@@ -13,7 +13,8 @@ import type {
 } from './types';
 
 const firebaseAdmin = require('../../../utils/firebaseAdmin');
-const UserConnection = require('../../../models/UserConnection');
+import { decrypt } from '@servx/crypto';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 const HOSTING_PROVIDERS = new Set(['Vercel', 'Render', 'Railway', 'DigitalOcean', 'Fly.io', 'AWS']);
 const DATABASE_PROVIDERS = new Set([
@@ -127,33 +128,43 @@ export async function getAdminResources(
   servers: ServerResource[];
   repos: RepoResource[];
 }> {
-  const connections = await UserConnection.find({}, 'name provider');
+  const [dbRes, hostingRes] = await Promise.all([
+    supabaseAdmin.from('db_vault').select('id, name, provider'),
+    supabaseAdmin.from('hosting_vault').select('id, name, provider'),
+  ]);
 
-  const databases: DbResource[] = [];
-  const servers: ServerResource[] = [];
+  const databases: DbResource[] = (dbRes.data || []).map(d => ({
+    id: d.id,
+    name: d.name,
+    provider: d.provider,
+  }));
 
-  for (const c of connections as any[]) {
-    const rowBase = { id: String(c._id), name: c.name as string, provider: c.provider as string };
-    if (DATABASE_PROVIDERS.has(c.provider)) {
-      databases.push(rowBase);
-    }
-    if (HOSTING_PROVIDERS.has(c.provider)) {
-      servers.push(rowBase);
-    }
-  }
+  const servers: ServerResource[] = (hostingRes.data || []).map(h => ({
+    id: h.id,
+    name: h.name,
+    provider: h.provider,
+  }));
 
   let repos: RepoResource[] = [];
-  const user = await (User as any).findOne({ uid: adminRecord.uid }).select('+githubAccessToken');
+  
+  // Fetch GitHub token from vault
+  const { data: githubData } = await supabaseAdmin
+    .from('github_vault')
+    .select('*')
+    .eq('user_id', adminRecord.uid)
+    .single();
 
-  if (user?.githubAccessToken) {
+  if (githubData) {
     try {
-      const githubRes = await axios.get('https://api.github.com/user/repos', {
-        headers: {
-          Authorization: `Bearer ${user.githubAccessToken}`,
-          Accept: 'application/vnd.github.v3+json',
-        },
+      const accessToken = decrypt({
+        content: githubData.encrypted_access_token,
+        iv: githubData.iv,
       });
-      repos = (githubRes.data as any[]).map((repo: any) => ({
+      const repoResponse = await axios.get('https://api.github.com/user/repos', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { sort: 'updated', per_page: 50 },
+      });
+      repos = (repoResponse.data as any[]).map((repo: any) => ({
         name: repo.name,
         full_name: repo.full_name,
       }));

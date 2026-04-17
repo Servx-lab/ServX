@@ -24,8 +24,7 @@ import { Label } from "@/components/ui/label";
 import ServXLogo from "@/components/ServXLogo";
 import { useAuth } from './hooks';
 import { useToast } from "@/components/ui/use-toast";
-import { auth } from '@/lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { supabase } from '@/lib/supabase';
 
 const GoogleIcon = () => (
     <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true">
@@ -69,12 +68,21 @@ const StaticAuth = () => {
         setIsLoading(true);
         try {
             if (isLogin) {
-                await signInWithEmailAndPassword(auth, email, password);
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) throw error;
                 toast({ title: "Welcome back!", description: "Successfully signed in." });
             } else {
-                const cred = await createUserWithEmailAndPassword(auth, email, password);
-                if (name.trim()) await updateProfile(cred.user, { displayName: name.trim() });
-                toast({ title: "Account created", description: "Welcome! Your account has been created." });
+                const { error } = await supabase.auth.signUp({ 
+                    email, 
+                    password,
+                    options: {
+                        data: {
+                            full_name: name.trim() || email.split('@')[0],
+                        }
+                    }
+                });
+                if (error) throw error;
+                toast({ title: "Account created", description: "Please check your email to confirm your account." });
             }
             navigate('/dashboard');
         } catch (err: any) {

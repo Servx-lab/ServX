@@ -1,17 +1,16 @@
 import { AuthError, ValidationError } from '@servx/errors';
 
 import {
-  clearInvalidToken,
   fetchRepoDetails,
   fetchRepos,
   getGithubToken,
   refreshGithubToken,
   updateCollaboratorRole as updateCollaboratorRoleService,
 } from './service';
-import { cacheGet, cacheSet, cacheDel, cacheDelPattern } from '../../core/services/redisCache';
+import { cacheGet, cacheSet } from '../../core/services/redisCache';
 
-const REPOS_TTL = 300;       // 5 minutes
-const DETAILS_TTL = 180;     // 3 minutes
+const REPOS_TTL = 45;       // 45 seconds
+const DETAILS_TTL = 30;     // 30 seconds
 
 function reposCacheKey(uid: string) { return `gh:repos:${uid}`; }
 function detailsCacheKey(uid: string, owner: string, repo: string) { return `gh:details:${uid}:${owner}/${repo}`; }
@@ -50,6 +49,7 @@ async function handleGithubRequest<T>(
 
 export async function getRepos(req: any, res: any, next: any): Promise<void> {
   const uid = req.user?.uid;
+  const forceRefresh = req.query?.refresh === '1' || req.query?.refresh === 'true';
 
   if (!uid) {
     next(new AuthError('Missing authenticated user context'));
@@ -57,7 +57,7 @@ export async function getRepos(req: any, res: any, next: any): Promise<void> {
   }
 
   try {
-    const cached = await cacheGet<any[]>(reposCacheKey(uid));
+    const cached = !forceRefresh ? await cacheGet<any[]>(reposCacheKey(uid)) : null;
     if (cached) {
       res.json(cached);
       return;
@@ -73,6 +73,7 @@ export async function getRepos(req: any, res: any, next: any): Promise<void> {
 
 export async function getRepoDetails(req: any, res: any, next: any): Promise<void> {
   const uid = req.user?.uid;
+  const forceRefresh = req.query?.refresh === '1' || req.query?.refresh === 'true';
 
   if (!uid) {
     next(new AuthError('Missing authenticated user context'));
@@ -84,7 +85,7 @@ export async function getRepoDetails(req: any, res: any, next: any): Promise<voi
 
   try {
     const cacheKey = detailsCacheKey(uid, owner, repo);
-    const cached = await cacheGet<any>(cacheKey);
+    const cached = !forceRefresh ? await cacheGet<any>(cacheKey) : null;
     if (cached) {
       res.json(cached);
       return;
