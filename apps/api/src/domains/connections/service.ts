@@ -14,9 +14,13 @@ import type {
   HostingEnvVariable,
 } from '@servx/types';
 import { NotFoundError, ValidationError } from '@servx/errors';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
+export { supabaseAdmin };
 
-import UserConnection from './model';
-import { getHostingCredentials } from '../operations/service';
+function getVaultTable(provider: string): 'db_vault' | 'hosting_vault' {
+  const hostingDbNames = Object.values(HOSTING_PROVIDERS).map(p => p.dbName);
+  return hostingDbNames.includes(provider) ? 'hosting_vault' : 'db_vault';
+}
 
 // ─── Generic connections ──────────────────────────────────────────────────────
 
@@ -26,43 +30,72 @@ export async function saveConnection(
   provider: UserConnectionProvider,
   config: Record<string, unknown>
 ): Promise<ConnectionResponse> {
+  const table = getVaultTable(provider);
   const configString = JSON.stringify(config);
   const encrypted = encrypt(configString);
 
-  const newConnection = new (UserConnection as any)({
-    name,
-    provider,
-    encryptedConfig: encrypted.content,
-    iv: encrypted.iv,
-    isEncrypted: true,
-    ownerUid,
-  });
+  const { data, error } = await supabaseAdmin
+    .from(table)
+    .insert({
+      name,
+      user_id: ownerUid,
+      provider: provider,
+      encrypted_config: encrypted.content,
+      iv: encrypted.iv,
+    })
+    .select()
+    .single();
 
-  await newConnection.save();
+  if (error || !data) throw error || new Error('Failed to insert connection');
+
+  const connectionData = data as any;
 
   return {
     message: 'Connection saved successfully',
     connection: {
-      _id: String(newConnection._id),
-      name: newConnection.name as string,
-      provider: newConnection.provider as UserConnectionProvider,
-      createdAt: String(newConnection.createdAt),
+      _id: connectionData.id,
+      name: connectionData.name,
+      provider: connectionData.provider as UserConnectionProvider,
+      createdAt: connectionData.created_at,
     },
   };
 }
 
 export async function getUserConnections(ownerUid: string): Promise<ConnectionListItem[]> {
-  const connections = await (UserConnection as any).find(
-    { ownerUid },
-    'name provider createdAt isActive lastTestedAt'
-  );
-  return connections as ConnectionListItem[];
+  const [dbRes, hostingRes] = await Promise.all([
+    supabaseAdmin.from('db_vault').select('id, name, provider, created_at, status').eq('user_id', ownerUid),
+    supabaseAdmin.from('hosting_vault').select('id, name, provider, created_at').eq('user_id', ownerUid),
+  ]);
+
+  const dbConns: ConnectionListItem[] = (dbRes.data || []).map(d => ({
+    _id: d.id,
+    name: d.name,
+    provider: d.provider as UserConnectionProvider,
+    status: d.status,
+    isActive: true,
+    createdAt: d.created_at,
+  }));
+
+  const hostingConns: ConnectionListItem[] = (hostingRes.data || []).map(d => ({
+    _id: d.id,
+    name: d.name,
+    provider: d.provider as UserConnectionProvider,
+    isActive: true,
+    createdAt: d.created_at,
+  }));
+
+  return [...dbConns, ...hostingConns];
 }
 
 export async function deleteConnection(id: string, ownerUid: string): Promise<void> {
-  const deleted = await (UserConnection as any).findOneAndDelete({ _id: id, ownerUid });
-  if (!deleted) {
-    throw new NotFoundError('Connection not found or unauthorized');
+  // Try both vaults
+  const [{ error: dbError }, { error: hostingError }] = await Promise.all([
+    supabaseAdmin.from('db_vault').delete().eq('id', id).eq('user_id', ownerUid),
+    supabaseAdmin.from('hosting_vault').delete().eq('id', id).eq('user_id', ownerUid),
+  ]);
+
+  if (dbError && hostingError) {
+    throw new NotFoundError('Connection not found or already deleted');
   }
 }
 
@@ -74,25 +107,27 @@ export async function getHostingProviderStatus(
 ): Promise<HostingStatusResponse> {
   const providerInfo = HOSTING_PROVIDERS[providerKey];
 
-  const connection = await (UserConnection as any).findOne({
-    ownerUid,
-    provider: providerInfo.dbName,
-  });
+  const { data: connection, error } = await supabaseAdmin
+    .from('hosting_vault')
+    .select('*')
+    .eq('user_id', ownerUid)
+    .eq('provider', providerInfo.dbName)
+    .single();
 
-  if (!connection) {
+  if (!connection || error) {
     return { connected: false };
   }
 
   let token: string;
   try {
-    const decrypted = decrypt({ iv: connection.iv as string, content: connection.encryptedConfig as string });
+    const decrypted = decrypt({ iv: connection.iv, content: connection.encrypted_config });
     const parsed = JSON.parse(decrypted) as { token?: string; apiKey?: string };
     token = (parsed.token ?? parsed.apiKey) as string;
   } catch {
     return {
       connected: true,
-      connectionId: String(connection._id),
-      createdAt: String(connection.createdAt),
+      connectionId: connection.id,
+      createdAt: connection.created_at,
       services: [],
       deployments: [],
       error: 'Failed to decrypt token',
@@ -119,10 +154,12 @@ export async function getHostingProviderStatus(
     console.error(`${providerInfo.label} API fetch error:`, (apiErr as Error).message);
   }
 
+  const conn = connection as any;
+
   return {
     connected: true,
-    connectionId: String(connection._id),
-    createdAt: String(connection.createdAt),
+    connectionId: conn.id,
+    createdAt: conn.created_at,
     user,
     services,
     deployments,
@@ -145,40 +182,28 @@ export async function saveHostingToken(
 
   const encrypted = encrypt(JSON.stringify(config));
 
-  const existing = await (UserConnection as any).findOne({ ownerUid, provider: providerInfo.dbName });
-  if (existing) {
-    existing.encryptedConfig = encrypted.content;
-    existing.iv = encrypted.iv;
-    existing.name = name;
-    await existing.save();
-    return {
-      message: `${providerInfo.label} connection updated successfully`,
-      connection: {
-        _id: String(existing._id),
-        name: existing.name as string,
-        provider: providerInfo.dbName as UserConnectionProvider,
-        createdAt: String(existing.createdAt),
-      },
-    };
-  }
+  const { data, error } = await supabaseAdmin
+    .from('hosting_vault')
+    .upsert({
+      user_id: ownerUid,
+      provider: providerInfo.dbName,
+      encrypted_config: encrypted.content,
+      iv: encrypted.iv,
+      name: name,
+    })
+    .select()
+    .single();
 
-  const newConnection = new (UserConnection as any)({
-    name,
-    provider: providerInfo.dbName,
-    encryptedConfig: encrypted.content,
-    iv: encrypted.iv,
-    isEncrypted: true,
-    ownerUid,
-  });
-  await newConnection.save();
+  if (error || !data) throw error || new Error('Failed to insert hosting connection');
+  const connData = data as any;
 
   return {
     message: `${providerInfo.label} connection saved successfully`,
     connection: {
-      _id: String(newConnection._id),
-      name: newConnection.name as string,
+      _id: connData.id,
+      name: connData.name,
       provider: providerInfo.dbName as UserConnectionProvider,
-      createdAt: String(newConnection.createdAt),
+      createdAt: connData.created_at,
     },
   };
 }
@@ -530,5 +555,26 @@ export async function getHostingEnvironmentVariables(
     throw new ValidationError(
       `Failed to load environment variables from ${HOSTING_PROVIDERS[pk].label}${apiMsg ? `: ${apiMsg}` : ''}${status ? ` (HTTP ${status})` : ''}`
     );
+  }
+}
+
+export async function getHostingCredentials(
+  ownerUid: string,
+  provider: 'vercel' | 'render'
+): Promise<{ token: string; edgeConfigId?: string } | null> {
+  const { data, error } = await supabaseAdmin
+    .from('hosting_vault')
+    .select('*')
+    .eq('user_id', ownerUid)
+    .eq('provider', provider)
+    .single();
+
+  if (!data || error) return null;
+
+  try {
+    const decrypted = decrypt({ iv: data.iv, content: data.encrypted_config });
+    return JSON.parse(decrypted);
+  } catch {
+    return null;
   }
 }

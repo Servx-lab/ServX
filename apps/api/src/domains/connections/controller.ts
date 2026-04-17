@@ -6,9 +6,7 @@ import type { UserConnectionProvider } from '@servx/types';
 
 import * as svc from './service';
 
-interface AuthenticatedRequest extends Request {
-  user: { uid: string };
-}
+
 
 function getSingleParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -19,7 +17,7 @@ function getSingleParam(value: string | string[] | undefined): string {
 
 // POST /api/connections
 export async function createConnection(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
@@ -62,7 +60,7 @@ export async function createConnection(
 
 // GET /api/connections
 export async function listConnections(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
@@ -76,7 +74,7 @@ export async function listConnections(
 
 // DELETE /api/connections/:id
 export async function deleteConnection(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
@@ -95,7 +93,7 @@ export async function deleteConnection(
 
 // GET /api/connections/hosting/:provider/status
 export async function getHostingStatus(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
@@ -113,7 +111,7 @@ export async function getHostingStatus(
 
 // GET /api/connections/hosting/:provider/env/:serviceId
 export async function getHostingEnvForService(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
@@ -129,7 +127,7 @@ export async function getHostingEnvForService(
 
 // POST /api/connections/hosting/:provider
 export async function saveHostingConnection(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
