@@ -34,7 +34,7 @@ import {
 } from "recharts";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+
 import { useAuth } from "@/contexts/AuthContext";
 
 import type { RepoSummary } from "@servx/types";
@@ -49,12 +49,11 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"
 
 const GitHubIntegration = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, linkGitHub, signInWithGitHub, isGitHubLinked, refreshGitHubConnection, githubTokenValid } = useAuth();
+  const isAuthenticated = !!user;
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null);
   const [isAccessPanelOpen, setIsAccessPanelOpen] = useState(false);
-
-  const { linkGitHub, signInWithGitHub, isGitHubLinked, refreshGitHubConnection, githubTokenValid } = useAuth();
 
   const { repos, setRepos, error: reposError, setError: setReposError, refetch: refetchRepos } = useIntegrationRepos(isAuthenticated, githubTokenValid);
   const {
@@ -68,18 +67,10 @@ const GitHubIntegration = () => {
   // Combine errors into a single display value; repos error takes precedence.
   const error = reposError ?? detailsError;
 
-  // Authentication check — waits for Firebase Auth to resolve.
   useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setIsAuthenticated(!!user);
-    });
-
     if (searchParams.get("token") || searchParams.get("success")) {
       setSearchParams({});
     }
-
-    return () => unsubscribe();
   }, [searchParams, setSearchParams]);
 
   // Auto-select the first repo once the list loads.

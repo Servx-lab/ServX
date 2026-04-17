@@ -6,11 +6,9 @@ import { FRONTEND_URL } from '@servx/config';
 import * as gmailService from './service';
 import type { GmailStatusResponse } from './types';
 
-interface AuthenticatedRequest extends Request {
-  user: { uid: string };
-}
 
-export function getGoogleAuthUrl(req: AuthenticatedRequest, res: Response): void {
+
+export function getGoogleAuthUrl(req: any, res: Response): void {
   const url = gmailService.getAuthUrl(req.user.uid);
   res.json({ url });
 }
@@ -45,7 +43,7 @@ export async function handleGoogleCallback(req: Request, res: Response): Promise
 }
 
 export async function getGmailStatus(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response<GmailStatusResponse>,
   next: NextFunction
 ): Promise<void> {
@@ -58,7 +56,7 @@ export async function getGmailStatus(
 }
 
 export async function getInbox(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
