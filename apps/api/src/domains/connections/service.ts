@@ -11,10 +11,12 @@ import type {
   HostingService,
   HostingDeployment,
   UserConnectionProvider,
+  HostingEnvVariable,
 } from '@servx/types';
-import { NotFoundError } from '@servx/errors';
+import { NotFoundError, ValidationError } from '@servx/errors';
 
 import UserConnection from './model';
+import { getHostingCredentials } from '../operations/service';
 
 // ─── Generic connections ──────────────────────────────────────────────────────
 
@@ -379,4 +381,154 @@ async function fetchFly(token: string): Promise<{
     : [];
 
   return { user, services };
+}
+
+// ─── Hosting environment variables (Vercel / Render) ───────────────────────────
+
+function formatVercelEnvTarget(target: unknown): string | undefined {
+  if (target == null) return undefined;
+  if (Array.isArray(target)) return target.join(', ');
+  return String(target);
+}
+
+async function fetchVercelProjectEnvVars(token: string, projectId: string): Promise<HostingEnvVariable[]> {
+  const headers = { Authorization: `Bearer ${token}` };
+  let teamId: string | undefined;
+  try {
+    const projRes = await axios.get(`https://api.vercel.com/v9/projects/${encodeURIComponent(projectId)}`, {
+      headers,
+    });
+    teamId = projRes.data?.teamId ?? projRes.data?.team?.id;
+  } catch {
+    /* hobby / name lookup may differ; env call may still succeed */
+  }
+
+  const collected: unknown[] = [];
+  let until: string | number | undefined;
+  let resolvedTeamId = teamId;
+
+  for (let page = 0; page < 25; page++) {
+    const params: Record<string, string | number | undefined> = { decrypt: 'true' };
+    if (resolvedTeamId) params.teamId = resolvedTeamId;
+    if (until != null) params.until = until;
+
+    let res;
+    try {
+      res = await axios.get(`https://api.vercel.com/v9/projects/${encodeURIComponent(projectId)}/env`, {
+        headers,
+        params,
+      });
+    } catch (err: unknown) {
+      const ax = err as { response?: { status?: number } };
+      if ((ax.response?.status === 400 || ax.response?.status === 404) && !resolvedTeamId) {
+        const projRes = await axios
+          .get(`https://api.vercel.com/v9/projects/${encodeURIComponent(projectId)}`, { headers })
+          .catch(() => null);
+        resolvedTeamId = projRes?.data?.teamId ?? projRes?.data?.team?.id;
+        if (resolvedTeamId) {
+          const retryParams: Record<string, string | number | undefined> = {
+            decrypt: 'true',
+            teamId: resolvedTeamId,
+          };
+          if (until != null) retryParams.until = until;
+          res = await axios.get(`https://api.vercel.com/v9/projects/${encodeURIComponent(projectId)}/env`, {
+            headers,
+            params: retryParams,
+          });
+        } else {
+          throw err;
+        }
+      } else {
+        throw err;
+      }
+    }
+
+    const envs = (res as { data?: { envs?: unknown[]; pagination?: { next?: number } } }).data?.envs ?? [];
+    collected.push(...envs);
+    const next = (res as { data?: { pagination?: { next?: number } } }).data?.pagination?.next;
+    if (next == null) break;
+    until = next;
+  }
+
+  return collected.map((raw: unknown) => {
+    const e = raw as { key?: string; value?: unknown; target?: unknown };
+    return {
+      key: e.key ?? '',
+      value: e.value != null ? String(e.value) : '',
+      target: formatVercelEnvTarget(e.target),
+    };
+  });
+}
+
+async function fetchRenderServiceEnvVars(token: string, serviceId: string): Promise<HostingEnvVariable[]> {
+  const headers = { Authorization: `Bearer ${token}` };
+  const collected: unknown[] = [];
+  let cursor: string | undefined;
+
+  for (let page = 0; page < 25; page++) {
+    const res = await axios.get(`https://api.render.com/v1/services/${encodeURIComponent(serviceId)}/env-vars`, {
+      headers,
+      params: cursor ? { cursor } : {},
+    });
+    const body = res.data as { envVars?: unknown[]; cursor?: string } | unknown[];
+    const chunk = Array.isArray(body) ? body : body?.envVars ?? [];
+    collected.push(...chunk);
+    cursor = Array.isArray(body) ? undefined : body?.cursor;
+    if (!cursor) break;
+  }
+
+  return collected.map((raw: unknown) => {
+    const e = raw as { key?: string; value?: unknown; envVar?: { key?: string; value?: unknown } };
+    const key = e.key ?? e.envVar?.key ?? '';
+    const val = e.value ?? e.envVar?.value;
+    return {
+      key,
+      value: val != null ? String(val) : '',
+    };
+  });
+}
+
+/**
+ * Lists environment variables for a Vercel project or Render service using the user's stored API token
+ * (decrypted server-side; never logged).
+ */
+export async function getHostingEnvironmentVariables(
+  ownerUid: string,
+  providerKey: string,
+  serviceId: string
+): Promise<HostingEnvVariable[]> {
+  const pk = providerKey.toLowerCase();
+  if (pk !== 'vercel' && pk !== 'render') {
+    throw new ValidationError('Environment variables are only available for Vercel and Render.');
+  }
+  const trimmedId = (serviceId || '').trim();
+  if (!trimmedId) {
+    throw new ValidationError('Service or project ID is required.');
+  }
+
+  const creds = await getHostingCredentials(ownerUid, pk as 'vercel' | 'render');
+  if (!creds?.token) {
+    const label = HOSTING_PROVIDERS[pk].label;
+    throw new ValidationError(`Connect your ${label} account in Hosting settings to load environment variables.`);
+  }
+
+  try {
+    if (pk === 'vercel') {
+      return await fetchVercelProjectEnvVars(creds.token, trimmedId);
+    }
+    return await fetchRenderServiceEnvVars(creds.token, trimmedId);
+  } catch (err: unknown) {
+    const ax = err as {
+      response?: { data?: { error?: { message?: string }; message?: string }; status?: number };
+      message?: string;
+    };
+    const apiMsg =
+      ax.response?.data?.error?.message ||
+      (typeof ax.response?.data?.message === 'string' ? ax.response.data.message : undefined) ||
+      ax.message;
+    const status = ax.response?.status;
+    throw new ValidationError(
+      `Failed to load environment variables from ${HOSTING_PROVIDERS[pk].label}${apiMsg ? `: ${apiMsg}` : ''}${status ? ` (HTTP ${status})` : ''}`
+    );
+  }
 }

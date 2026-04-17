@@ -12,6 +12,7 @@ import hostingRouter from './domains/hosting/router';
 import gmailRouter from './domains/gmail/router';
 import operationsRouter from './domains/operations/router';
 import adminRouter from './domains/admin/router';
+import usersRouter from './domains/users/router';
 import profileRouter from './domains/profile/router';
 
 export function createApp(): Express {
@@ -68,6 +69,7 @@ export function registerApiRoutes(app: Express): void {
   app.use('/api/oauth', hostingRouter);
   app.use('/api', gmailRouter);
   app.use('/api/admin', adminRouter);
+  app.use('/api/users', usersRouter);
   app.use('/api/operations', operationsRouter);
   app.use('/api/tasks', operationsRouter);
   app.use('/api/profile', profileRouter);

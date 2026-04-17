@@ -469,7 +469,13 @@ const GitHubIntegration = () => {
                                             <div key={dep.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between group hover:border-yellow-300 transition-colors">
                                                 <div className="flex items-center gap-2.5 min-w-0">
                                                     {dep.creator_avatar && (
-                                                        <img src={dep.creator_avatar} alt={dep.creator || ''} className="w-7 h-7 rounded-full flex-shrink-0 border border-gray-200" />
+                                                        <img
+                                                          src={dep.creator_avatar}
+                                                          alt={dep.creator || ""}
+                                                          className="w-7 h-7 flex-shrink-0 rounded-full border border-gray-200"
+                                                          referrerPolicy="no-referrer"
+                                                          loading="lazy"
+                                                        />
                                                     )}
                                                     <div className="min-w-0">
                                                         <p className="text-xs font-semibold capitalize flex items-center gap-1.5 text-black">

@@ -8,6 +8,7 @@ import {
     CheckCircle2
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { useAuth } from './hooks';
 import { useToast } from "@/components/ui/use-toast";
 
@@ -63,13 +64,13 @@ const Bridge = () => {
                             {/* Avatar 1: Google User */}
                             <div className="relative">
                                 <div className="w-16 h-16 rounded-full border-2 border-orizons-teal/50 overflow-hidden shadow-lg bg-orizons-void">
-                                    {user?.photoURL ? (
-                                        <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-orizons-teal text-white text-xl font-bold">
-                                            {user?.email?.[0].toUpperCase()}
-                                        </div>
-                                    )}
+                                    <ProfilePhoto
+                                        src={user?.photoURL}
+                                        alt="User"
+                                        label={user?.displayName || user?.email}
+                                        className="h-full w-full min-h-0"
+                                        fallbackClassName="bg-orizons-teal text-white text-xl font-bold"
+                                    />
                                 </div>
                                 <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 border-2 border-orizons-void">
                                     <CheckCircle2 className="w-4 h-4 text-green-500 fill-green-500" />

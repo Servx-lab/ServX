@@ -21,6 +21,8 @@ import apiClient from '@/lib/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
+import { HostingEnvDialog } from './HostingEnvDialog';
+
 // --- Types ---
 interface ServiceItem {
   id: string;
@@ -379,6 +381,8 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
 
   if (!config) return null;
 
+  const supportsEnvManager = config.key === 'vercel' || config.key === 'render';
+
   // --- Loading ---
   if (status === 'loading') {
     return (
@@ -565,7 +569,14 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
                         <td className="px-5 py-3 text-gray-500 text-xs capitalize">{svc.type || 'Unknown'}</td>
                         <td className="px-5 py-3 text-gray-500 text-xs">{timeAgo(svc.updatedAt)}</td>
                         <td className="px-5 py-3 text-right">
-                          <div className="flex items-center justify-end gap-3">
+                          <div className="flex items-center justify-end gap-2">
+                            {supportsEnvManager ? (
+                              <HostingEnvDialog
+                                providerKey={config.key}
+                                serviceId={svc.id}
+                                serviceName={svc.name}
+                              />
+                            ) : null}
                             <Badge variant="outline" className={`text-[10px] ${getStateColor(svc.status)}`}>{svc.status}</Badge>
                             {svc.url ? (
                               <a href={svc.url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-black transition-colors">

@@ -1,8 +1,8 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import SecurityInfo from "./SecurityInfo";
-import WorkspaceBranding from "./WorkspaceBranding";
 import ServXLogo from "./ServXLogo";
+import { ProfilePhoto } from "@/components/ProfilePhoto";
 import {
   LayoutDashboard,
   Search,
@@ -62,14 +62,11 @@ const Sidebar = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="glass-sidebar w-56 h-screen flex flex-col py-6 px-3 fixed left-0 top-0 z-50 overflow-y-auto no-scrollbar">
+    <div className="glass-sidebar w-56 shrink-0 h-full min-h-0 flex flex-col py-6 px-3 relative z-40 overflow-y-auto no-scrollbar">
       {/* Logo */}
       <div className="flex flex-col items-center px-3 mb-8">
         <ServXLogo showTagline={false} size="sm" className="items-start w-full" />
       </div>
-
-      {/* Workspace Branding */}
-      <WorkspaceBranding ownerName="Chitkul" />
 
       {/* Main Nav */}
       <nav className="flex-1 flex flex-col gap-1">
@@ -134,20 +131,12 @@ const Sidebar = () => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <div className="glass-card px-3 py-3 flex items-center gap-3 cursor-pointer hover:bg-secondary/80 transition-colors mt-4">
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt={user.displayName || "User"} className="w-8 h-8 rounded-full object-cover" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-xs font-bold text-primary-foreground">
-                {user?.displayName
-                  ? user.displayName
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .substring(0, 2)
-                      .toUpperCase()
-                  : "U"}
-              </div>
-            )}
+            <ProfilePhoto
+              src={user?.photoURL}
+              alt={user?.displayName || "User"}
+              label={user?.displayName || user?.email}
+              className="h-8 w-8"
+            />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
                 {user?.displayName || user?.email || "User"}

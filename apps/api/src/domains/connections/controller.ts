@@ -111,6 +111,22 @@ export async function getHostingStatus(
   }
 }
 
+// GET /api/connections/hosting/:provider/env/:serviceId
+export async function getHostingEnvForService(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const providerKey = getSingleParam(req.params.provider as string | string[] | undefined).toLowerCase();
+    const serviceId = getSingleParam(req.params.serviceId as string | string[] | undefined);
+    const variables = await svc.getHostingEnvironmentVariables(req.user.uid, providerKey, serviceId);
+    res.json({ variables });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // POST /api/connections/hosting/:provider
 export async function saveHostingConnection(
   req: AuthenticatedRequest,
