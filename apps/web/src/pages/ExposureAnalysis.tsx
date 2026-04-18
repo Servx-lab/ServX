@@ -24,20 +24,36 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const data = [
-  { name: 'CVE-2024-1234', severity: 9.8, days: 14, package: 'lodash' },
-  { name: 'CVE-2023-4455', severity: 7.5, days: 45, package: 'express' },
-  { name: 'CVE-2024-8892', severity: 8.2, days: 5, package: 'react-dom' },
-  { name: 'CVE-2024-0012', severity: 4.5, days: 120, package: 'moment' },
-  { name: 'CVE-2023-9912', severity: 6.8, days: 30, package: 'axios' },
-  { name: 'CVE-2024-5511', severity: 9.2, days: 48, package: 'undici' },
-  { name: 'CVE-2024-6677', severity: 3.1, days: 12, package: 'clsx' },
-  { name: 'CVE-2024-3322', severity: 8.9, days: 62, package: 'next' },
-  { name: 'CVE-2024-1100', severity: 5.4, days: 18, package: 'zod' },
-];
+const repoData: Record<string, any[]> = {
+  'ServX Main Core': [
+    { name: 'CVE-2024-1234', severity: 9.8, days: 14, package: 'lodash' },
+    { name: 'CVE-2023-4455', severity: 7.5, days: 45, package: 'express' },
+    { name: 'CVE-2024-8892', severity: 8.2, days: 5, package: 'react-dom' },
+    { name: 'CVE-2024-0012', severity: 4.5, days: 120, package: 'moment' },
+    { name: 'CVE-2023-9912', severity: 6.8, days: 30, package: 'axios' },
+    { name: 'CVE-2024-5511', severity: 9.2, days: 48, package: 'undici' },
+    { name: 'CVE-2024-6677', severity: 3.1, days: 12, package: 'clsx' },
+    { name: 'CVE-2024-3322', severity: 8.9, days: 62, package: 'next' },
+    { name: 'CVE-2024-1100', severity: 5.4, days: 18, package: 'zod' },
+  ],
+  'QuizWhiz UI': [
+    { name: 'CVE-2024-9001', severity: 8.5, days: 10, package: 'vite' },
+    { name: 'CVE-2023-7712', severity: 6.2, days: 90, package: 'sass' },
+    { name: 'CVE-2024-3321', severity: 9.4, days: 2, package: 'framer-motion' },
+    { name: 'CVE-2023-1122', severity: 3.8, days: 15, package: 'prettier' },
+  ],
+  'Lakshya GitConnect': [
+    { name: 'CVE-2024-5566', severity: 7.2, days: 22, package: 'octokit' },
+    { name: 'CVE-2024-4433', severity: 9.1, days: 8, package: 'simple-git' },
+    { name: 'CVE-2023-0099', severity: 4.8, days: 45, package: 'dotenv' },
+  ]
+};
 
 const ExposureAnalysis = () => {
   const [selectedRepo, setSelectedRepo] = useState('ServX Main Core');
+  const [isRepoOpen, setIsRepoOpen] = useState(false);
+  
+  const currentData = repoData[selectedRepo] || [];
 
   const anomalyLogs = [
     { time: '05:15 AM', module: 'auth', event: 'login successful (Lakshya) - IP: Local', style: 'normal' },
@@ -66,11 +82,52 @@ const ExposureAnalysis = () => {
             </div>
           </div>
 
-          <button className="flex items-center gap-4 bg-white border border-slate-200 px-6 py-3 rounded-2xl hover:border-[#00C2CB]/50 transition-all shadow-lg">
-             <Github className="h-4 w-4 text-slate-400" />
-             <span className="font-bold text-sm text-slate-700">{selectedRepo}</span>
-             <ChevronDown className="h-4 w-4 text-slate-400" />
-          </button>
+          <div className="relative">
+             <button 
+               onClick={() => setIsRepoOpen(!isRepoOpen)}
+               className="flex items-center gap-4 bg-white border border-slate-200 px-6 py-3 rounded-2xl hover:border-[#00C2CB]/50 transition-all shadow-lg min-w-[240px] justify-between z-50 relative"
+             >
+                <div className="flex items-center gap-3">
+                   <Github className="h-4 w-4 text-slate-400" />
+                   <span className="font-bold text-sm text-slate-700">{selectedRepo}</span>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-300 ${isRepoOpen ? 'rotate-180' : ''}`} />
+             </button>
+
+             <AnimatePresence>
+                {isRepoOpen && (
+                  <>
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setIsRepoOpen(false)}
+                      className="fixed inset-0 z-40"
+                    />
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      className="absolute top-[calc(100%+12px)] left-0 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 overflow-hidden"
+                    >
+                       {Object.keys(repoData).map((repo) => (
+                          <button
+                            key={repo}
+                            onClick={() => {
+                              setSelectedRepo(repo);
+                              setIsRepoOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-between group ${selectedRepo === repo ? 'bg-slate-50 text-[#00C2CB]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                          >
+                             {repo}
+                             {selectedRepo === repo && <CheckCircle2 className="h-3.5 w-3.5 text-[#00C2CB]" />}
+                          </button>
+                       ))}
+                    </motion.div>
+                  </>
+                )}
+             </AnimatePresence>
+          </div>
         </div>
 
         {/* SLA Timers HUD */}
@@ -111,8 +168,8 @@ const ExposureAnalysis = () => {
                     <XAxis type="number" dataKey="severity" domain={[0, 10]} stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} />
                     <YAxis type="number" dataKey="days" stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} />
                     <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                    <Scatter name="Vulnerabilities" data={data}>
-                       {data.map((entry, index) => (
+                    <Scatter name="Vulnerabilities" data={currentData}>
+                       {currentData.map((entry, index) => (
                          <Cell key={`cell-${index}`} fill={entry.severity > 8 ? '#EF4444' : entry.severity > 6 ? '#6C63FF' : '#00C2CB'} />
                        ))}
                     </Scatter>
@@ -132,7 +189,7 @@ const ExposureAnalysis = () => {
                  </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                 {data.slice(0, 4).map((item, i) => (
+                 {currentData.slice(0, 6).map((item, i) => (
                     <tr key={i} className="hover:bg-slate-50 transition-colors group">
                        <td className="px-6 py-4">
                           <div>
