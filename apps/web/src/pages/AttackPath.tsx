@@ -20,6 +20,7 @@ const AttackPath = () => {
     const [securityScore, setSecurityScore] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [projectGroups, setProjectGroups] = useState<any[]>([]);
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     const [isMergeMode, setIsMergeMode] = useState(false);
     const [selectedForMerge, setSelectedForMerge] = useState<string[]>([]);
 
@@ -157,6 +158,53 @@ const AttackPath = () => {
         }
     };
 
+    const toggleGroupExpansion = (groupId: string) => {
+        setExpandedGroups(prev => {
+            const next = new Set(prev);
+            if (next.has(groupId)) next.delete(groupId);
+            else next.add(groupId);
+            return next;
+        });
+    };
+
+    const addAssetToGroup = async (groupId: string, asset: any) => {
+        const group = projectGroups.find(g => g.id === groupId);
+        if (!group) return;
+
+        const updatedAssets = [...group.assets, { ...asset, role: 'none' }];
+
+        try {
+            await apiClient.post('/security/groups', {
+                id: group.isTemp ? undefined : group.id,
+                name: group.name,
+                assets: updatedAssets
+            });
+            fetchData();
+        } catch (err) {
+            alert('Failed to add asset to group');
+        }
+    };
+
+    const updateAssetRole = async (groupId: string, assetId: string, role: string) => {
+        const group = projectGroups.find(g => g.id === groupId);
+        if (!group) return;
+
+        const updatedAssets = group.assets.map((a: any) => 
+            a.id === assetId ? { ...a, role: role === a.role ? 'none' : role } : a
+        );
+
+        try {
+            await apiClient.post('/security/groups', {
+                id: group.isTemp ? undefined : group.id,
+                name: group.name,
+                assets: updatedAssets
+            });
+            fetchData();
+        } catch (err) {
+            alert('Failed to update asset role');
+        }
+    };
+
     const handleRenameGroup = async (group: any) => {
         const newName = prompt("Rename Project Group:", group.name);
         if (!newName || newName === group.name) return;
@@ -270,6 +318,12 @@ const AttackPath = () => {
                                     >
                                         <div className="flex items-center justify-between mb-3">
                                             <div className="flex items-center gap-2 overflow-hidden">
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); toggleGroupExpansion(group.id); }}
+                                                    className={`transition-transform duration-200 ${expandedGroups.has(group.id) ? 'rotate-180' : ''}`}
+                                                >
+                                                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                                                </button>
                                                 <div className={`h-6 w-1 rounded-full ${group.isTemp ? 'bg-slate-200' : 'bg-[#00C2CB]'}`} />
                                                 <span className="font-black text-sm text-slate-900 truncate tracking-tight">
                                                     {group.name}
@@ -280,9 +334,9 @@ const AttackPath = () => {
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); handleRenameGroup(group); }}
                                                         className="p-1 hover:bg-slate-100 rounded-md transition-colors"
-                                                        title="Edit Group"
+                                                        title="Project Settings"
                                                     >
-                                                        <ChevronDown className="h-4 w-4 text-slate-400" />
+                                                        <LayoutDashboard className="h-3.5 w-3.5 text-slate-400" />
                                                     </button>
                                                     {!group.isTemp && (
                                                         <button 
@@ -297,29 +351,102 @@ const AttackPath = () => {
                                             )}
                                         </div>
                                         
-                                        <div className="space-y-2">
-                                            {group.assets.map((asset: any, j: number) => (
-                                                <div 
-                                                    key={`${asset.type}-${asset.id}`}
-                                                    onClick={(e) => {
-                                                        if (isMergeMode) return;
-                                                        e.stopPropagation();
-                                                        if (asset.url) setScanUrl(asset.url);
-                                                    }}
-                                                    className="flex items-center justify-between group/item cursor-pointer"
-                                                >
-                                                    <div className="flex items-center gap-2 overflow-hidden">
-                                                        <span className="text-[10px] font-black text-slate-300 group-hover/item:text-[#00C2CB] transition-colors uppercase shrink-0">
-                                                            {asset.type === 'hosting' ? (asset.provider?.charAt(0) || 'H') : 'G'}
-                                                        </span>
-                                                        <span className="text-[11px] text-slate-500 truncate group-hover/item:text-slate-900 transition-colors">
-                                                            {asset.name}
-                                                        </span>
+                                        <div className={`space-y-4 px-1 pb-4 transition-all duration-300 ${expandedGroups.has(group.id) ? 'max-h-[800px] opacity-100 mt-4' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                                            {/* Current Group Assets */}
+                                            <div className="space-y-2">
+                                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1">Assigned Resources</div>
+                                                {group.assets.length === 0 && <p className="text-[10px] text-slate-400 italic pl-1">No assets assigned.</p>}
+                                                {group.assets.map((asset: any, j: number) => (
+                                                    <div 
+                                                        key={`${asset.type}-${asset.id}`}
+                                                        className="p-3 rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-all group/item"
+                                                    >
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                                <span className="text-[9px] font-black text-[#00C2CB] uppercase shrink-0">
+                                                                    {asset.type === 'hosting' ? 'Deploy' : 'Repo'}
+                                                                </span>
+                                                                <span className="text-xs font-bold text-slate-900 truncate">
+                                                                    {asset.name}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex gap-1 shrink-0">
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); updateAssetRole(group.id, asset.id, 'frontend'); }}
+                                                                    className={`text-[9px] font-black px-2 py-0.5 rounded-lg transition-colors ${asset.role === 'frontend' ? 'bg-[#00C2CB] text-white' : 'bg-slate-50 text-slate-400 hover:text-slate-600'}`}
+                                                                >
+                                                                    FE
+                                                                </button>
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); updateAssetRole(group.id, asset.id, 'backend'); }}
+                                                                    className={`text-[9px] font-black px-2 py-0.5 rounded-lg transition-colors ${asset.role === 'backend' ? 'bg-blue-500 text-white' : 'bg-slate-50 text-slate-400 hover:text-slate-600'}`}
+                                                                >
+                                                                    BE
+                                                                </button>
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); updateAssetRole(group.id, asset.id, 'none'); }}
+                                                                    className="p-1 hover:bg-red-50 text-slate-200 hover:text-red-400 rounded-md transition-colors ml-1"
+                                                                    title="Remove from project"
+                                                                >
+                                                                    <X className="h-3 w-3" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[10px] text-slate-400 truncate max-w-[140px] italic">{asset.url || 'Internal Source'}</span>
+                                                            {asset.url && (
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); setScanUrl(asset.url); }}
+                                                                    className="text-[10px] font-bold text-[#00C2CB] hover:underline uppercase tracking-tighter"
+                                                                >
+                                                                    Target URL
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <ChevronDown className="h-3 w-3 text-slate-200 group-hover/item:text-slate-400" />
+                                                ))}
+                                            </div>
+
+                                            {/* Add Asset Section */}
+                                            <div className="pt-2 border-t border-slate-100">
+                                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-2">Loose Assets (Add to Project)</div>
+                                                <div className="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar">
+                                                    {projectGroups
+                                                        .filter(g => g.isTemp && g.id !== group.id)
+                                                        .flatMap(g => g.assets)
+                                                        .map((asset: any) => (
+                                                            <button 
+                                                                key={asset.id}
+                                                                onClick={(e) => { e.stopPropagation(); addAssetToGroup(group.id, asset); }}
+                                                                className="w-full flex items-center justify-between p-2 rounded-xl border border-dashed border-slate-200 hover:border-[#00C2CB] hover:bg-[#00C2CB]/5 transition-all text-left group/add"
+                                                            >
+                                                                <div className="flex items-center gap-2 overflow-hidden">
+                                                                    <div className="h-1 w-1 rounded-full bg-slate-300 group-hover/add:bg-[#00C2CB]" />
+                                                                    <span className="text-[11px] text-slate-500 group-hover/add:text-slate-900 truncate font-medium">{asset.name}</span>
+                                                                </div>
+                                                                <div className="text-[10px] font-black text-slate-300 group-hover/add:text-[#00C2CB] transition-colors">+ ADD</div>
+                                                            </button>
+                                                        ))
+                                                    }
+                                                    {projectGroups.filter(g => g.isTemp).length === 0 && (
+                                                        <p className="text-[10px] text-slate-300 italic pl-1">No loose assets to add.</p>
+                                                    )}
                                                 </div>
-                                            ))}
+                                            </div>
                                         </div>
+
+                                        {!expandedGroups.has(group.id) && (
+                                            <div className="mt-2 flex gap-1 overflow-hidden h-1.5">
+                                                {group.assets.map((a: any, j: number) => (
+                                                    <div 
+                                                        key={j} 
+                                                        className={`h-full flex-1 rounded-full ${
+                                                            a.role === 'frontend' ? 'bg-[#00C2CB]' : a.role === 'backend' ? 'bg-blue-400' : 'bg-slate-100'
+                                                        }`} 
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
 
                                         {!isMergeMode && (
                                             <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">

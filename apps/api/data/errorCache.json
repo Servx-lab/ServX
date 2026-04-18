@@ -1635,5 +1635,12 @@
     "suggestedFix": "// Check server logs for details",
     "severity": "HIGH",
     "timestamp": "2026-04-18T15:16:27.256Z"
+  },
+  "b2dea053451d1a071b2a312100810c46c1ef1d1e2cc90822b359467db74eb5d6": {
+    "originalError": "scanLiveDeployment is not defined",
+    "diagnosis": "Unknown system error. Please check logs.",
+    "suggestedFix": "// Check server logs for details",
+    "severity": "HIGH",
+    "timestamp": "2026-04-18T16:41:17.585Z"
   }
 }
