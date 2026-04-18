@@ -1607,5 +1607,12 @@
     "suggestedFix": "// Check server logs for details",
     "severity": "HIGH",
     "timestamp": "2026-03-17T02:04:03.662Z"
+  },
+  "6a6ed7a76372a2ca5777e9218ce63b1bb442eb47bcada3e0027dc30595befde9": {
+    "originalError": "insert or update on table \"hosting_vault\" violates foreign key constraint \"hosting_vault_user_id_fkey\"",
+    "diagnosis": "Unknown system error. Please check logs.",
+    "suggestedFix": "// Check server logs for details",
+    "severity": "HIGH",
+    "timestamp": "2026-04-17T16:10:46.879Z"
   }
 }

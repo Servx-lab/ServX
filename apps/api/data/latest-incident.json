@@ -1,17 +1,16 @@
 {
-  "id": "INC-1773713055562",
-  "timestamp": "2026-03-17T02:04:15.562Z",
-  "path": "/api/admin/invite",
+  "id": "INC-1776442246881",
+  "timestamp": "2026-04-17T16:10:46.881Z",
+  "path": "/api/connections/hosting/vercel",
   "method": "POST",
   "error": {
-    "message": "Email and role are required",
-    "stack": "ValidationError: Email and role are required\n    at inviteAdmin (/home/premsaik/Desktop/Projects/ServX/apps/api/src/domains/admin/controller.ts:25:13)\n    at Layer.handleRequest (/home/premsaik/Desktop/Projects/ServX/apps/api/node_modules/router/lib/layer.js:152:17)\n    at next (/home/premsaik/Desktop/Projects/ServX/apps/api/node_modules/router/lib/route.js:157:13)\n    at Route.dispatch (/home/premsaik/Desktop/Projects/ServX/apps/api/node_modules/router/lib/route.js:117:3)\n    at handle (/home/premsaik/Desktop/Projects/ServX/apps/api/node_modules/router/index.js:435:11)\n    at Layer.handleRequest (/home/premsaik/Desktop/Projects/ServX/apps/api/node_modules/router/lib/layer.js:152:17)\n    at /home/premsaik/Desktop/Projects/ServX/apps/api/node_modules/router/index.js:295:15\n    at processParams (/home/premsaik/Desktop/Projects/ServX/apps/api/node_modules/router/index.js:582:12)\n    at next (/home/premsaik/Desktop/Projects/ServX/apps/api/node_modules/router/index.js:291:5)\n    at router.handle (/home/premsaik/Desktop/Projects/ServX/apps/api/node_modules/router/index.js:186:3)",
-    "code": "VALIDATION_ERROR"
+    "message": "insert or update on table \"hosting_vault\" violates foreign key constraint \"hosting_vault_user_id_fkey\"",
+    "code": "23503"
   },
   "analysis": {
     "diagnosis": "Unknown system error. Please check logs.",
     "fix": "// Check server logs for details",
     "severity": "HIGH",
-    "cached": true
+    "cached": false
   }
 }

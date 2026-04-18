@@ -51,7 +51,7 @@ export async function createConnection(
       }
     }
 
-    const result = await svc.saveConnection(req.user.uid, name, provider, config);
+    const result = await svc.saveConnection(req.user.uid, req.user.email, name, provider, config);
     res.status(201).json(result);
   } catch (err) {
     next(err);
@@ -148,7 +148,7 @@ export async function saveHostingConnection(
       throw new ValidationError(`Connection name and ${providerLabel} API key are required.`);
     }
 
-    const result = await svc.saveHostingToken(req.user.uid, providerKey, name, token, {
+    const result = await svc.saveHostingToken(req.user.uid, req.user.email, providerKey, name, token, {
       edgeConfigId,
     });
     const statusCode = result.message.includes('updated') ? 200 : 201;

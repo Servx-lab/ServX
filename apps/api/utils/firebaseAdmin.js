@@ -15,13 +15,13 @@ if (!admin.apps.length) {
         credential: admin.credential.cert(serviceAccount),
         projectId: serviceAccount.project_id
       });
-      console.log('Firebase Admin Initialized with Service Account');
+      // console.log('Firebase Admin Initialized with Service Account');
     } else {
       // Fallback: use just the project ID from env
       admin.initializeApp({
         projectId: process.env.FIREBASE_PROJECT_ID || 'orizon-lab'
       });
-      console.log('Firebase Admin Initialized with Project ID (limited - no service account)');
+      // console.log('Firebase Admin Initialized with Project ID (limited - no service account)');
     }
   } catch (error) {
     console.error('Firebase Admin Initialization Error:', error.message);

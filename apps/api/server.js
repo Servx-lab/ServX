@@ -12,7 +12,8 @@ const app = createApp();
 async function connectDB() {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    // Silence MongoDB logs 
+    // console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`Error: ${error.message}`);
     process.exit(1);
@@ -30,7 +31,7 @@ async function connectRedis() {
     const { getRedisClient } = require('./src/core/services/redisCache');
     const client = await getRedisClient();
     if (client) {
-      console.log('Redis Cache Connected (persistent)');
+      console.log('✅ Redis');
     }
   } catch (error) {
     console.error(`Redis Connection Error: ${error.message}`);
