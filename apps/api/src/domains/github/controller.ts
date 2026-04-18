@@ -99,6 +99,39 @@ export async function getRepoDetails(req: any, res: any, next: any): Promise<voi
   }
 }
 
+/**
+ * Link a GitHub App installation_id to the authenticated user.
+ */
+export async function linkInstallation(req: any, res: any): Promise<void> {
+  const { installation_id } = req.body;
+  const ownerUid = req.user.uid;
+
+  if (!installation_id) {
+    throw new ValidationError('installation_id is required');
+  }
+
+  // Find or create a GitHub connection for this user
+  let connection = await UserConnection.findOne({ ownerUid, provider: 'GitHub' });
+
+  if (connection) {
+    connection.installationId = installation_id;
+    connection.status = 'connected';
+    await connection.save();
+  } else {
+    connection = await UserConnection.create({
+      name: 'GitHub App Main',
+      provider: 'GitHub',
+      ownerUid,
+      installationId: installation_id,
+      status: 'connected',
+      iv: 'managed-by-app', // Placeholder for app-managed connections
+      encryptedConfig: 'null'
+    });
+  }
+
+  res.json({ success: true, connectionId: connection._id });
+}
+
 export async function getGitHubStatus(req: any, res: any, next: any): Promise<void> {
   const uid = req.user?.uid;
 
