@@ -24,6 +24,8 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { getRepos } from '@/features/github/api';
+
 const repoData: Record<string, any[]> = {
   'ServX Main Core': [
     { name: 'CVE-2024-1234', severity: 9.8, days: 14, package: 'lodash' },
@@ -35,25 +37,48 @@ const repoData: Record<string, any[]> = {
     { name: 'CVE-2024-6677', severity: 3.1, days: 12, package: 'clsx' },
     { name: 'CVE-2024-3322', severity: 8.9, days: 62, package: 'next' },
     { name: 'CVE-2024-1100', severity: 5.4, days: 18, package: 'zod' },
-  ],
-  'QuizWhiz UI': [
-    { name: 'CVE-2024-9001', severity: 8.5, days: 10, package: 'vite' },
-    { name: 'CVE-2023-7712', severity: 6.2, days: 90, package: 'sass' },
-    { name: 'CVE-2024-3321', severity: 9.4, days: 2, package: 'framer-motion' },
-    { name: 'CVE-2023-1122', severity: 3.8, days: 15, package: 'prettier' },
-  ],
-  'Lakshya GitConnect': [
-    { name: 'CVE-2024-5566', severity: 7.2, days: 22, package: 'octokit' },
-    { name: 'CVE-2024-4433', severity: 9.1, days: 8, package: 'simple-git' },
-    { name: 'CVE-2023-0099', severity: 4.8, days: 45, package: 'dotenv' },
   ]
 };
 
 const ExposureAnalysis = () => {
   const [selectedRepo, setSelectedRepo] = useState('ServX Main Core');
   const [isRepoOpen, setIsRepoOpen] = useState(false);
+  const [repositories, setRepositories] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const currentData = repoData[selectedRepo] || [];
+  // Real-time repository fetch
+  useEffect(() => {
+    const fetchRepos = async () => {
+      try {
+        const data = await getRepos();
+        setRepositories(data);
+        if (data.length > 0) {
+           // Default to first real repo if 'ServX' mock isn't appropriate
+           // or keep ServX as the architectural demonstration if preferred.
+           // For this build, we'll auto-select the first real repo.
+           setSelectedRepo(data[0].name);
+        }
+      } catch (err) {
+        console.error('Failed to load real repositories', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchRepos();
+  }, []);
+
+  // Vulnerability Intelligence Mapper
+  const currentData = useMemo(() => {
+    // If we have manual mock data for this repo, use it.
+    if (repoData[selectedRepo]) return repoData[selectedRepo];
+    
+    // Otherwise, generate a stable baseline of mock vulnerabilities for the "Live" repo.
+    return [
+      { name: 'CVE-2024-GEN', severity: 8.4, days: 12, package: 'npm-core' },
+      { name: 'CVE-2024-GEN', severity: 6.2, days: 5, package: 'base-lib' },
+      { name: 'CVE-2023-GEN', severity: 4.1, days: 52, package: 'util-pkg' },
+    ];
+  }, [selectedRepo]);
 
   const anomalyLogs = [
     { time: '05:15 AM', module: 'auth', event: 'login successful (Lakshya) - IP: Local', style: 'normal' },
@@ -108,21 +133,31 @@ const ExposureAnalysis = () => {
                       initial={{ opacity: 0, y: -10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      className="absolute top-[calc(100%+12px)] left-0 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 overflow-hidden"
+                      className="absolute top-[calc(100%+12px)] left-0 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 overflow-hidden max-h-[300px] overflow-y-auto custom-scrollbar"
                     >
-                       {Object.keys(repoData).map((repo) => (
-                          <button
-                            key={repo}
-                            onClick={() => {
-                              setSelectedRepo(repo);
-                              setIsRepoOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-between group ${selectedRepo === repo ? 'bg-slate-50 text-[#00C2CB]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-                          >
-                             {repo}
-                             {selectedRepo === repo && <CheckCircle2 className="h-3.5 w-3.5 text-[#00C2CB]" />}
-                          </button>
-                       ))}
+                       {isLoading ? (
+                          <div className="p-4 text-center text-xs text-slate-400 font-bold animate-pulse uppercase tracking-widest">
+                             Synchronizing Repositories...
+                          </div>
+                       ) : repositories.length > 0 ? (
+                          repositories.map((repo) => (
+                             <button
+                               key={repo.id}
+                               onClick={() => {
+                                 setSelectedRepo(repo.name);
+                                 setIsRepoOpen(false);
+                               }}
+                               className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-between group ${selectedRepo === repo.name ? 'bg-slate-50 text-[#00C2CB]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                             >
+                                {repo.name}
+                                {selectedRepo === repo.name && <CheckCircle2 className="h-3.5 w-3.5 text-[#00C2CB]" />}
+                             </button>
+                          ))
+                       ) : (
+                          <div className="p-4 text-center text-xs text-slate-400 font-bold uppercase tracking-widest">
+                             No Repositories Bound
+                          </div>
+                       )}
                     </motion.div>
                   </>
                 )}
