@@ -1,3 +1,4 @@
+import { type Response, type NextFunction } from 'express';
 import * as svc from './service';
 import { scanLiveDeployment } from '../../services/dastScanner';
 import { ValidationError } from '@servx/errors';
