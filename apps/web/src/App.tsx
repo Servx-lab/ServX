@@ -23,6 +23,7 @@ import ComingSoon from "./pages/ComingSoon";
 import Emails from "./features/emails";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import ExposureAnalysis from "./pages/ExposureAnalysis";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "./features/auth/RequireAuth";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -61,7 +62,7 @@ const App = () => (
               <Route path="/admin" element={<Administrator />} />
               <Route path="/attack" element={<AttackPath />} />
               <Route path="/attack-paths" element={<Navigate to="/attack" replace />} />
-              <Route path="/exposure" element={<ComingSoon />} />
+              <Route path="/exposure" element={<ExposureAnalysis />} />
               <Route path="/scenarios" element={<ComingSoon />} />
               <Route path="/emails" element={<Emails />} />
               <Route path="/reports" element={<ComingSoon />} />
