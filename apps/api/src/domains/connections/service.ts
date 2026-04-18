@@ -717,17 +717,19 @@ export async function getHostingEnvironmentVariables(
     throw new ValidationError('Service or project ID is required.');
   }
 
-  const creds = await getHostingCredentials(ownerUid, pk as 'vercel' | 'render');
-  if (!creds?.token) {
+  const creds = await getHostingCredentials(ownerUid, pk as HostingProviderKey);
+  const token = creds?.token || (creds as any)?.apiKey;
+
+  if (!token) {
     const label = HOSTING_PROVIDERS[pk].label;
     throw new ValidationError(`Connect your ${label} account in Hosting settings to load environment variables.`);
   }
 
   try {
     if (pk === 'vercel') {
-      return await fetchVercelProjectEnvVars(creds.token, trimmedId);
+      return await fetchVercelProjectEnvVars(token, trimmedId);
     }
-    return await fetchRenderServiceEnvVars(creds.token, trimmedId);
+    return await fetchRenderServiceEnvVars(token, trimmedId);
   } catch (err: unknown) {
     const ax = err as {
       response?: { data?: { error?: { message?: string }; message?: string }; status?: number };
@@ -748,18 +750,25 @@ export async function getHostingCredentials(
   ownerUid: string,
   provider: 'vercel' | 'render'
 ): Promise<{ token: string; edgeConfigId?: string } | null> {
+  const providerInfo = HOSTING_PROVIDERS[providerKey];
+  if (!providerInfo) return null;
+
   const { data, error } = await supabaseAdmin
     .from('hosting_vault')
     .select('*')
     .eq('user_id', ownerUid)
-    .eq('provider', provider)
+    .eq('provider', providerInfo.dbName)
     .single();
 
   if (!data || error) return null;
 
   try {
     const decrypted = decrypt({ iv: data.iv, content: data.encrypted_config });
-    return JSON.parse(decrypted);
+    const parsed = JSON.parse(decrypted);
+    return {
+        ...parsed,
+        token: parsed.token || parsed.apiKey // Normalize token field
+    };
   } catch {
     return null;
   }
