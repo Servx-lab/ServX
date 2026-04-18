@@ -38,32 +38,39 @@ const data = [
 
 const ExposureAnalysis = () => {
   const [selectedRepo, setSelectedRepo] = useState('ServX Main Core');
+
+  const anomalyLogs = [
+    { time: '05:15 AM', module: 'auth', event: 'login successful (Lakshya) - IP: Local', style: 'normal' },
+    { time: '05:30 AM', module: 'git', event: 'push to QuizWhiz/main (Lakshya)', style: 'normal' },
+    { time: '06:10 AM', module: 'git', event: 'commit to QuizWhiz UI components (Eeshitha Gone)', style: 'normal' },
+    { time: '11:45 AM', module: 'vercel', event: 'deployment triggered for Lakshya GitConnect', style: 'normal' },
+    { time: '03:15 AM', module: 'ANOMALY WARN', event: 'git force-push to QuizWhiz/main (Prem Sai Kota) - Out of standard working hours.', style: 'anomaly' },
+    { time: '02:30 PM', module: 'CRITICAL', event: 'Massive document drop initiated on MongoDB Cluster 0 (QuizWhiz).', style: 'critical' },
+  ];
   
   return (
-    <div className="flex-1 bg-[#0B0E14] text-[#FFFFFF] flex flex-col h-full overflow-hidden font-sans">
-      {/* Scrollable Container */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+    <div className="flex-1 bg-[#f8fafc] text-[#0F172A] flex flex-row h-full overflow-hidden font-sans">
+      {/* Main Command Canvas - 75% Width */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-8 flex flex-col">
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
-            <h1 className="text-4xl font-black tracking-tighter mb-2">Exposure Analysis</h1>
+            <h1 className="text-4xl font-black tracking-tighter mb-2 text-slate-900">Exposure Analysis</h1>
             <div className="flex items-center gap-3">
-               <div className="flex items-center gap-2 px-3 py-1 bg-[#181C25] border border-white/5 rounded-full">
+               <div className="flex items-center gap-2 px-3 py-1 bg-white border border-slate-200 rounded-full shadow-sm">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#00C2CB] animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#A4ADB3]">Vulnerability Intelligence Live</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Intelligence Active</span>
                </div>
-               <span className="text-[10px] items-center gap-1 font-black uppercase tracking-widest text-white/20 flex italic underline">SLA: SOC-2 Compliant</span>
+               <span className="text-[10px] items-center gap-1 font-black uppercase tracking-widest text-slate-400 flex italic underline">SLA: SOC-2 COMPLIANT</span>
             </div>
           </div>
 
-          <div className="relative group">
-            <button className="flex items-center gap-4 bg-[#181C25] border border-white/10 px-6 py-3 rounded-2xl hover:border-[#00C2CB]/50 transition-all shadow-2xl glass-effect">
-               <Github className="h-4 w-4 text-[#A4ADB3]" />
-               <span className="font-bold text-sm">{selectedRepo}</span>
-               <ChevronDown className="h-4 w-4 text-[#A4ADB3]" />
-            </button>
-          </div>
+          <button className="flex items-center gap-4 bg-white border border-slate-200 px-6 py-3 rounded-2xl hover:border-[#00C2CB]/50 transition-all shadow-lg">
+             <Github className="h-4 w-4 text-slate-400" />
+             <span className="font-bold text-sm text-slate-700">{selectedRepo}</span>
+             <ChevronDown className="h-4 w-4 text-slate-400" />
+          </button>
         </div>
 
         {/* SLA Timers HUD */}
@@ -78,186 +85,140 @@ const ExposureAnalysis = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               key={timer.label}
-              className="bg-[#181C25] p-6 rounded-3xl border border-white/5 relative overflow-hidden group shadow-lg"
+              className="bg-white p-6 rounded-3xl border border-slate-100 relative overflow-hidden group shadow-md"
             >
               <div className="relative z-10">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A4ADB3] mb-4 flex items-center gap-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 flex items-center gap-2">
                   <Clock className="h-3 w-3" style={{ color: timer.color }} />
                   {timer.label}
                 </p>
                 <div className="flex items-baseline gap-2">
                   <h2 className="text-3xl font-black tabular-nums" style={{ color: timer.color }}>{timer.value}</h2>
                 </div>
-                <p className="text-[10px] font-bold text-white/30 mt-2 uppercase italic">{timer.subtitle}</p>
+                <p className="text-[10px] font-bold text-slate-300 mt-2 uppercase italic">{timer.subtitle}</p>
               </div>
-              {/* Background Glow */}
-              <div className="absolute -bottom-10 -right-10 w-32 h-32 rounded-full blur-[60px] opacity-20 transition-opacity group-hover:opacity-40" style={{ backgroundColor: timer.color }} />
+              <div className="absolute -bottom-10 -right-10 w-32 h-32 rounded-full blur-[60px] opacity-[0.05]" style={{ backgroundColor: timer.color }} />
             </motion.div>
           ))}
         </div>
 
         {/* Threat Matrix Section */}
         <div className="mb-12">
-           <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                 <h2 className="text-xl font-black uppercase tracking-tight">Threat Matrix</h2>
-                 <div className="h-[2px] w-12 bg-[#6C63FF]" />
-              </div>
-              <div className="flex items-center gap-6">
-                 <div className="flex items-center gap-2 text-[10px] font-bold text-[#A4ADB3]">
-                    <div className="h-2 w-2 rounded-full bg-[#EF4444] shadow-[0_0_8px_#EF4444]" /> Critical Risk
-                 </div>
-                 <div className="flex items-center gap-2 text-[10px] font-bold text-[#A4ADB3]">
-                    <div className="h-2 w-2 rounded-full bg-[#6C63FF]" /> High Risk
-                 </div>
-              </div>
-           </div>
-
-           <div className="bg-[#181C25]/50 border border-white/5 rounded-[40px] p-8 h-[450px] relative backdrop-blur-3xl shadow-2xl">
+           <div className="bg-white border border-slate-100 rounded-[40px] p-8 h-[400px] relative shadow-xl">
               <ResponsiveContainer width="100%" height="100%">
                  <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                    <XAxis 
-                      type="number" 
-                      dataKey="severity" 
-                      name="Severity" 
-                      domain={[0, 10]} 
-                      stroke="#A4ADB3" 
-                      fontSize={10}
-                      tickFormatter={(v) => `${v} CVSS`}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis 
-                      type="number" 
-                      dataKey="days" 
-                      name="Days Unpatched" 
-                      stroke="#A4ADB3" 
-                      fontSize={10}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(v) => `${v} d`}
-                    />
-                    <Tooltip 
-                      cursor={{ strokeDasharray: '3 3' }} 
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const item = payload[0].payload;
-                          return (
-                            <div className="bg-[#0B0E14] border border-white/10 p-4 rounded-2xl shadow-2xl backdrop-blur-xl">
-                              <p className="text-[10px] font-black text-[#00C2CB] uppercase tracking-widest mb-1">{item.name}</p>
-                              <p className="text-sm font-bold text-white mb-2">{item.package}</p>
-                              <div className="flex gap-4">
-                                 <div><p className="text-[10px] text-[#A4ADB3] uppercase">Severity</p><p className="font-bold text-red-400">{item.severity}</p></div>
-                                 <div><p className="text-[10px] text-[#A4ADB3] uppercase">Age</p><p className="font-bold text-white">{item.days} Days</p></div>
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#00000008" vertical={false} />
+                    <XAxis type="number" dataKey="severity" domain={[0, 10]} stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} />
+                    <YAxis type="number" dataKey="days" stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} />
+                    <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                     <Scatter name="Vulnerabilities" data={data}>
-                       {data.map((entry, index) => {
-                          const isHighRisk = entry.severity > 7 && entry.days > 30;
-                          return (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={entry.severity > 8 ? '#EF4444' : entry.severity > 6 ? '#6C63FF' : '#00C2CB'} 
-                              className={isHighRisk ? 'glow-red' : ''}
-                            />
-                          );
-                       })}
+                       {data.map((entry, index) => (
+                         <Cell key={`cell-${index}`} fill={entry.severity > 8 ? '#EF4444' : entry.severity > 6 ? '#6C63FF' : '#00C2CB'} />
+                       ))}
                     </Scatter>
                  </ScatterChart>
               </ResponsiveContainer>
-              
-              {/* Custom CSS for glowing dots */}
-              <style dangerouslySetInnerHTML={{ __html: `
-                .glow-red {
-                  filter: drop-shadow(0 0 8px #EF4444);
-                  animation: pulse-red 2s infinite;
-                }
-                @keyframes pulse-red {
-                  0% { opacity: 1; }
-                  50% { opacity: 0.6; }
-                  100% { opacity: 1; }
-                }
-                .glass-effect {
-                  background: linear-gradient(135deg, rgba(24, 28, 37, 0.8) 0%, rgba(24, 28, 37, 0.4) 100%);
-                }
-              `}} />
            </div>
         </div>
 
         {/* Remediation Table Section */}
-        <div className="pb-12">
-           <div className="flex items-center gap-4 mb-6">
-              <h2 className="text-xl font-black uppercase tracking-tight">Remediation Command</h2>
-              <div className="h-[2px] w-12 bg-[#00C2CB]" />
-           </div>
-
-           <div className="bg-[#181C25] rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
-              <table className="w-full text-left border-collapse">
-                 <thead>
-                    <tr className="bg-white/5">
-                       <th className="px-6 py-4 text-[11px] font-black text-[#A4ADB3] uppercase tracking-widest">Package Instance</th>
-                       <th className="px-6 py-4 text-[11px] font-black text-[#A4ADB3] uppercase tracking-widest">Version Path</th>
-                       <th className="px-6 py-4 text-[11px] font-black text-[#A4ADB3] uppercase tracking-widest">Environment</th>
-                       <th className="px-6 py-4 text-[11px] font-black text-[#A4ADB3] uppercase tracking-widest">CVSS Severity</th>
-                       <th className="px-6 py-4 text-[11px] font-black text-[#A4ADB3] uppercase tracking-widest text-right">Target Action</th>
+        <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-xl mb-12">
+           <table className="w-full text-left border-collapse">
+              <thead>
+                 <tr className="bg-slate-50">
+                    <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">Package Instance</th>
+                    <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">Version Path</th>
+                    <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">Target Action</th>
+                 </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                 {data.slice(0, 4).map((item, i) => (
+                    <tr key={i} className="hover:bg-slate-50 transition-colors group">
+                       <td className="px-6 py-4">
+                          <div>
+                             <p className="text-sm font-bold text-slate-900">{item.package}</p>
+                             <p className="text-[10px] text-slate-400 font-mono">{item.name}</p>
+                          </div>
+                       </td>
+                       <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 text-xs font-bold text-[#00C2CB]">
+                             <span className="text-slate-400 font-normal">v1.2.4</span>
+                             <ArrowRight className="h-3 w-3" />
+                             <span>v1.2.6-stable</span>
+                          </div>
+                       </td>
+                       <td className="px-6 py-4 text-right tabular-nums text-sm font-black text-slate-900">
+                          <button className="px-5 py-2 bg-[#00C2CB] text-white text-[10px] font-black uppercase rounded-xl shadow-sm hover:shadow-lg transition-all">
+                             Auto-Fix
+                          </button>
+                       </td>
                     </tr>
-                 </thead>
-                 <tbody className="divide-y divide-white/5">
-                    {data.slice(0, 6).map((item, i) => (
-                       <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
-                          <td className="px-6 py-6">
-                             <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-xl bg-white/5 flex items-center justify-center">
-                                   <Terminal className="h-4 w-4 text-[#A4ADB3]" />
-                                </div>
-                                <div>
-                                   <p className="text-sm font-bold text-white">{item.package}</p>
-                                   <p className="text-[10px] text-[#A4ADB3] font-mono">{item.name}</p>
-                                </div>
-                             </div>
-                          </td>
-                          <td className="px-6 py-6">
-                             <div className="flex items-center gap-2 text-xs font-bold">
-                                <span className="text-slate-500">v1.2.4</span>
-                                <ArrowRight className="h-3 w-3 text-[#00C2CB]" />
-                                <span className="text-[#00C2CB]">v1.2.6-stable</span>
-                             </div>
-                          </td>
-                          <td className="px-6 py-6">
-                             <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${i % 2 === 0 ? 'bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/20' : 'bg-[#6C63FF]/10 text-[#6C63FF] border border-[#6C63FF]/20'}`}>
-                                {i % 2 === 0 ? 'Production' : 'Development'}
-                             </span>
-                          </td>
-                          <td className="px-6 py-6">
-                             <div className="flex items-center gap-4">
-                                <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden max-w-[80px]">
-                                   <div 
-                                     className="h-full rounded-full" 
-                                     style={{ width: `${item.severity * 10}%`, backgroundColor: item.severity > 8 ? '#EF4444' : '#6C63FF' }} 
-                                   />
-                                </div>
-                                <span className="text-sm font-black tabular-nums">{item.severity}</span>
-                             </div>
-                          </td>
-                          <td className="px-6 py-6 text-right">
-                             <button className="px-6 py-2.5 bg-[#00C2CB] hover:bg-[#00AFB8] text-[#0B0E14] text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-[#00C2CB]/20 flex items-center gap-2 ml-auto">
-                                <Activity className="h-3 w-3" />
-                                Auto-Fix (Draft PR)
-                             </button>
-                          </td>
-                       </tr>
-                    ))}
-                 </tbody>
-              </table>
-           </div>
+                 ))}
+              </tbody>
+           </table>
         </div>
       </div>
+
+      {/* Anomaly Sidebar - 25% Width (Approx 380px) */}
+      <aside className="w-[380px] bg-white border-l border-slate-200 flex flex-col shadow-2xl relative z-20">
+         <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900 flex items-center gap-2">
+               <Activity className="h-4 w-4 text-[#6C63FF]" />
+               Live Anomaly Detection
+            </h2>
+            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Rogue Behavior Feed</p>
+         </div>
+
+         <div className="flex-1 overflow-y-auto p-6 font-mono custom-scrollbar">
+            <div className="flex flex-col gap-6">
+               {anomalyLogs.map((log, i) => (
+                  <motion.div 
+                     initial={{ opacity: 0, x: 20 }}
+                     animate={{ opacity: 1, x: 0 }}
+                     transition={{ delay: i * 0.1 }}
+                     key={i} 
+                     className="flex flex-col gap-1 text-[11px] leading-relaxed"
+                  >
+                     <span className="text-slate-400 text-[10px] font-bold">[{log.time}]</span>
+                     <p className={`
+                        ${log.style === 'normal' ? 'text-[#A4ADB3]' : ''}
+                        ${log.style === 'anomaly' ? 'text-[#6C63FF] font-bold animate-pulse' : ''}
+                        ${log.style === 'critical' ? 'text-[#EF4444] font-extrabold uppercase' : ''}
+                     `}>
+                        <span className="opacity-50 mr-1">{log.module}:</span> {log.event}
+                     </p>
+                     <div className="h-px w-8 bg-slate-100 mt-2" />
+                  </motion.div>
+               ))}
+               
+               {/* Terminal Cursor Animation */}
+               <motion.div 
+                  animate={{ opacity: [1, 0, 1] }} 
+                  transition={{ repeat: Infinity, duration: 1 }}
+                  className="h-3 w-1.5 bg-[#00C2CB]/40 mt-2 shadow-[0_0_8px_#00C2CB44]"
+               />
+            </div>
+         </div>
+
+         {/* Sidebar Status Footer */}
+         <div className="p-4 bg-slate-50 border-t border-slate-100">
+            <div className="flex items-center justify-between">
+               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Engine Status: Stable</span>
+               <div className="flex items-center gap-1">
+                  {[...Array(3)].map((_, i) => (
+                     <div key={i} className="h-1 w-1 rounded-full bg-[#00C2CB]" />
+                  ))}
+               </div>
+            </div>
+         </div>
+      </aside>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+      `}} />
     </div>
   );
 };
