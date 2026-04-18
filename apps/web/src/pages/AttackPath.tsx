@@ -9,6 +9,7 @@ import {
   LayoutDashboard, 
   X 
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -234,33 +235,33 @@ const AttackPath = () => {
     };
 
     return (
-        <div className="flex-1 flex flex-col h-full bg-[#f8fafc] text-slate-800 p-8 overflow-hidden font-sans">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-12">
-                <div className="flex flex-col">
-                    <h1 className="text-2xl font-black tracking-tight text-slate-900">Security Command Center</h1>
-                    <p className="text-xs text-slate-400 font-medium tracking-widest uppercase mt-1">Dynamic Target Analyzer v4.0</p>
+        <div className="flex-1 flex flex-col h-full bg-[#f8fafc] text-slate-800 p-8 overflow-hidden font-sans relative">
+            {/* Header: Now Absolute & Transparent to prevent clipping */}
+            <div className="absolute top-0 left-0 right-0 p-8 flex items-center justify-between z-[100] bg-gradient-to-b from-white/90 to-transparent pointer-events-none">
+                <div className="flex flex-col pointer-events-auto">
+                    <h1 className="text-2xl font-black tracking-tight text-slate-900 drop-shadow-sm">Security Command Center</h1>
+                    <p className="text-xs text-[#00C2CB] font-black tracking-widest uppercase mt-1 opacity-70">Neural Threat Map v5.0 // LIVE PHASE</p>
                 </div>
-                <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-4 bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-slate-200/50 shadow-xl pointer-events-auto">
                     <input 
                         type="text" 
-                        placeholder="Enter Target URL (Vercel/Render)..." 
-                        className="bg-transparent border-none outline-none px-4 py-2 text-sm w-64"
+                        placeholder="Target Endpoint URL..." 
+                        className="bg-transparent border-none outline-none px-4 py-2 text-sm w-72 font-mono"
                         value={scanUrl}
                         onChange={(e) => setScanUrl(e.target.value)}
                     />
                     <button 
                         onClick={() => runScan()}
                         disabled={isScanning}
-                        className="bg-[#00C2CB] hover:bg-[#00AFB8] text-white px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-50"
+                        className="bg-[#00C2CB] hover:bg-[#00AFB8] text-white px-8 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest transition-all flex items-center gap-3 disabled:opacity-50 shadow-lg shadow-[#00C2CB]/20"
                     >
                         {isScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
-                        {isScanning ? 'Scanning...' : 'Launch Simulation'}
+                        {isScanning ? 'Analyzing...' : 'Execute Audit'}
                     </button>
                 </div>
             </div>
 
-            <div className="flex gap-8 flex-1 overflow-hidden">
+            <div className="flex gap-8 flex-1 overflow-hidden pt-24 relative z-10">
                 {/* Left Sidebar: Live Now */}
                 <div className="w-80 flex flex-col gap-4 h-full overflow-hidden">
                     <div className="flex items-center justify-between mb-2">
@@ -461,68 +462,125 @@ const AttackPath = () => {
                     </div>
                 </div>
 
-                {/* Center: Circular Visualization */}
-                <div className="flex-1 flex items-center justify-center relative">
-                    {/* The Circular Dashboard */}
-                    <div className="relative w-[500px] h-[500px] flex items-center justify-center">
-                        {/* Semi-circular Ring Overlay */}
-                        <div className="absolute left-[-40px] top-1/2 -translate-y-1/2 flex flex-col gap-1 items-center">
-                            {[...Array(60)].map((_, i) => {
-                                const angle = (i / 60) * Math.PI - Math.PI/2;
-                                return (
-                                    <div 
-                                        key={i} 
-                                        className={`w-5 h-[2px] transition-all ${i < 40 ? 'bg-blue-400 opacity-100' : 'bg-slate-200 opacity-30'}`}
-                                        style={{ 
-                                            position: 'absolute',
-                                            transform: `rotate(${angle}rad) translate(280px)`,
-                                            transformOrigin: '0 0'
-                                        }}
-                                    />
-                                );
-                            })}
-                        </div>
+                {/* Center: Neural Threat Map Overhaul */}
+                <div className="flex-1 flex items-center justify-center relative perspective-[1000px]">
+                    {/* Background Radar Rings */}
+                    <div className="absolute w-[800px] h-[800px] rounded-full border border-slate-200/20 animate-ping opacity-10 pointer-events-none" />
+                    <div className="absolute w-[600px] h-[600px] rounded-full border border-slate-200/40 pointer-events-none" />
+                    <div className="absolute w-[400px] h-[400px] rounded-full border border-dashed border-slate-200 pointer-events-none" />
 
-                        {/* Central Hub */}
-                        <div className="relative z-10 w-full h-full flex items-center justify-center">
-                            {/* Inner Bubbles */}
-                            <div 
-                                className="absolute bg-white border border-slate-100 shadow-2xl rounded-full flex flex-col items-center justify-center p-8 transition-all hover:scale-105 duration-500"
-                                style={{ width: '180px', height: '180px', zIndex: 30 }}
+                    {/* SVG Connectivity Layer */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 1000 1000">
+                         {[
+                            { angle: 0, d: 320 }, { angle: 40, d: 240 }, { angle: 80, d: 350 },
+                            { angle: 120, d: 280 }, { angle: 170, d: 310 }, { angle: 220, d: 260 },
+                            { angle: 270, d: 330 }, { angle: 310, d: 290 }, { angle: 340, d: 340 },
+                         ].map((b, i) => {
+                             const rad = b.angle * (Math.PI / 180);
+                             const x2 = 500 + b.d * Math.cos(rad);
+                             const y2 = 500 + b.d * Math.sin(rad);
+                             return (
+                                 <g key={i}>
+                                     <motion.line 
+                                         x1="500" y1="500" x2={x2} y2={y2}
+                                         stroke="url(#gradient-line)" 
+                                         strokeWidth="1.5"
+                                         strokeDasharray="4 4"
+                                         initial={{ pathLength: 0, opacity: 0 }}
+                                         animate={{ pathLength: 1, opacity: 0.2 }}
+                                         transition={{ duration: 2, delay: i * 0.1 }}
+                                     />
+                                     <motion.circle 
+                                         r="2.5" 
+                                         fill="#00C2CB"
+                                         initial={{ cx: 500, cy: 500 }}
+                                         animate={{ cx: x2, cy: y2 }}
+                                         transition={{ duration: 3, repeat: Infinity, delay: i * 0.4, ease: "linear" }}
+                                     />
+                                 </g>
+                             );
+                         })}
+                         <defs>
+                             <linearGradient id="gradient-line" x1="0%" y1="0%" x2="100%" y2="0%">
+                                 <stop offset="0%" stopColor="#CBD5E1" stopOpacity="0" />
+                                 <stop offset="50%" stopColor="#00C2CB" stopOpacity="0.5" />
+                                 <stop offset="100%" stopColor="#CBD5E1" stopOpacity="0" />
+                             </linearGradient>
+                         </defs>
+                    </svg>
+
+                    {/* Central Core: The Infiltration Point */}
+                    <motion.div 
+                        animate={{ 
+                            boxShadow: isScanning ? [
+                                "0 0 0px rgba(0,194,203,0)", 
+                                "0 0 60px rgba(0,194,203,0.3)", 
+                                "0 0 0px rgba(0,194,203,0)"
+                            ] : "0 8px 32px rgba(0,0,0,0.1)"
+                        }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                        className="relative z-20 w-[220px] h-[220px] bg-white border border-slate-100 rounded-full shadow-2xl flex flex-col items-center justify-center p-8 cursor-pointer group"
+                    >
+                        <motion.div 
+                            animate={{ rotate: 360 }} 
+                            transition={{ repeat: Infinity, duration: 15, ease: "linear" }}
+                            className="absolute inset-0 rounded-full border-[2px] border-dashed border-[#00C2CB]/20" 
+                        />
+                        <span className="text-[#00C2CB] text-xs font-black flex items-center gap-1 mb-2 tracking-widest">
+                            {isScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <>32% <Zap className="h-4 w-4 fill-current" /></>}
+                        </span>
+                        <h2 className="text-[13px] font-black text-slate-900 text-center uppercase leading-tight tracking-tight">
+                            Malicious AJAX<br />Code Execution
+                        </h2>
+                        <div className="mt-4 flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <div className="h-0.5 w-12 bg-[#00C2CB] rounded-full" />
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Infiltration Point</span>
+                        </div>
+                    </motion.div>
+
+                    {/* Orbital Nodes: The Threat Map */}
+                    {[
+                        { label: "Windows Macros", pct: "15%", angle: 0, d: 320 },
+                        { label: "DDoS Attempt", pct: "6%", angle: 40, d: 240 },
+                        { label: "Comp. Expansion", pct: "8%", angle: 80, d: 350 },
+                        { label: "Domain Shadow", angle: 120, pct: "13%", d: 280 },
+                        { label: "SQL Injection", pct: "8%", angle: 170, d: 310 },
+                        { label: "Pass. Harvest", pct: "23%", angle: 220, d: 260 },
+                        { label: "Malvertising", pct: "6%", angle: 270, d: 330 },
+                        { label: "XML Poisoning", pct: "17%", angle: 310, d: 290 },
+                        { label: "Buffer Overflow", pct: "5%", angle: 340, d: 340 },
+                    ].map((b, i) => {
+                        const rad = b.angle * (Math.PI / 180);
+                        const x = b.d * Math.cos(rad);
+                        const y = b.d * Math.sin(rad);
+                        return (
+                            <motion.div 
+                                key={i}
+                                initial={{ opacity: 0, scale: 0 }}
+                                animate={{ 
+                                    opacity: 1, scale: 1, x, y,
+                                    y: [y, y - 15, y] 
+                                }}
+                                transition={{ 
+                                    scale: { duration: 0.5, delay: i * 0.1 },
+                                    y: { duration: 5, repeat: Infinity, ease: "easeInOut", delay: i * 0.2 }
+                                }}
+                                className="absolute z-10 w-[110px] h-[110px] bg-white/95 backdrop-blur-md border border-slate-100 shadow-lg rounded-full flex flex-col items-center justify-center hover:shadow-2xl hover:scale-110 transition-all cursor-crosshair group/node"
                             >
-                                <span className="text-blue-500 text-xs font-bold flex items-center gap-1 mb-1">32% <Zap className="h-3 w-3" /></span>
-                                <span className="text-[11px] font-black text-slate-900 text-center uppercase leading-tight">Malicious AJAX<br />Code Execution</span>
-                            </div>
-
-                            {/* Orbiting Bubbles */}
-                            {[
-                                { label: "Windows Macros", pct: "15%", top: '10%', left: '35%' },
-                                { label: "DDoS", pct: "6%", top: '15%', right: '25%' },
-                                { label: "Company Size", pct: "8%", top: '35%', right: '10%' },
-                                { label: "Domain Shadowing", pct: "13%", right: '10%', top: '60%' },
-                                { label: "SQL Injection Attack", pct: "8%", bottom: '15%', left: '35%' },
-                                { label: "Password Harvesting", pct: "23%", bottom: '25%', left: '55%' },
-                                { label: "Malvertising", pct: "6%", bottom: '35%', left: '15%' },
-                                { label: "XML Poisoning", pct: "17%", top: '50%', left: '5%' },
-                                { label: "Buffer Overflow", pct: "5%", bottom: '40%', right: '15%' },
-                            ].map((b, i) => (
-                                <div 
-                                    key={i} 
-                                    className="absolute bg-white border border-slate-50 shadow-md rounded-full flex flex-col items-center justify-center transition-all hover:shadow-lg hover:-translate-y-1"
-                                    style={{ 
-                                        width: '90px', height: '90px', 
-                                        top: b.top, left: b.left, right: b.right, bottom: b.bottom 
-                                    }}
-                                >
-                                    <span className="text-slate-400 text-[10px] font-bold flex items-center gap-0.5">{b.pct} <Zap className="h-2 w-2" /></span>
-                                    <span className="text-[9px] font-bold text-slate-700 text-center uppercase leading-none px-2">{b.label}</span>
-                                </div>
-                            ))}
-
-                            {/* Faint Dotted Guide Ring */}
-                            <div className="absolute inset-0 rounded-full border border-dashed border-slate-200 pointer-events-none" />
-                        </div>
-                    </div>
+                                <motion.div 
+                                    className="absolute inset-0 rounded-full bg-[#00C2CB]/5 opacity-0 group-hover/node:opacity-100 transition-opacity"
+                                    animate={{ scale: [1, 1.1, 1] }}
+                                    transition={{ repeat: Infinity, duration: 2 }}
+                                />
+                                <span className="text-slate-400 text-[10px] font-black flex items-center gap-1 mb-1 tracking-tighter transition-colors group-hover/node:text-[#00C2CB]">
+                                    {b.pct} <Shield className="h-3 w-3" />
+                                </span>
+                                <span className="text-[10px] font-black text-slate-700 text-center uppercase leading-tight px-3 tracking-tighter">
+                                    {b.label}
+                                </span>
+                            </motion.div>
+                        );
+                    })}
                 </div>
 
                 {/* Right: Security Score */}
