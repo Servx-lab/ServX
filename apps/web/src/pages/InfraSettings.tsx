@@ -439,6 +439,30 @@ const InfraSettings = () => {
             </div>
         </section>
 
+        {/* Support (moved from sidebar) */}
+        <section className="space-y-4 pt-2">
+            <div className="flex items-center gap-2 text-cyan-600">
+                <HelpCircle className="w-5 h-5" />
+                <h2 className="text-xl font-semibold tracking-tight text-black">Support</h2>
+            </div>
+            <Card className="bg-white border-gray-200 shadow-sm">
+                <CardContent className="pt-6">
+                    <p className="text-sm text-gray-600">
+                        Need help with infrastructure connections or deployment providers? Reach our support team and include your provider name, project, and issue details for faster help.
+                    </p>
+                    <div className="mt-4">
+                        <Button
+                            asChild
+                            variant="outline"
+                            className="border-cyan-200 text-cyan-700 hover:bg-cyan-50"
+                        >
+                            <a href="mailto:support@servx.ai">Contact Support</a>
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </section>
+
     </div>
   );
 };

@@ -3,7 +3,7 @@ import { randomInt } from 'node:crypto';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 export { supabaseAdmin };
 
-// In-memory OTP store: { "uid:email": { otp, expiresAt } }
+// In-memory OTP store: { "id:email": { otp, expiresAt } }
 const otpStore = new Map<string, { otp: string; email: string; expiresAt: number }>();
 const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -11,8 +11,8 @@ export function generateOTP(): string {
   return randomInt(100000, 999999).toString();
 }
 
-export function getOtpKey(uid: string, email: string): string {
-  return `${uid}:${email.toLowerCase()}`;
+export function getOtpKey(id: string, email: string): string {
+  return `${id}:${email.toLowerCase()}`;
 }
 
 export function cleanupExpiredOtps(): void {
@@ -24,8 +24,8 @@ export function cleanupExpiredOtps(): void {
   }
 }
 
-export function saveOtp(uid: string, email: string, otp: string): void {
-  const key = getOtpKey(uid, email);
+export function saveOtp(id: string, email: string, otp: string): void {
+  const key = getOtpKey(id, email);
   otpStore.set(key, {
     otp,
     email: email.toLowerCase(),
@@ -34,8 +34,8 @@ export function saveOtp(uid: string, email: string, otp: string): void {
   cleanupExpiredOtps();
 }
 
-export function verifyAndDeleteOtp(uid: string, email: string, otp: string): boolean {
-  const key = getOtpKey(uid, email);
+export function verifyAndDeleteOtp(id: string, email: string, otp: string): boolean {
+  const key = getOtpKey(id, email);
   const stored = otpStore.get(key);
 
   if (!stored) return false;
@@ -67,3 +67,4 @@ export async function getUserProfile(uid: string) {
     createdAt: user.created_at,
   };
 }
+

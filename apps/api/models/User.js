@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  uid: {
+  id: {
     type: String,
     required: true,
     unique: true,
@@ -43,6 +43,22 @@ const userSchema = new mongoose.Schema({
     select: false
   },
   githubTokenExpiry: Date,
+  githubInstallationTokenEncrypted: {
+    type: String,
+    select: false
+  },
+  githubInstallationTokenIv: {
+    type: String,
+    select: false
+  },
+  githubInstallationId: {
+    type: String,
+    select: false
+  },
+  githubInstallationTokenUpdatedAt: {
+    type: Date,
+    select: false
+  },
   avatarUrl: String,
   role: {
     type: String,

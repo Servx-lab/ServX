@@ -11,24 +11,24 @@ const requireAdminOrBootstrap = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const uid = req.user?.uid;
-  if (!uid) {
+  const id = req.user?.id;
+  if (!id) {
     res.status(401).json({ message: 'Unauthorized' });
     return;
   }
 
   try {
-    const adminRecord = await AdminModel.findOne({ uid });
+    const adminRecord = await AdminModel.findOne({ id });
     if (adminRecord) {
       req.admin = adminRecord as Record<string, unknown>;
-      req.uid = uid;
+      req.id = id;
       next();
       return;
     }
 
     const count = await AdminModel.countDocuments();
     if (count === 0) {
-      req.uid = uid;
+      req.id = id;
       next();
       return;
     }
@@ -38,5 +38,6 @@ const requireAdminOrBootstrap = async (
     next(error);
   }
 };
+
 
 export default requireAdminOrBootstrap;

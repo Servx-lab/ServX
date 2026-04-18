@@ -12,7 +12,6 @@ import type {
   ServerResource,
 } from './types';
 
-const firebaseAdmin = require('../../../utils/firebaseAdmin');
 import { decrypt } from '@servx/crypto';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
@@ -43,24 +42,23 @@ function defaultPermissions(): Permissions {
 }
 
 export async function inviteUserAsAdmin(email: string, role: string): Promise<AdminRecord> {
-  let userRecord;
-  try {
-    userRecord = await firebaseAdmin.auth().getUserByEmail(email);
-  } catch (error) {
-    if ((error as any)?.code === 'auth/user-not-found') {
-      throw new NotFoundError('User must sign up first');
-    }
-    throw error;
+  const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+  if (error) throw error;
+
+  const userRecord = (users as any[]).find(u => u.email === email);
+
+  if (!userRecord) {
+    throw new NotFoundError('User must sign up first');
   }
 
-  const uid = userRecord.uid as string;
-  const existingAdmin = await (Admin as any).findOne({ uid });
+  const id = userRecord.id;
+  const existingAdmin = await (Admin as any).findOne({ id });
   if (existingAdmin) {
     throw new ConflictError('User is already an administrator');
   }
 
   const newAdmin = new (Admin as any)({
-    uid,
+    id,
     email,
     role,
     addedAt: new Date(),
@@ -68,7 +66,7 @@ export async function inviteUserAsAdmin(email: string, role: string): Promise<Ad
   await newAdmin.save();
 
   return {
-    uid,
+    id,
     email,
     role,
     addedAt: newAdmin.addedAt?.toISOString?.() ?? new Date().toISOString(),
@@ -78,22 +76,22 @@ export async function inviteUserAsAdmin(email: string, role: string): Promise<Ad
 export async function listAdmins(): Promise<AdminRecord[]> {
   const admins = await (Admin as any).find().sort({ addedAt: -1 });
   return admins.map((a: any) => ({
-    uid: a.uid,
+    id: a.id,
     email: a.email,
     role: a.role,
     addedAt: a.addedAt?.toISOString?.() ?? String(a.addedAt),
   }));
 }
 
-export async function revokeAdmin(uid: string): Promise<void> {
-  const deleted = await (Admin as any).findOneAndDelete({ uid });
+export async function revokeAdmin(id: string): Promise<void> {
+  const deleted = await (Admin as any).findOneAndDelete({ id });
   if (!deleted) {
     throw new NotFoundError('Admin not found');
   }
 }
 
-export async function getAdminPermissions(ownerUid: string, userUid: string): Promise<Permissions> {
-  const found = await (AccessControl as any).findOne({ ownerUid, userUid });
+export async function getAdminPermissions(ownerId: string, userId: string): Promise<Permissions> {
+  const found = await (AccessControl as any).findOne({ ownerId, userId });
   if (!found?.permissions) {
     return defaultPermissions();
   }
@@ -107,12 +105,12 @@ export async function getAdminPermissions(ownerUid: string, userUid: string): Pr
 }
 
 export async function updateAdminPermissions(
-  ownerUid: string,
-  userUid: string,
+  ownerId: string,
+  userId: string,
   permissions: Permissions
 ): Promise<Permissions> {
   const updated = await (AccessControl as any).findOneAndUpdate(
-    { ownerUid, userUid },
+    { ownerId, userId },
     { permissions },
     { upsert: true, new: true }
   );
@@ -146,12 +144,11 @@ export async function getAdminResources(
   }));
 
   let repos: RepoResource[] = [];
-  
   // Fetch GitHub token from vault
   const { data: githubData } = await supabaseAdmin
     .from('github_vault')
     .select('*')
-    .eq('user_id', adminRecord.uid)
+    .eq('user_id', adminRecord.id)
     .single();
 
   if (githubData) {

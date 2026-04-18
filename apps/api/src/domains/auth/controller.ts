@@ -1,34 +1,27 @@
 import type { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
-import { getAuth } from 'firebase-admin/auth';
-
 import { AuthError, ValidationError } from '@servx/errors';
-import { encrypt, decrypt } from '@servx/crypto';
+import { encrypt } from '@servx/crypto';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
-
 import {
-  findFirebaseConnectionId,
-  getFirebaseApp,
   logNewUserToSheetService,
   sendServXAlert,
 } from './service';
 import { cacheDelPattern } from '../../core/services/redisCache';
 import { userGhCachePattern } from '../github/controller';
 
-// Using global Express.Request extension from requireAuth.ts
-
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 
 export function getGitHubAuthUrl(req: any, res: any): void {
   const clientId = process.env.GITHUB_CLIENT_ID;
-  const ownerUid = req.user.uid;
+  const ownerId = req.user.id;
 
   if (!clientId) {
     throw new AuthError('GitHub Client ID not configured');
   }
 
-  const state = encodeURIComponent(JSON.stringify({ ownerUid }));
+  const state = encodeURIComponent(JSON.stringify({ ownerId }));
   const authorizeUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,read:user&state=${state}`;
 
   res.json({ url: authorizeUrl });
@@ -36,9 +29,9 @@ export function getGitHubAuthUrl(req: any, res: any): void {
 
 export function redirectToGitHub(req: any, res: any): void {
   const clientId = process.env.GITHUB_CLIENT_ID;
-  const ownerUid = req.user.uid;
+  const ownerId = req.user.id;
 
-  const state = encodeURIComponent(JSON.stringify({ ownerUid }));
+  const state = encodeURIComponent(JSON.stringify({ ownerId }));
   const redirectUri = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,read:user&state=${state}`;
 
   res.redirect(redirectUri);
@@ -48,12 +41,12 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
   const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
   const code = req.query.code as string | undefined;
   const state = req.query.state as string | undefined;
-  let ownerUid: string | null = null;
+  let ownerId: string | null = null;
 
   if (state) {
     try {
-      const decodedState = JSON.parse(decodeURIComponent(state)) as { ownerUid?: string };
-      ownerUid = decodedState.ownerUid || null;
+      const decodedState = JSON.parse(decodeURIComponent(state)) as { ownerId?: string };
+      ownerId = decodedState.ownerId || null;
     } catch (error) {
       console.error('Failed to parse OAuth state:', (error as Error).message);
     }
@@ -104,7 +97,7 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
       avatar_url?: string;
     };
 
-    const targetUid = ownerUid || `legacy-${profile.id}`;
+    const targetUid = ownerId || `legacy-${profile.id}`;
 
     // 1. Update or Create User Profile
     const { data: userProfile, error: profileError } = await supabaseAdmin
@@ -132,7 +125,7 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
             github_username: profile.login,
             encrypted_access_token: encryptedAccess.content,
             encrypted_refresh_token: encryptedRefresh?.content,
-            iv: encryptedAccess.iv, // Use access token IV for the row
+            iv: encryptedAccess.iv,
             token_expiry: expiryDate,
         });
 
@@ -168,7 +161,7 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
 
 export async function syncUser(req: any, res: any, next: any): Promise<void> {
   try {
-    const { uid, email } = req.user;
+    const { id, email } = req.user;
     const { 
       name, 
       avatarUrl, 
@@ -189,7 +182,7 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
     const { error: profileError } = await supabaseAdmin
         .from('user_profiles')
         .upsert({
-            id: uid,
+            id: id,
             email: email,
             display_name: name || email.split('@')[0],
             avatar_url: avatarUrl || '',
@@ -205,7 +198,7 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
         const { error: vaultError } = await supabaseAdmin
             .from('github_vault')
             .upsert({
-                user_id: uid,
+                user_id: id,
                 github_id: githubId,
                 encrypted_access_token: encryptedAccess.content,
                 encrypted_refresh_token: encryptedRefresh?.content,
@@ -214,38 +207,10 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
             });
 
         if (vaultError) throw vaultError;
-        await cacheDelPattern(userGhCachePattern(uid));
+        await cacheDelPattern(userGhCachePattern(id));
     }
 
-    // New User Logging & Alerts (only if user profile was just created)
-    if (profileError === null) {
-        try {
-            await logNewUserToSheetService({ uid, email });
-        } catch (sheetError) {
-            console.error('[Auth] Sheet log failed:', (sheetError as Error).message);
-        }
-
-        try {
-            await sendServXAlert(email, 'Welcome to ServX', '<h1>Welcome to the Command Center</h1><p>Your account is now synced with Supabase.</p>');
-        } catch (emailError) {
-            console.error('[Auth] Welcome email failed:', (emailError as Error).message);
-        }
-
-        const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-        if (ADMIN_EMAIL) {
-            try {
-                await sendServXAlert(
-                    ADMIN_EMAIL,
-                    'New User Signup (Supabase)',
-                    `<h1>New User Registered</h1><p><b>Email:</b> ${email}</p><p><b>UID:</b> ${uid}</p>`
-                );
-            } catch (emailErr) {
-                console.error('[Auth] Admin alert failed:', (emailErr as Error).message);
-            }
-        }
-    }
-
-    res.json({ message: 'User synced', uid });
+    res.json({ message: 'User synced', uid: id });
   } catch (error) {
     next(error);
   }
@@ -253,7 +218,7 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
 
 export async function disconnectGitHub(req: any, res: any, next: any): Promise<void> {
   try {
-    const ownerUid = req.user.uid;
+    const ownerUid = req.user.id;
     const { error } = await supabaseAdmin
         .from('github_vault')
         .delete()
@@ -270,7 +235,6 @@ export async function disconnectGitHub(req: any, res: any, next: any): Promise<v
 
 export async function searchUsers(req: any, res: any, next: any): Promise<void> {
   const email = req.query.email as string | undefined;
-  const connectionId = req.query.connectionId as string | undefined;
 
   if (!email) {
     throw new ValidationError('Email query parameter is required', {
@@ -279,29 +243,29 @@ export async function searchUsers(req: any, res: any, next: any): Promise<void> 
   }
 
   try {
-    const firebaseConnectionId = connectionId || (await findFirebaseConnectionId());
-    const firebaseApp = await getFirebaseApp(firebaseConnectionId);
-    const userRecord = await getAuth(firebaseApp).getUserByEmail(email);
+    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+    if (error) throw error;
+
+    const userRecord = users.find(u => u.email === email);
+
+    if (!userRecord) {
+      throw new AuthError('User not found');
+    }
 
     res.json({
-      uid: userRecord.uid,
-      displayName: userRecord.displayName,
+      id: userRecord.id,
+      displayName: userRecord.user_metadata?.full_name || userRecord.email?.split('@')[0],
       email: userRecord.email,
-      creationTime: userRecord.metadata.creationTime,
-      lastSignInTime: userRecord.metadata.lastSignInTime,
-      disabled: userRecord.disabled,
+      creationTime: userRecord.created_at,
+      lastSignInTime: userRecord.last_sign_in_at,
+      disabled: !!userRecord.banned_until,
     });
   } catch (error) {
     const err = error as { code?: string; message?: string };
-    if (err.code === 'auth/user-not-found') {
-      next(new AuthError('User not found'));
-      return;
-    }
-
     console.error('Error in /users/search:', err.message);
 
     const mockUser = {
-      uid: `mock-search-${Date.now()}`,
+      id: `mock-search-${Date.now()}`,
       displayName: `Searched Mock: ${email.split('@')[0]}`,
       email,
       creationTime: new Date().toISOString(),
@@ -313,29 +277,25 @@ export async function searchUsers(req: any, res: any, next: any): Promise<void> 
 }
 
 export async function listUsers(req: any, res: any): Promise<void> {
-  const rawLimit = req.query.limit as string | undefined;
-  const limit = Number.parseInt(rawLimit || '100', 10);
-  const connectionId = req.query.connectionId as string | undefined;
-
   try {
-    const firebaseConnectionId = connectionId || (await findFirebaseConnectionId());
-    const firebaseApp = await getFirebaseApp(firebaseConnectionId);
-    const listUsersResult = await getAuth(firebaseApp).listUsers(limit);
-    const users = listUsersResult.users.map((userRecord: any) => ({
-      uid: userRecord.uid,
-      displayName: userRecord.displayName,
+    const { data: { users: authUsers }, error } = await supabaseAdmin.auth.admin.listUsers();
+    if (error) throw error;
+
+    const users = authUsers.map((userRecord: any) => ({
+      id: userRecord.id,
+      displayName: userRecord.user_metadata?.full_name || userRecord.email?.split('@')[0],
       email: userRecord.email,
-      creationTime: userRecord.metadata.creationTime,
-      lastSignInTime: userRecord.metadata.lastSignInTime,
-      disabled: userRecord.disabled,
+      creationTime: userRecord.created_at,
+      lastSignInTime: userRecord.last_sign_in_at,
+      disabled: !!userRecord.banned_until,
     }));
 
-    res.json({ users, pageToken: listUsersResult.pageToken });
+    res.json({ users });
   } catch (error) {
     console.error('Error in /users/list:', (error as Error).message);
 
     const mockUsers = Array.from({ length: 5 }).map((_, index) => ({
-      uid: `mock-uid-${index + 1}`,
+      id: `mock-id-${index + 1}`,
       displayName: `Mock User ${index + 1}`,
       email: `mockuser${index + 1}@example.com`,
       creationTime: new Date().toISOString(),
@@ -345,7 +305,7 @@ export async function listUsers(req: any, res: any): Promise<void> {
 
     res.json({
       users: mockUsers,
-      warning: 'Showing mock data because Firebase Admin could not connect. Check server logs for details.',
+      warning: 'Showing mock data because Supabase Admin could not connect. Check server logs for details.',
     });
   }
 }

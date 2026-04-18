@@ -1,7 +1,13 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import { getAuth } from "firebase/auth";
+import {
+  getAuth,
+  initializeAuth,
+  inMemoryPersistence,
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+  type Auth,
+} from "firebase/auth";
+import { getAnalytics, isSupported, type Analytics } from "firebase/analytics";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -14,9 +20,48 @@ const firebaseConfig = {
   measurementId: "G-YRFWCDZ591"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-export const auth = getAuth(app);
+
+const isBrowser = typeof window !== "undefined" && typeof navigator !== "undefined";
+const isDev = typeof import.meta !== "undefined" ? import.meta.env.DEV : false;
+const isOnline = isBrowser ? navigator.onLine : true;
+const shouldUseMemoryPersistence = !isOnline || isDev;
+
+let authInstance: Auth;
+try {
+  const persistence = shouldUseMemoryPersistence ? inMemoryPersistence : browserLocalPersistence;
+  authInstance = initializeAuth(app, isBrowser
+    ? {
+        persistence,
+        popupRedirectResolver: browserPopupRedirectResolver,
+      }
+    : {
+        persistence,
+      });
+} catch {
+  // If already initialized by another import path, reuse the existing instance.
+  authInstance = getAuth(app);
+}
+
+export const auth = authInstance;
+
+export let analytics: Analytics | null = null;
+const analyticsEnabledByEnv =
+  typeof import.meta !== "undefined"
+    ? String(import.meta.env.VITE_ENABLE_ANALYTICS || "").toLowerCase() === "true"
+    : false;
+const shouldInitializeAnalytics = isBrowser && isOnline && !isDev && analyticsEnabledByEnv;
+
+if (shouldInitializeAnalytics) {
+  isSupported()
+    .then((supported) => {
+      if (supported) {
+        analytics = getAnalytics(app);
+      }
+    })
+    .catch(() => {
+      analytics = null;
+    });
+}
 
 export default app;

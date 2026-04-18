@@ -18,13 +18,13 @@ export const inviteAdmin = async (body: InviteAdminBody): Promise<{ message: str
   return res.data;
 };
 
-export const revokeAdmin = async (uid: string): Promise<{ message: string }> => {
-  const res = await apiClient.delete(`/admin/revoke/${uid}`);
+export const revokeAdmin = async (id: string): Promise<{ message: string }> => {
+  const res = await apiClient.delete(`/admin/revoke/${id}`);
   return res.data;
 };
 
-export const getPermissions = async (userUid: string): Promise<{ permissions: AccessPermissions }> => {
-  const res = await apiClient.get(`/admin/permissions/${userUid}`);
+export const getPermissions = async (userId: string): Promise<{ permissions: AccessPermissions }> => {
+  const res = await apiClient.get(`/admin/permissions/${userId}`);
   return res.data;
 };
 

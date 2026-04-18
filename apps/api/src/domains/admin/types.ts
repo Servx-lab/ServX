@@ -1,5 +1,5 @@
 export interface AdminRecord {
-  uid: string;
+  id: string;
   email: string;
   role: string;
   addedAt: string;
@@ -57,7 +57,8 @@ export interface ServerResource {
 
 export interface AdminDoc {
   _id?: string;
-  uid: string;
+  id: string;
+
   email?: string;
   role?: string;
   addedAt?: string | Date;

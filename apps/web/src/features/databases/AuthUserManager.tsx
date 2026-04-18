@@ -6,8 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
-interface FirebaseUser {
-    uid: string;
+interface AuthUserDetail {
+    id: string;
     email: string;
     displayName: string;
     creationTime: string;
@@ -15,9 +15,9 @@ interface FirebaseUser {
     disabled: boolean;
 }
 
-export function FirebaseUserManager({ connectionId }: { connectionId?: string }) {
+export function AuthUserManager({ connectionId }: { connectionId?: string }) {
     const [searchEmail, setSearchEmail] = useState('');
-    const [users, setUsers] = useState<FirebaseUser[]>([]);
+    const [users, setUsers] = useState<AuthUserDetail[]>([]);
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
@@ -82,7 +82,7 @@ export function FirebaseUserManager({ connectionId }: { connectionId?: string })
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        toast({ description: "UID copied to clipboard" });
+        toast({ description: "ID copied to clipboard" });
     };
 
     return (
@@ -90,7 +90,7 @@ export function FirebaseUserManager({ connectionId }: { connectionId?: string })
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-lg font-semibold tracking-tight text-[#00C2CB]">User Management</h2>
-                    <p className="text-sm text-muted-foreground">Manage your Firebase Auth users.</p>
+                    <p className="text-sm text-muted-foreground">Manage your Supabase Auth users.</p>
                 </div>
                 <Button variant="outline" size="icon" onClick={fetchUsers} disabled={loading}>
                     <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -119,7 +119,7 @@ export function FirebaseUserManager({ connectionId }: { connectionId?: string })
                             <TableRow className="border-white/10 hover:bg-transparent">
                                 <TableHead className="text-gray-300">User</TableHead>
                                 <TableHead className="text-gray-300">Status</TableHead>
-                                <TableHead className="text-gray-300">Given UID</TableHead>
+                                <TableHead className="text-gray-300">Auth ID</TableHead>
                                 <TableHead className="text-gray-300">Last Sign-In</TableHead>
                                 <TableHead className="text-gray-300 text-right">Actions</TableHead>
                             </TableRow>
@@ -133,7 +133,7 @@ export function FirebaseUserManager({ connectionId }: { connectionId?: string })
                                 </TableRow>
                             ) : users.length > 0 ? (
                                 users.map((user) => (
-                                    <TableRow key={user.uid} className="border-white/5 hover:bg-white/5 transition-colors">
+                                    <TableRow key={user.id} className="border-white/5 hover:bg-white/5 transition-colors">
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <div className="h-8 w-8 rounded-full bg-[#00C2CB]/20 flex items-center justify-center text-[#00C2CB]">
@@ -151,14 +151,14 @@ export function FirebaseUserManager({ connectionId }: { connectionId?: string })
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="font-mono text-xs text-gray-400">
-                                            {user.uid.substring(0, 8)}...
+                                            {user.id.substring(0, 8)}...
                                         </TableCell>
                                         <TableCell className="text-xs text-gray-400">
                                             {user.lastSignInTime ? new Date(user.lastSignInTime).toLocaleDateString() : 'Never'}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-1">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-[#00C2CB]" title="Copy UID" onClick={() => copyToClipboard(user.uid)}>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-[#00C2CB]" title="Copy ID" onClick={() => copyToClipboard(user.id)}>
                                                     <Copy className="h-4 w-4" />
                                                 </Button>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-yellow-500" title="Reset Password" onClick={() => toast({description: "Reset password triggered (Demo only)"})}>

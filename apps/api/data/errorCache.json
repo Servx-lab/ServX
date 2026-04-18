@@ -1614,5 +1614,19 @@
     "suggestedFix": "// Check server logs for details",
     "severity": "HIGH",
     "timestamp": "2026-04-15T05:53:10.305Z"
+  },
+  "31a6ea254c5f7adb123e8f1697c250e03cc5ebf918cc627dbd75e7d7635e3283": {
+    "originalError": "getaddrinfo EAI_AGAIN ac-smegq6u-shard-00-02.azk4oqn.mongodb.net",
+    "diagnosis": "Unknown system error. Please check logs.",
+    "suggestedFix": "// Check server logs for details",
+    "severity": "HIGH",
+    "timestamp": "2026-04-15T07:00:10.506Z"
+  },
+  "60424cd6ec31893999463bca81783544a65d8e3caf4768c709734f5555798b91": {
+    "originalError": "Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.",
+    "diagnosis": "Unknown system error. Please check logs.",
+    "suggestedFix": "// Check server logs for details",
+    "severity": "HIGH",
+    "timestamp": "2026-04-15T07:11:41.553Z"
   }
 }

@@ -9,7 +9,7 @@ export interface UserSearchHit {
 }
 
 export interface AdminRecord {
-  uid: string;
+  id: string;
   email: string;
   role: AdminRole;
   addedAt: string;
@@ -66,6 +66,6 @@ export interface InviteAdminBody {
 }
 
 export interface UpdatePermissionsBody {
-  userUid: string;
+  userId: string;
   permissions: AccessPermissions;
 }

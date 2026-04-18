@@ -55,8 +55,8 @@ export interface DbInfo {
   sizeOnDisk: number;
 }
 
-export interface FirebaseUser {
-  uid: string;
+export interface AuthUserDetail {
+  id: string;
   email: string;
   displayName: string;
   creationTime: string;
@@ -64,6 +64,7 @@ export interface FirebaseUser {
   disabled: boolean;
 }
 
-export interface FirebaseUserListResponse {
-  users: FirebaseUser[];
+export interface AuthUserListResponse {
+  users: AuthUserDetail[];
 }
+

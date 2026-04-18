@@ -10,7 +10,8 @@ import {
   Loader2, Target, RadioTower, Scan
 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -570,7 +571,6 @@ const AttackPath = () => {
 
   // Auth + fetch repos
   useEffect(() => {
-    const auth = getAuth();
     const unsub = onAuthStateChanged(auth, (user) => {
       setIsAuthenticated(!!user);
     });

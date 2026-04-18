@@ -12,7 +12,6 @@ import {
   Shield,
   FileText,
   Settings,
-  HelpCircle,
   ChevronDown,
   Database,
   Github,
@@ -53,8 +52,7 @@ const navItems = [
 ];
 
 const bottomItems = [
-  { icon: Settings, label: "Settings" },
-  { icon: HelpCircle, label: "Support" },
+  { icon: Settings, label: "Settings", to: "/settings/connections" },
 ];
 
 const Sidebar = () => {
@@ -114,13 +112,18 @@ const Sidebar = () => {
       {/* Bottom Nav */}
       <div className="flex flex-col gap-1 mb-4 mt-4">
         {bottomItems.map((item) => (
-          <button
+          <NavLink
             key={item.label}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all duration-200 w-full text-left"
+            to={item.to}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 w-full text-left ${
+                isActive ? "pill-active" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              }`
+            }
           >
             <item.icon className="w-4.5 h-4.5 flex-shrink-0" />
             <span>{item.label}</span>
-          </button>
+          </NavLink>
         ))}
       </div>
 

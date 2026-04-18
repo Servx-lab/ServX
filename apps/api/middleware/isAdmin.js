@@ -1,9 +1,9 @@
-const admin = require('../utils/firebaseAdmin');
+const { supabaseAdmin } = require('../utils/supabaseAdmin');
 const Admin = require('../models/Admin');
 
 /**
  * Access Middleware: isAdmin
- * Verifies the Firebase ID token and checks if the UID exists in the MongoDB Admins collection.
+ * Verifies the Supabase ID token and checks if the ID exists in the MongoDB Admins collection.
  */
 const isAdmin = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -15,12 +15,17 @@ const isAdmin = async (req, res, next) => {
   const idToken = authHeader.split('Bearer ')[1];
 
   try {
-    // 1. Verify Firebase ID Token
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const uid = decodedToken.uid;
+    // 1. Verify Supabase ID Token
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(idToken);
+    
+    if (error || !user) {
+      throw new Error(error?.message || 'Invalid token');
+    }
 
-    // 2. Check if UID exists in MongoDB Admins collection
-    const adminRecord = await Admin.findOne({ uid });
+    const id = user.id;
+
+    // 2. Check if ID exists in MongoDB Admins collection
+    const adminRecord = await Admin.findOne({ id });
 
     if (!adminRecord) {
       return res.status(403).json({ message: 'Forbidden: Admin access required' });
@@ -28,7 +33,7 @@ const isAdmin = async (req, res, next) => {
 
     // Attach admin info to request for downstream use
     req.admin = adminRecord;
-    req.uid = uid;
+    req.id = id;
     
     next();
   } catch (error) {
@@ -38,3 +43,4 @@ const isAdmin = async (req, res, next) => {
 };
 
 module.exports = isAdmin;
+

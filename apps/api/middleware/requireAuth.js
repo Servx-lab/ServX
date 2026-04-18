@@ -1,7 +1,7 @@
-const admin = require('../utils/firebaseAdmin');
+const { supabaseAdmin } = require('../utils/supabaseAdmin');
 
 /**
- * Middleware to verify Firebase ID Token and attach user UID to request
+ * Middleware to verify Supabase ID Token and attach user ID to request
  */
 const requireAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -17,12 +17,17 @@ const requireAuth = async (req, res, next) => {
   const token = authHeader.split('Bearer ')[1];
 
   try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    console.log('[Auth] Token verified for UID:', decodedToken.uid);
-    // Attach the global UID to the request object
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    
+    if (error || !user) {
+      throw new Error(error?.message || 'Invalid token');
+    }
+
+    console.log('[Auth] Token verified for ID:', user.id);
+    // Attach the global ID to the request object
     req.user = {
-      uid: decodedToken.uid,
-      email: decodedToken.email
+      id: user.id,
+      email: user.email
     };
     next();
   } catch (error) {
@@ -35,3 +40,4 @@ const requireAuth = async (req, res, next) => {
 };
 
 module.exports = requireAuth;
+

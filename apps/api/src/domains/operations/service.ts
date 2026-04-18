@@ -6,7 +6,7 @@ import type { HostingCreds, Project } from '@servx/types';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 export async function getHostingCredentials(
-  ownerUid: string,
+  ownerId: string,
   provider: 'vercel' | 'render'
 ): Promise<HostingCreds | null> {
   const providerInfo = HOSTING_PROVIDERS[provider];
@@ -15,7 +15,7 @@ export async function getHostingCredentials(
   const { data: connection, error } = await supabaseAdmin
     .from('hosting_vault')
     .select('*')
-    .eq('user_id', ownerUid)
+    .eq('user_id', ownerId)
     .eq('provider', providerInfo.dbName)
     .single();
 
@@ -34,11 +34,12 @@ export async function getHostingCredentials(
   }
 }
 
-export async function getHostingProjects(ownerUid: string): Promise<Project[]> {
+export async function getHostingProjects(ownerId: string): Promise<Project[]> {
   const [vercelCreds, renderCreds] = await Promise.all([
-    getHostingCredentials(ownerUid, 'vercel'),
-    getHostingCredentials(ownerUid, 'render'),
+    getHostingCredentials(ownerId, 'vercel'),
+    getHostingCredentials(ownerId, 'render'),
   ]);
+
 
   const [vercelResult, renderResult] = await Promise.allSettled([
     vercelCreds?.token
@@ -163,12 +164,13 @@ export async function toggleRenderMaintenance(
   }
 }
 
-export function logTask(uid: string, task: string, targetId: string): void {
+export function logTask(id: string, task: string, targetId: string): void {
   console.log(JSON.stringify({
     type: 'operations.task.execute',
-    uid,
+    id,
     task,
     targetId,
     ts: new Date().toISOString(),
   }));
 }
+

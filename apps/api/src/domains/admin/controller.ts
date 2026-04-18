@@ -12,7 +12,13 @@ import {
 } from './service';
 import type { AdminDoc, Permissions } from './types';
 
-
+interface AdminRequest extends Request {
+  user: {
+    id: string;
+    email: string;
+  };
+  admin: any;
+}
 
 export async function inviteAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -43,8 +49,8 @@ export async function listAdmins(_req: Request, res: Response, next: NextFunctio
 
 export async function revokeAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { uid } = req.params as { uid: string };
-    await revokeAdminService(uid);
+    const { id } = req.params as { id: string };
+    await revokeAdminService(id);
     res.json({ message: 'Access revoked successfully' });
   } catch (error) {
     if (error instanceof NotFoundError) {
@@ -57,10 +63,10 @@ export async function revokeAdmin(req: Request, res: Response, next: NextFunctio
 
 export async function getPermissions(req: any, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { userUid } = req.params as { userUid: string };
-    const ownerUid = req.uid;
-    const permissions = await getAdminPermissions(ownerUid, userUid);
-    res.json({ ownerUid, userUid, permissions });
+    const { userId } = req.params as { userId: string };
+    const ownerId = req.user.id;
+    const permissions = await getAdminPermissions(ownerId, userId);
+    res.json({ ownerId, userId, permissions });
   } catch (error) {
     next(error);
   }
@@ -72,10 +78,10 @@ export async function updatePermissions(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { userUid, permissions } = req.body as { userUid: string; permissions: Permissions };
-    const ownerUid = req.uid;
-    const updated = await updateAdminPermissions(ownerUid, userUid, permissions);
-    res.json({ ownerUid, userUid, permissions: updated });
+    const { userId, permissions } = req.body as { userId: string; permissions: Permissions };
+    const ownerId = req.user.id;
+    const updated = await updateAdminPermissions(ownerId, userId, permissions);
+    res.json({ ownerId, userId, permissions: updated });
   } catch (error) {
     next(error);
   }

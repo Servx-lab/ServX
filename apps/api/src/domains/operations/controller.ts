@@ -10,6 +10,9 @@ import {
   logTask,
 } from './service';
 
+interface AuthenticatedRequest extends Request {
+  user: { id: string; email: string };
+}
 
 
 export async function getProjects(
@@ -18,7 +21,7 @@ export async function getProjects(
   next: NextFunction
 ): Promise<void> {
   try {
-    const projects = await getHostingProjects(req.user.uid);
+    const projects = await getHostingProjects(req.user.id);
     res.json({ projects });
   } catch (err) {
     next(err);
@@ -44,7 +47,7 @@ export async function toggleMaintenance(
     const prov = (provider || '').toLowerCase();
 
     if (prov === 'vercel') {
-      const creds = await getHostingCredentials(req.user.uid, 'vercel');
+      const creds = await getHostingCredentials(req.user.id, 'vercel');
       if (!creds?.token) {
         throw new ValidationError(
           'Vercel not connected. Add your Vercel token in Hosting & Servers.'
@@ -61,7 +64,7 @@ export async function toggleMaintenance(
     }
 
     if (prov === 'render') {
-      const creds = await getHostingCredentials(req.user.uid, 'render');
+      const creds = await getHostingCredentials(req.user.id, 'render');
       if (!creds?.token) {
         throw new ValidationError(
           'Render not connected. Add your Render API key in Hosting & Servers.'
@@ -95,7 +98,8 @@ export async function executeTask(
       throw new ValidationError('Missing task or targetId');
     }
 
-    logTask(req.user.uid, task, targetId);
+    logTask(req.user.id, task, targetId);
+
     res.json({ success: true, task, targetId });
   } catch (err) {
     next(err);

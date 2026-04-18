@@ -34,8 +34,7 @@ import {
 } from "recharts";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth/AuthContext";
 
 import type { RepoSummary } from "@servx/types";
 import type { RepoDetails, Deployment, Language } from "./types";
@@ -128,7 +127,7 @@ const GitHubIntegration = () => {
       if (isGitHubLinked) {
         await refreshGitHubConnection();
       } else {
-        await linkGitHub(false);
+        await linkGitHub();
       }
       
       setReposError(null);
