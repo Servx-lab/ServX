@@ -284,7 +284,6 @@ const AddDatabaseForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       case 'PostgreSQL':
       case 'MariaDB':
       case 'Redis':
-      case 'MariaDB':
       case 'MongoDB':
         return (
           <InputField 

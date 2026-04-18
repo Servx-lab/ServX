@@ -1635,5 +1635,26 @@
     "suggestedFix": "// Check server logs for details",
     "severity": "HIGH",
     "timestamp": "2026-04-18T15:16:27.256Z"
+  },
+  "b187ddbe9dce9acd1fd41b41a47b3c0c168cc72a671c492f592553d62ae5b8a0": {
+    "originalError": "function net.http_post(url => unknown, headers => jsonb, body => text) does not exist",
+    "check": {
+      "originalError": "function net.http_post(url => unknown, headers => jsonb, body => text) does not exist",
+      "check": {
+        "originalError": "function net.http_post(url => unknown, headers => jsonb, body => text) does not exist",
+        "diagnosis": "Unknown system error. Please check logs.",
+        "suggestedFix": "// Check server logs for details",
+        "severity": "HIGH",
+        "timestamp": "2026-04-18T15:33:40.358Z"
+      },
+      "diagnosis": "Unknown system error. Please check logs.",
+      "suggestedFix": "// Check server logs for details",
+      "severity": "HIGH",
+      "timestamp": "2026-04-18T15:33:40.562Z"
+    },
+    "diagnosis": "Unknown system error. Please check logs.",
+    "suggestedFix": "// Check server logs for details",
+    "severity": "HIGH",
+    "timestamp": "2026-04-18T15:33:40.750Z"
   }
 }

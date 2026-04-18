@@ -26,7 +26,6 @@ export class FirebaseAdapter implements IDbAdapter {
     if (this.appInstance) return this.appInstance;
 
     // Dynamically import firebase-admin to avoid top-level side effects
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const admin = require('firebase-admin');
 
     const serviceAccount = JSON.parse(this.config.serviceAccountJson!);
@@ -51,7 +50,6 @@ export class FirebaseAdapter implements IDbAdapter {
   }
 
   private getFirestore(): any {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const admin = require('firebase-admin');
     return admin.firestore(this.getApp());
   }

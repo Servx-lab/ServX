@@ -1,12 +1,11 @@
 {
-  "id": "INC-1776525407126",
-  "timestamp": "2026-04-18T15:16:47.126Z",
-  "path": "/api/connections/hosting/render/status",
-  "method": "GET",
+  "id": "INC-1776526497032",
+  "timestamp": "2026-04-18T15:34:57.032Z",
+  "path": "/api/auth/sync",
+  "method": "POST",
   "error": {
-    "message": "providerInfo is not defined",
-    "stack": "ReferenceError: providerInfo is not defined\n    at performHostingStatusFetch (C:\\VS\\Servx\\apps\\api\\src\\domains\\connections\\service.ts:185:21)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async Object.getHostingProviderStatus (C:\\VS\\Servx\\apps\\api\\src\\domains\\connections\\service.ts:156:20)\n    at async getHostingStatus (C:\\VS\\Servx\\apps\\api\\src\\domains\\connections\\controller.ts:105:20)",
-    "code": 500
+    "message": "function net.http_post(url => unknown, headers => jsonb, body => text) does not exist",
+    "code": "42883"
   },
   "analysis": {
     "diagnosis": "Unknown system error. Please check logs.",

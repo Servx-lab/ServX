@@ -17,6 +17,11 @@ import { userGhCachePattern } from '../github/controller';
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 
+function isMissingNetHttpPostError(error: unknown): boolean {
+  const err = error as { code?: string; message?: string };
+  return err?.code === '42883' && (err?.message || '').includes('function net.http_post');
+}
+
 export function getGitHubAuthUrl(req: any, res: any): void {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const ownerUid = req.user.uid;
@@ -123,7 +128,17 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
         .select()
         .single();
 
-    if (profileError) throw profileError;
+    if (profileError && !isMissingNetHttpPostError(profileError)) {
+      throw profileError;
+    }
+
+    const profileDegradedByMissingNet = Boolean(profileError && isMissingNetHttpPostError(profileError));
+    if (profileDegradedByMissingNet) {
+      console.warn('[Auth] callback user_profiles upsert skipped due to missing net.http_post extension.');
+    }
+
+    const effectiveEmail =
+      userProfile?.email || profile.email || `${profile.login}@users.noreply.github.com`;
 
     // 2. Encrypt and store tokens in GitHub Vault
     const encryptedAccess = encrypt(accessToken);
@@ -141,12 +156,21 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
             token_expiry: expiryDate,
         });
 
-    if (vaultError) throw vaultError;
+    if (vaultError && !isMissingNetHttpPostError(vaultError)) {
+      throw vaultError;
+    }
+
+    const vaultDegradedByMissingNet = Boolean(vaultError && isMissingNetHttpPostError(vaultError));
+    if (vaultDegradedByMissingNet) {
+      console.warn('[Auth] callback github_vault upsert skipped due to missing net.http_post extension.');
+    }
+
+    const degradedByMissingNet = profileDegradedByMissingNet || vaultDegradedByMissingNet;
 
     // New User Logging Pipeline: Sheet + Admin Alert (only if new)
     if (isNewUser) {
         try {
-            await logNewUserToSheetService({ uid: targetUid, email: userProfile.email });
+            await logNewUserToSheetService({ uid: targetUid, email: effectiveEmail });
         } catch (sheetErr) {
             console.error('[Auth] GitHub Sheet log failed:', (sheetErr as Error).message);
         }
@@ -158,14 +182,15 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
             await sendServXAlert(
                 ADMIN_EMAIL,
                 'User GitHub Linked',
-                `<h1>GitHub Linked</h1><p><b>Email:</b> ${userProfile.email}</p><p><b>UID:</b> ${targetUid}</p>`
+                `<h1>GitHub Linked</h1><p><b>Email:</b> ${effectiveEmail}</p><p><b>UID:</b> ${targetUid}</p>`
             );
         } catch (emailErr) {
             console.error('[Auth] Admin alert failed:', (emailErr as Error).message);
         }
     }
 
-    res.redirect(`${FRONTEND_URL}/github?success=true`);
+        const degradedQuery = degradedByMissingNet ? '&degraded=true' : '';
+        res.redirect(`${FRONTEND_URL}/github?success=true${degradedQuery}`);
   } catch (error) {
     const details = error instanceof Error ? error.message : 'auth_failed';
     res.redirect(`${FRONTEND_URL}/github?error=auth_failed&details=${encodeURIComponent(details)}`);
@@ -211,7 +236,16 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
             avatar_url: avatarUrl || '',
         });
 
-    if (profileError) throw profileError;
+    if (profileError && !isMissingNetHttpPostError(profileError)) {
+      throw profileError;
+    }
+
+    const profileDegradedByMissingNet = Boolean(profileError && isMissingNetHttpPostError(profileError));
+    if (profileDegradedByMissingNet) {
+      console.warn('[Auth] user_profiles upsert skipped due to missing net.http_post extension.');
+    }
+
+    let vaultDegradedByMissingNet = false;
 
     // 2. Sync GitHub Vault if tokens are provided
     if (githubAccessToken) {
@@ -229,16 +263,31 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
                 token_expiry: githubTokenExpiry ? new Date(githubTokenExpiry) : undefined,
             });
 
-        if (vaultError) throw vaultError;
+        if (vaultError && !isMissingNetHttpPostError(vaultError)) {
+          throw vaultError;
+        }
+
+        if (vaultError && isMissingNetHttpPostError(vaultError)) {
+          vaultDegradedByMissingNet = true;
+          console.warn('[Auth] github_vault upsert skipped due to missing net.http_post extension.');
+        }
         await cacheDelPattern(userGhCachePattern(uid));
     }
+
+    const degradedByMissingNet = profileDegradedByMissingNet || vaultDegradedByMissingNet;
 
     // 3. Pre-fetch hosting statuses in the background if Redis is available
     prefetchHostingStatuses(uid).catch(err => {
         console.error('[Auth] Background pre-fetch failed:', err.message);
     });
 
-    res.json({ message: 'Profile synced successfully', isNewUser });
+    res.json({
+      message: degradedByMissingNet
+        ? 'Profile sync completed in degraded mode'
+        : 'Profile synced successfully',
+      isNewUser,
+      degradedByMissingNet,
+    });
   } catch (error) {
     next(error);
   }
