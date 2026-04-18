@@ -35,19 +35,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const prefetchUserData = useCallback(async (skipGitHub: boolean) => {
         await new Promise(resolve => setTimeout(resolve, 300));
-        console.log(`[Auth] Prefetching user data...${skipGitHub ? ' (skipping GitHub)' : ''}`);
+        console.log(`[Auth] Prefetching user data...`);
         try {
+            // 1. Fetch connections first to know what to prefetch
+            const connections = await getConnections().catch(() => []);
+            
+            const hasVercel = connections.some(c => c.provider === 'Vercel');
+            const hasRender = connections.some(c => c.provider === 'Render');
+
+            // 2. Fetch statuses only for connected providers
             const result = await Promise.allSettled([
-                getConnections(),
                 skipGitHub ? Promise.reject('skipped') : getRepos(),
-                getHostingStatus('vercel'),
-                getHostingStatus('render'),
+                hasVercel ? getHostingStatus('vercel') : Promise.reject('not_connected'),
+                hasRender ? getHostingStatus('render') : Promise.reject('not_connected'),
             ]);
 
-            const [connections, githubRepos, vercelStatus, renderStatus] = result;
+            const [githubRepos, vercelStatus, renderStatus] = result;
 
             const cacheUpdate: Record<string, any> = {
-                connections: connections.status === 'fulfilled' ? connections.value : [],
+                connections,
                 vercelStatus: vercelStatus.status === 'fulfilled' ? vercelStatus.value : null,
                 renderStatus: renderStatus.status === 'fulfilled' ? renderStatus.value : null,
             };
@@ -65,8 +71,72 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Main Auth State Listener (Supabase)
     useEffect(() => {
+        let mounted = true;
+
+        const handlePostLoginTasks = async (session: any, mappedUser: AuthUser) => {
+            if (lastSyncedUid.current === session.user.id && !session.provider_token) return;
+            
+            try {
+                const syncPayload: any = {
+                    name: mappedUser.displayName || 'User',
+                    avatarUrl: mappedUser.photoURL || '',
+                };
+
+                // If we have a provider token (from a fresh OAuth login/link), send it to the backend
+                if (session.provider_token) {
+                    syncPayload.githubAccessToken = session.provider_token;
+                    syncPayload.githubRefreshToken = session.provider_refresh_token;
+                    syncPayload.githubId = session.user.user_metadata.provider_id;
+                }
+
+                await syncUser(syncPayload);
+                lastSyncedUid.current = session.user.id;
+                
+                const identities = session.user.identities || [];
+                const hasGitHub = identities.some((id: any) => id.provider === 'github');
+                
+                let tokenIsGood = false;
+                if (hasGitHub) {
+                    tokenIsGood = await checkGitHubTokenHealth();
+                }
+                prefetchUserData(!tokenIsGood);
+            } catch (err) {
+                console.error('[Auth] Background sync/prefetch failed:', err);
+            }
+        };
+
+        const initAuth = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!mounted) return;
+
+                if (session?.user) {
+                    const mappedUser: AuthUser = {
+                        uid: session.user.id,
+                        email: session.user.email || '',
+                        displayName: session.user.user_metadata.full_name || session.user.user_metadata.name || session.user.email?.split('@')[0],
+                        photoURL: session.user.user_metadata.avatar_url,
+                    };
+                    setUser(mappedUser);
+                    
+                    const identities = session.user.identities || [];
+                    setIsGitHubLinked(identities.some(id => id.provider === 'github'));
+                    
+                    // Background sync (don't block loading)
+                    handlePostLoginTasks(session, mappedUser);
+                }
+            } catch (err) {
+                console.error('[Auth] Initial session check failed:', err);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        };
+
+        initAuth();
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            setLoading(true);
+            if (!mounted) return;
+
             if (session?.user) {
                 const mappedUser: AuthUser = {
                     uid: session.user.id,
@@ -75,30 +145,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     photoURL: session.user.user_metadata.avatar_url,
                 };
                 setUser(mappedUser);
-
-                // Check if GitHub is linked (identities)
                 const identities = session.user.identities || [];
-                const hasGitHub = identities.some(id => id.provider === 'github');
-                setIsGitHubLinked(hasGitHub);
+                setIsGitHubLinked(identities.some(id => id.provider === 'github'));
 
-                // Sync with backend if new session
-                if (lastSyncedUid.current !== session.user.id) {
-                    try {
-                        await syncUser({
-                            name: mappedUser.displayName || 'User',
-                            avatarUrl: mappedUser.photoURL || '',
-                        });
-                        lastSyncedUid.current = session.user.id;
-                        
-                        let tokenIsGood = false;
-                        if (hasGitHub) {
-                            tokenIsGood = await checkGitHubTokenHealth();
-                        }
-                        prefetchUserData(!tokenIsGood);
-                    } catch (err) {
-                        console.error('[Auth] Sync failed:', err);
-                    }
-                }
+                // Handle background tasks without blocking
+                handlePostLoginTasks(session, mappedUser);
             } else {
                 setUser(null);
                 setIsGitHubLinked(false);
@@ -106,10 +157,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 lastSyncedUid.current = null;
                 clearCache();
             }
+            
             setLoading(false);
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
     }, [clearCache, checkGitHubTokenHealth, prefetchUserData]);
 
     const signInWithGitHub = async () => {
