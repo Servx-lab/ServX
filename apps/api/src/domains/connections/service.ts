@@ -15,7 +15,16 @@ import type {
 } from '@servx/types';
 import { NotFoundError, ValidationError } from '@servx/errors';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
+import { cacheGet, cacheSet } from '../../core/services/redisCache';
+
 export { supabaseAdmin };
+
+const HOSTING_CACHE_TTL = 300; // 5 minutes
+const AXIOS_TIMEOUT = 5000; // 5 seconds
+const hostingStatusKey = (uid: string, provider: string) => `hosting:status:${uid}:${provider}`;
+
+// Deduplication Map to prevent "Cache Stampede"
+const pendingRequests = new Map<string, Promise<HostingStatusResponse>>();
 
 function getVaultTable(provider: string): 'db_vault' | 'hosting_vault' {
   const hostingDbNames = Object.values(HOSTING_PROVIDERS).map(p => p.dbName);
@@ -130,19 +139,61 @@ export async function getHostingProviderStatus(
   ownerUid: string,
   providerKey: HostingProviderKey
 ): Promise<HostingStatusResponse> {
+  const cacheKey = hostingStatusKey(ownerUid, providerKey);
+  
+  // 0. Request Deduplication (Layer 0)
+  // If a request for this user+provider is already in-flight, return that promise.
+  const existing = pendingRequests.get(cacheKey);
+  if (existing) {
+    console.log(`[Hosting] Joining pending request for ${providerKey}`);
+    return existing;
+  }
+
+  const promise = performHostingStatusFetch(ownerUid, providerKey);
+  pendingRequests.set(cacheKey, promise);
+
+  try {
+    const result = await promise;
+    return result;
+  } finally {
+    pendingRequests.delete(cacheKey);
+  }
+}
+
+async function performHostingStatusFetch(
+  ownerUid: string,
+  providerKey: HostingProviderKey
+): Promise<HostingStatusResponse> {
+  const cacheKey = hostingStatusKey(ownerUid, providerKey);
   const providerInfo = HOSTING_PROVIDERS[providerKey];
 
-  const { data: connection, error } = await supabaseAdmin
+  // 1. Try Cache First (Now checks RAM first)
+  try {
+    const cached = await cacheGet<HostingStatusResponse>(cacheKey);
+    if (cached) {
+      console.log(`[Hosting] Cache Hit: ${providerKey} for ${ownerUid}`);
+      return cached;
+    }
+  } catch (err: any) {
+    console.warn(`[Hosting] Cache check failed:`, err.message);
+  }
+
+  // 2. Fetch connection from Supabase
+  const { data: connections, error } = await supabaseAdmin
     .from('hosting_vault')
     .select('*')
     .eq('user_id', ownerUid)
     .eq('provider', providerInfo.dbName)
-    .single();
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  const connection = (connections && connections.length > 0) ? connections[0] : null;
 
   if (!connection || error) {
     return { connected: false };
   }
 
+  // 3. Decrypt Token
   let token: string;
   try {
     const decrypted = decrypt({ iv: connection.iv, content: connection.encrypted_config });
@@ -159,6 +210,7 @@ export async function getHostingProviderStatus(
     };
   }
 
+  // 4. Fetch from External API
   let services: HostingService[] = [];
   let deployments: HostingDeployment[] = [];
   let user: HostingUser | null = null;
@@ -172,23 +224,70 @@ export async function getHostingProviderStatus(
       ({ user, services } = await fetchRailway(token));
     } else if (providerKey === 'digitalocean') {
       ({ user, services } = await fetchDigitalOcean(token));
-    } else if (providerKey === 'fly') {
-      ({ user, services } = await fetchFly(token));
+    } else if (providerKey === 'coolify') {
+      const instanceUrl = (connection.config as any)?.instanceUrl || (parsed as any)?.instanceUrl;
+      ({ user, services, deployments } = await fetchCoolify(instanceUrl, token));
     }
   } catch (apiErr) {
     console.error(`${providerInfo.label} API fetch error:`, (apiErr as Error).message);
   }
 
-  const conn = connection as any;
-
-  return {
+  const result: HostingStatusResponse = {
     connected: true,
-    connectionId: conn.id,
-    createdAt: conn.created_at,
+    connectionId: connection.id,
+    createdAt: connection.created_at,
     user,
     services,
     deployments,
   };
+
+  // 5. Update Cache (Updates RAM and Redis)
+  await cacheSet(cacheKey, result, HOSTING_CACHE_TTL).catch(err => {
+    console.warn(`[Hosting] Cache update failed:`, err.message);
+  });
+
+  console.log(`[Hosting] ${providerKey} status ready for ${ownerUid}.`);
+  return result;
+}
+
+
+/**
+ * Pre-fetches hosting statuses for all connected providers for a user
+ * and stores them in Redis. This is intended to be called in the background
+ * during the login/sync process.
+ */
+export async function prefetchHostingStatuses(ownerUid: string): Promise<void> {
+  try {
+    console.log(`[Hosting] Pre-fetching statuses for ${ownerUid}...`);
+    
+    // Get unique connected providers for this user
+    const { data: connections } = await supabaseAdmin
+      .from('hosting_vault')
+      .select('provider')
+      .eq('user_id', ownerUid);
+
+    if (!connections || connections.length === 0) return;
+
+    const uniqueProviders = [...new Set(connections.map(c => c.provider))];
+
+    // For each provider, map the dbName back to the HostingProviderKey and fetch
+    for (const dbName of uniqueProviders) {
+      const providerKey = (Object.keys(HOSTING_PROVIDERS) as HostingProviderKey[]).find(
+        key => HOSTING_PROVIDERS[key].dbName === dbName
+      );
+
+      if (providerKey) {
+        // This will call getHostingProviderStatus which will fetch and cache
+        await getHostingProviderStatus(ownerUid, providerKey).catch(err => {
+          console.error(`[Hosting] Pre-fetch failed for ${providerKey}:`, err.message);
+        });
+      }
+    }
+    
+    console.log(`[Hosting] Pre-fetch complete for ${ownerUid}.`);
+  } catch (err: any) {
+    console.error(`[Hosting] Global pre-fetch failed for ${ownerUid}:`, err.message);
+  }
 }
 
 export async function saveHostingToken(
@@ -205,6 +304,9 @@ export async function saveHostingToken(
   const config: Record<string, unknown> = { token };
   if (providerKey === 'vercel' && extras.edgeConfigId) {
     config.edgeConfigId = extras.edgeConfigId;
+  }
+  if (providerKey === 'coolify' && (extras as any).instanceUrl) {
+    config.instanceUrl = (extras as any).instanceUrl;
   }
 
   const encrypted = encrypt(JSON.stringify(config));
@@ -224,6 +326,11 @@ export async function saveHostingToken(
   if (error || !data) throw error || new Error('Failed to insert hosting connection');
   const connData = data as any;
 
+  // Populating cache immediately in the background so the UI is instant
+  getHostingProviderStatus(ownerUid, providerKey).catch(e => {
+    console.error('[Hosting] Immediate cache population failed:', e.message);
+  });
+
   return {
     message: `${providerInfo.label} connection saved successfully`,
     connection: {
@@ -235,6 +342,58 @@ export async function saveHostingToken(
   };
 }
 
+async function fetchCoolify(instanceUrl: string | undefined, token: string): Promise<{
+  user: HostingUser | null;
+  services: HostingService[];
+  deployments: HostingDeployment[];
+}> {
+  if (!instanceUrl) {
+    throw new Error('Coolify instance URL is required.');
+  }
+
+  const baseUrl = instanceUrl.endsWith('/') ? instanceUrl.slice(0, -1) : instanceUrl;
+  const headers = { Authorization: `Bearer ${token}` };
+
+  // 1. Fetch Projects (which contain applications/services)
+  const [projRes, serverRes] = await Promise.all([
+    axios.get(`${baseUrl}/api/v1/projects`, { headers, timeout: AXIOS_TIMEOUT }).catch(() => null),
+    axios.get(`${baseUrl}/api/v1/servers`, { headers, timeout: AXIOS_TIMEOUT }).catch(() => null),
+  ]);
+
+  const services: HostingService[] = [];
+  const deployments: HostingDeployment[] = [];
+
+  if (projRes?.data) {
+    // Coolify projects have resources (applications, databases, etc.)
+    projRes.data.forEach((project: any) => {
+      if (project.applications) {
+        project.applications.forEach((app: any) => {
+          services.push({
+            id: app.uuid,
+            name: app.name,
+            type: app.build_pack || 'application',
+            status: app.status || 'unknown',
+            url: app.fqdn || null,
+            updatedAt: new Date(app.updated_at).getTime(),
+          });
+        });
+      }
+    });
+  }
+
+  let user: HostingUser | null = null;
+  if (serverRes?.data?.[0]) {
+    // We can use the first server's metadata as a hint for the "user" context
+    user = {
+      username: 'Coolify Instance',
+      name: baseUrl,
+      email: '',
+    };
+  }
+
+  return { user, services, deployments };
+}
+
 // ─── Per-provider fetch helpers ───────────────────────────────────────────────
 
 async function fetchVercel(token: string): Promise<{
@@ -244,9 +403,9 @@ async function fetchVercel(token: string): Promise<{
 }> {
   const headers = { Authorization: `Bearer ${token}` };
   const [userRes, projRes, deplRes] = await Promise.all([
-    axios.get('https://api.vercel.com/v2/user', { headers }).catch(() => null),
-    axios.get('https://api.vercel.com/v9/projects?limit=20', { headers }).catch(() => null),
-    axios.get('https://api.vercel.com/v6/deployments?limit=15', { headers }).catch(() => null),
+    axios.get('https://api.vercel.com/v2/user', { headers, timeout: AXIOS_TIMEOUT }).catch(() => null),
+    axios.get('https://api.vercel.com/v9/projects?limit=20', { headers, timeout: AXIOS_TIMEOUT }).catch(() => null),
+    axios.get('https://api.vercel.com/v6/deployments?limit=15', { headers, timeout: AXIOS_TIMEOUT }).catch(() => null),
   ]);
 
   let user: HostingUser | null = null;
@@ -292,15 +451,15 @@ async function fetchRender(token: string): Promise<{
 }> {
   const headers = { Authorization: `Bearer ${token}` };
   const [svcRes, deplData] = await Promise.all([
-    axios.get('https://api.render.com/v1/services?limit=20', { headers }).catch(() => null),
+    axios.get('https://api.render.com/v1/services?limit=20', { headers, timeout: AXIOS_TIMEOUT }).catch(() => null),
     axios
-      .get('https://api.render.com/v1/services?limit=5', { headers })
+      .get('https://api.render.com/v1/services?limit=5', { headers, timeout: AXIOS_TIMEOUT })
       .then(async (svcList: any) => {
         if (!svcList?.data?.length) return [];
         const allDeploys = await Promise.all(
           svcList.data.slice(0, 5).map((s: any) =>
             axios
-              .get(`https://api.render.com/v1/services/${s.service.id}/deploys?limit=3`, { headers })
+              .get(`https://api.render.com/v1/services/${s.service.id}/deploys?limit=3`, { headers, timeout: AXIOS_TIMEOUT })
               .catch(() => ({ data: [] }))
           )
         );
@@ -351,7 +510,7 @@ async function fetchRailway(token: string): Promise<{
     .post(
       'https://backboard.railway.app/graphql/v2',
       { query: gql },
-      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: AXIOS_TIMEOUT }
     )
     .catch(() => null);
 
@@ -380,8 +539,8 @@ async function fetchDigitalOcean(token: string): Promise<{
 }> {
   const headers = { Authorization: `Bearer ${token}` };
   const [acctRes, appRes] = await Promise.all([
-    axios.get('https://api.digitalocean.com/v2/account', { headers }).catch(() => null),
-    axios.get('https://api.digitalocean.com/v2/apps?per_page=20', { headers }).catch(() => null),
+    axios.get('https://api.digitalocean.com/v2/account', { headers, timeout: AXIOS_TIMEOUT }).catch(() => null),
+    axios.get('https://api.digitalocean.com/v2/apps?per_page=20', { headers, timeout: AXIOS_TIMEOUT }).catch(() => null),
   ]);
 
   let user: HostingUser | null = null;
@@ -412,7 +571,7 @@ async function fetchFly(token: string): Promise<{
     .post(
       'https://api.fly.io/graphql',
       { query: gql },
-      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: AXIOS_TIMEOUT }
     )
     .catch(() => null);
 

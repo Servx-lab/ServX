@@ -1614,5 +1614,26 @@
     "suggestedFix": "// Check server logs for details",
     "severity": "HIGH",
     "timestamp": "2026-04-17T16:10:46.879Z"
+  },
+  "b3d280629781b2f2ed6c358d47c736a8d80013597180655492653ec0fea5de5f": {
+    "originalError": "conn is not defined",
+    "diagnosis": "Unknown system error. Please check logs.",
+    "suggestedFix": "// Check server logs for details",
+    "severity": "HIGH",
+    "timestamp": "2026-04-18T14:11:30.990Z"
+  },
+  "d7e21e19167e432127b156ba4245e0e7e679719db9df6e3b0cb21b720d8365e9": {
+    "originalError": "providerInfo is not defined",
+    "check": {
+      "originalError": "providerInfo is not defined",
+      "diagnosis": "Unknown system error. Please check logs.",
+      "suggestedFix": "// Check server logs for details",
+      "severity": "HIGH",
+      "timestamp": "2026-04-18T15:16:27.254Z"
+    },
+    "diagnosis": "Unknown system error. Please check logs.",
+    "suggestedFix": "// Check server logs for details",
+    "severity": "HIGH",
+    "timestamp": "2026-04-18T15:16:27.256Z"
   }
 }

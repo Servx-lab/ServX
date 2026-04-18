@@ -10,6 +10,7 @@ export const HOSTING_PROVIDERS: Record<string, HostingProviderInfo> = {
 	digitalocean: { dbName: 'DigitalOcean', label: 'DigitalOcean' },
 	fly: { dbName: 'Fly.io', label: 'Fly.io' },
 	aws: { dbName: 'AWS', label: 'AWS' },
+	coolify: { dbName: 'Coolify', label: 'Coolify' },
 };
 
 export type HostingProviderKey = keyof typeof HOSTING_PROVIDERS;

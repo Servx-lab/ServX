@@ -1,16 +1,17 @@
 {
-  "id": "INC-1776442246881",
-  "timestamp": "2026-04-17T16:10:46.881Z",
-  "path": "/api/connections/hosting/vercel",
-  "method": "POST",
+  "id": "INC-1776525407126",
+  "timestamp": "2026-04-18T15:16:47.126Z",
+  "path": "/api/connections/hosting/render/status",
+  "method": "GET",
   "error": {
-    "message": "insert or update on table \"hosting_vault\" violates foreign key constraint \"hosting_vault_user_id_fkey\"",
-    "code": "23503"
+    "message": "providerInfo is not defined",
+    "stack": "ReferenceError: providerInfo is not defined\n    at performHostingStatusFetch (C:\\VS\\Servx\\apps\\api\\src\\domains\\connections\\service.ts:185:21)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async Object.getHostingProviderStatus (C:\\VS\\Servx\\apps\\api\\src\\domains\\connections\\service.ts:156:20)\n    at async getHostingStatus (C:\\VS\\Servx\\apps\\api\\src\\domains\\connections\\controller.ts:105:20)",
+    "code": 500
   },
   "analysis": {
     "diagnosis": "Unknown system error. Please check logs.",
     "fix": "// Check server logs for details",
     "severity": "HIGH",
-    "cached": false
+    "cached": true
   }
 }

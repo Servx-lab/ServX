@@ -1,17 +1,14 @@
-import type { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
-import { getAuth } from 'firebase-admin/auth';
 
 import { AuthError, ValidationError } from '@servx/errors';
 import { encrypt, decrypt } from '@servx/crypto';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
-import {
-  findFirebaseConnectionId,
-  getFirebaseApp,
-  logNewUserToSheetService,
-  sendServXAlert,
+import { 
+  logNewUserToSheetService, 
+  sendServXAlert 
 } from './service';
+import { prefetchHostingStatuses } from '../connections/service';
 import { cacheDelPattern } from '../../core/services/redisCache';
 import { userGhCachePattern } from '../github/controller';
 
@@ -106,6 +103,14 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
 
     const targetUid = ownerUid || `legacy-${profile.id}`;
 
+    const { data: existingProfile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id')
+        .eq('id', targetUid)
+        .single();
+    
+    const isNewUser = !existingProfile;
+
     // 1. Update or Create User Profile
     const { data: userProfile, error: profileError } = await supabaseAdmin
         .from('user_profiles')
@@ -138,11 +143,13 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
 
     if (vaultError) throw vaultError;
 
-    // New User Logging Pipeline: Sheet + Admin Alert
-    try {
-        await logNewUserToSheetService({ uid: targetUid, email: userProfile.email });
-    } catch (sheetErr) {
-        console.error('[Auth] GitHub Sheet log failed:', (sheetErr as Error).message);
+    // New User Logging Pipeline: Sheet + Admin Alert (only if new)
+    if (isNewUser) {
+        try {
+            await logNewUserToSheetService({ uid: targetUid, email: userProfile.email });
+        } catch (sheetErr) {
+            console.error('[Auth] GitHub Sheet log failed:', (sheetErr as Error).message);
+        }
     }
 
     const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
@@ -185,6 +192,15 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
       githubId?: string;
     };
 
+    // Check if user is new BEFORE upsert
+    const { data: existingProfile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id')
+        .eq('id', uid)
+        .single();
+    
+    const isNewUser = !existingProfile;
+
     // 1. Sync User Profile
     const { error: profileError } = await supabaseAdmin
         .from('user_profiles')
@@ -217,35 +233,12 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
         await cacheDelPattern(userGhCachePattern(uid));
     }
 
-    // New User Logging & Alerts (only if user profile was just created)
-    if (profileError === null) {
-        try {
-            await logNewUserToSheetService({ uid, email });
-        } catch (sheetError) {
-            console.error('[Auth] Sheet log failed:', (sheetError as Error).message);
-        }
+    // 3. Pre-fetch hosting statuses in the background if Redis is available
+    prefetchHostingStatuses(uid).catch(err => {
+        console.error('[Auth] Background pre-fetch failed:', err.message);
+    });
 
-        try {
-            await sendServXAlert(email, 'Welcome to ServX', '<h1>Welcome to the Command Center</h1><p>Your account is now synced with Supabase.</p>');
-        } catch (emailError) {
-            console.error('[Auth] Welcome email failed:', (emailError as Error).message);
-        }
-
-        const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-        if (ADMIN_EMAIL) {
-            try {
-                await sendServXAlert(
-                    ADMIN_EMAIL,
-                    'New User Signup (Supabase)',
-                    `<h1>New User Registered</h1><p><b>Email:</b> ${email}</p><p><b>UID:</b> ${uid}</p>`
-                );
-            } catch (emailErr) {
-                console.error('[Auth] Admin alert failed:', (emailErr as Error).message);
-            }
-        }
-    }
-
-    res.json({ message: 'User synced', uid });
+    res.json({ message: 'Profile synced successfully', isNewUser });
   } catch (error) {
     next(error);
   }
@@ -279,18 +272,24 @@ export async function searchUsers(req: any, res: any, next: any): Promise<void> 
   }
 
   try {
-    const firebaseConnectionId = connectionId || (await findFirebaseConnectionId());
-    const firebaseApp = await getFirebaseApp(firebaseConnectionId);
-    const userRecord = await getAuth(firebaseApp).getUserByEmail(email);
+    // Firebase is disabled. Returning mock data or searching user_profiles.
+    const { data: profile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('*')
+        .eq('email', email)
+        .single();
 
-    res.json({
-      uid: userRecord.uid,
-      displayName: userRecord.displayName,
-      email: userRecord.email,
-      creationTime: userRecord.metadata.creationTime,
-      lastSignInTime: userRecord.metadata.lastSignInTime,
-      disabled: userRecord.disabled,
-    });
+    if (profile) {
+        res.json({
+            uid: profile.id,
+            displayName: profile.display_name,
+            email: profile.email,
+            avatarUrl: profile.avatar_url
+        });
+        return;
+    }
+
+    throw new AuthError('User not found in Supabase');
   } catch (error) {
     const err = error as { code?: string; message?: string };
     if (err.code === 'auth/user-not-found') {
@@ -318,19 +317,21 @@ export async function listUsers(req: any, res: any): Promise<void> {
   const connectionId = req.query.connectionId as string | undefined;
 
   try {
-    const firebaseConnectionId = connectionId || (await findFirebaseConnectionId());
-    const firebaseApp = await getFirebaseApp(firebaseConnectionId);
-    const listUsersResult = await getAuth(firebaseApp).listUsers(limit);
-    const users = listUsersResult.users.map((userRecord: any) => ({
-      uid: userRecord.uid,
-      displayName: userRecord.displayName,
-      email: userRecord.email,
-      creationTime: userRecord.metadata.creationTime,
-      lastSignInTime: userRecord.metadata.lastSignInTime,
-      disabled: userRecord.disabled,
+    const { data: profiles, error } = await supabaseAdmin
+        .from('user_profiles')
+        .select('*')
+        .limit(limit);
+
+    if (error) throw error;
+
+    const users = (profiles || []).map((user: any) => ({
+      uid: user.id,
+      displayName: user.display_name,
+      email: user.email,
+      avatarUrl: user.avatar_url,
     }));
 
-    res.json({ users, pageToken: listUsersResult.pageToken });
+    res.json({ users });
   } catch (error) {
     console.error('Error in /users/list:', (error as Error).message);
 

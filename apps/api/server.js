@@ -38,10 +38,12 @@ async function connectRedis() {
   }
 }
 
-Promise.all([connectDB(), connectRedis()]).then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-  });
+// Start connections in parallel without blocking the server boot
+connectDB();
+connectRedis();
+
+app.listen(PORT, () => {
+  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
 
 process.on('unhandledRejection', (err) => {
