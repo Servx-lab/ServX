@@ -89,6 +89,29 @@ const ExposureAnalysis = () => {
     { time: '02:30 PM', module: 'CRITICAL', event: 'Massive document drop initiated on MongoDB Cluster 0 (QuizWhiz).', style: 'critical' },
   ];
   
+  // SLA Intelligence Engine
+  const slaMetrics = useMemo(() => {
+    const defaultSLAs = {
+      critical: '22:15:30',
+      high: '68:10:00',
+      avg: '12.8 Days'
+    };
+
+    const repoSLAs: Record<string, typeof defaultSLAs> = {
+      'ServX Main Core': { critical: '18:24:55', high: '42:12:05', avg: '14.5 Days' },
+      'QuizWhiz UI': { critical: '04:15:22', high: '12:45:00', avg: '2.1 Days' },
+      'Lakshya GitConnect': { critical: '00:00:00', high: '08:30:15', avg: '0.8 Days' }
+    };
+
+    const current = repoSLAs[selectedRepo] || defaultSLAs;
+
+    return [
+      { label: 'Critical Patch Window', value: current.critical, color: '#EF4444', subtitle: 'Target: < 24h remediation' },
+      { label: 'High Risk Window', value: current.high, color: '#6C63FF', subtitle: 'Target: < 72h remediation' },
+      { label: 'Avg Remediation Time', value: current.avg, color: '#00C2CB', subtitle: 'Global Portfolio Benchmark' },
+    ];
+  }, [selectedRepo]);
+  
   return (
     <div className="flex-1 bg-[#f8fafc] text-[#0F172A] flex flex-row h-full overflow-hidden font-sans">
       {/* Main Command Canvas - 75% Width */}
@@ -167,11 +190,7 @@ const ExposureAnalysis = () => {
 
         {/* SLA Timers HUD */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {[
-            { label: 'Critical Patch Window', value: '18:24:55', color: '#EF4444', subtitle: 'Target: < 24h remediation' },
-            { label: 'High Risk Window', value: '42:12:05', color: '#6C63FF', subtitle: 'Target: < 72h remediation' },
-            { label: 'Avg Remediation Time', value: '14.5 Days', color: '#00C2CB', subtitle: 'Global Portfolio Benchmark' },
-          ].map((timer, i) => (
+          {slaMetrics.map((timer, i) => (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
