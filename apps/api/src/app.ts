@@ -14,6 +14,7 @@ import operationsRouter from './domains/operations/router';
 import adminRouter from './domains/admin/router';
 import usersRouter from './domains/users/router';
 import profileRouter from './domains/profile/router';
+import securityRouter from './domains/security/router';
 
 export function createApp(): Express {
   const app = express();
@@ -73,6 +74,7 @@ export function registerApiRoutes(app: Express): void {
   app.use('/api/operations', operationsRouter);
   app.use('/api/tasks', operationsRouter);
   app.use('/api/profile', profileRouter);
+  app.use('/api/security', securityRouter);
 }
 
 export function registerErrorHandler(app: Express): void {

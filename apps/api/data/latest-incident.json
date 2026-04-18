@@ -1,11 +1,11 @@
 {
-  "id": "INC-1776525407126",
-  "timestamp": "2026-04-18T15:16:47.126Z",
-  "path": "/api/connections/hosting/render/status",
-  "method": "GET",
+  "id": "INC-1776532473343",
+  "timestamp": "2026-04-18T17:14:33.343Z",
+  "path": "/api/security/scan-target",
+  "method": "POST",
   "error": {
-    "message": "providerInfo is not defined",
-    "stack": "ReferenceError: providerInfo is not defined\n    at performHostingStatusFetch (C:\\VS\\Servx\\apps\\api\\src\\domains\\connections\\service.ts:185:21)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async Object.getHostingProviderStatus (C:\\VS\\Servx\\apps\\api\\src\\domains\\connections\\service.ts:156:20)\n    at async getHostingStatus (C:\\VS\\Servx\\apps\\api\\src\\domains\\connections\\controller.ts:105:20)",
+    "message": "scanLiveDeployment is not defined",
+    "stack": "ReferenceError: scanLiveDeployment is not defined\n    at scanTarget (C:\\VS\\Servx\\apps\\api\\src\\domains\\security\\controller.ts:24:22)\n    at Layer.handleRequest (C:\\VS\\Servx\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\VS\\Servx\\node_modules\\router\\lib\\route.js:157:13)\n    at requireAuth (C:\\VS\\Servx\\apps\\api\\src\\core\\middleware\\requireAuth.ts:41:5)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)",
     "code": 500
   },
   "analysis": {
