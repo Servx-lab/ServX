@@ -1,6 +1,6 @@
 {
-  "id": "INC-1776530483349",
-  "timestamp": "2026-04-18T16:41:23.349Z",
+  "id": "INC-1776532473343",
+  "timestamp": "2026-04-18T17:14:33.343Z",
   "path": "/api/security/scan-target",
   "method": "POST",
   "error": {

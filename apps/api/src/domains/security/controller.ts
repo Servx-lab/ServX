@@ -1,4 +1,6 @@
 import * as svc from './service';
+import { scanLiveDeployment } from '../../services/dastScanner';
+import { ValidationError } from '@/utils/errors';
 
 /**
  * Trigger a dynamic target scan for a given URL.

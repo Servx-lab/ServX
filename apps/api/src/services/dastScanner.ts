@@ -21,25 +21,40 @@ const SECRET_PATTERNS = {
  */
 export async function scanLiveDeployment(targetUrl: string): Promise<LeakedSecret[]> {
   const leakedSecrets: LeakedSecret[] = [];
+  let browser: any = null;
   
-  // Launch headless browser
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
-
   try {
+    // Launch headless browser with robust flags
+    console.log(`[DAST] Launching browser for: ${targetUrl}`);
+    browser = await puppeteer.launch({
+      headless: true,
+      executablePath: process.env.CHROME_PATH || undefined, // Allow custom chrome path
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ]
+    });
+
     const page = await browser.newPage();
+    
+    // Set a realistic user agent
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
     // 1. Console Interceptor
     page.on('console', msg => {
       const text = msg.text();
       Object.entries(SECRET_PATTERNS).forEach(([name, regex]) => {
         if (regex.test(text)) {
+          console.warn(`[DAST] Found potential ${name} leak in console log`);
           leakedSecrets.push({
             type: 'Console Leak',
             pattern: name,
-            context: text.substring(0, 100), // Limit context length
+            context: text.substring(0, 100),
             source: 'Console'
           });
         }
@@ -52,11 +67,11 @@ export async function scanLiveDeployment(targetUrl: string): Promise<LeakedSecre
         const url = response.url();
         const contentType = response.headers()['content-type'] || '';
         
-        // Only scan text-based responses
         if (contentType.includes('application/json') || contentType.includes('text/') || contentType.includes('javascript')) {
           const body = await response.text();
           Object.entries(SECRET_PATTERNS).forEach(([name, regex]) => {
             if (regex.test(body)) {
+              console.warn(`[DAST] Found potential ${name} leak in network response: ${url}`);
               leakedSecrets.push({
                 type: 'Network Payload Leak',
                 pattern: name,
@@ -72,19 +87,27 @@ export async function scanLiveDeployment(targetUrl: string): Promise<LeakedSecre
     });
 
     // 3. Execution
-    console.log(`[DAST] Scanning ${targetUrl}...`);
+    console.log(`[DAST] Navigating to ${targetUrl}...`);
     await page.goto(targetUrl, { 
       waitUntil: 'networkidle2', 
-      timeout: 60000 
+      timeout: 45000 // 45s timeout for scan
     });
 
-    // Wait a bit more for late-loading scripts
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Wait for dynamic loads
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
   } catch (err: any) {
-    console.error(`[DAST] Scan failed for ${targetUrl}:`, err.message);
+    console.error(`[DAST] FATAL: Scan failed for ${targetUrl}`);
+    console.error(`[DAST] Full Error: ${err.stack || err.message}`);
+    
+    if (err.message.includes('Could not find Chromium')) {
+        console.error('[DAST] CRITICAL: Puppeteer could not find Chromium binary. Run "npx puppeteer install" or set CHROME_PATH.');
+    }
   } finally {
-    await browser.close();
+    if (browser) {
+        console.log(`[DAST] Closing browser session for ${targetUrl}`);
+        await browser.close();
+    }
   }
 
   return leakedSecrets;
