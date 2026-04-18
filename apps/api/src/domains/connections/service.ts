@@ -22,14 +22,39 @@ function getVaultTable(provider: string): 'db_vault' | 'hosting_vault' {
   return hostingDbNames.includes(provider) ? 'hosting_vault' : 'db_vault';
 }
 
+/**
+ * Ensures a entry exists in user_profiles before inserting dependent rows.
+ * This prevents foreign key constraint violations (23503).
+ */
+async function ensureUserProfile(uid: string, email: string): Promise<void> {
+  const { data: profile } = await supabaseAdmin
+    .from('user_profiles')
+    .select('id')
+    .eq('id', uid)
+    .single();
+
+  if (!profile) {
+    console.log(`[Connections] Creating fallback profile for UID: ${uid}`);
+    const { error } = await supabaseAdmin.from('user_profiles').upsert({
+      id: uid,
+      email: email,
+      display_name: email.split('@')[0],
+      avatar_url: '',
+    });
+    if (error) throw error;
+  }
+}
+
 // ─── Generic connections ──────────────────────────────────────────────────────
 
 export async function saveConnection(
   ownerUid: string,
+  email: string,
   name: string,
   provider: UserConnectionProvider,
   config: Record<string, unknown>
 ): Promise<ConnectionResponse> {
+  await ensureUserProfile(ownerUid, email);
   const table = getVaultTable(provider);
   const configString = JSON.stringify(config);
   const encrypted = encrypt(configString);
@@ -168,11 +193,13 @@ export async function getHostingProviderStatus(
 
 export async function saveHostingToken(
   ownerUid: string,
+  email: string,
   providerKey: HostingProviderKey,
   name: string,
   token: string,
   extras: { edgeConfigId?: string } = {}
 ): Promise<ConnectionResponse> {
+  await ensureUserProfile(ownerUid, email);
   const providerInfo = HOSTING_PROVIDERS[providerKey];
 
   const config: Record<string, unknown> = { token };

@@ -17,6 +17,7 @@ import AuthPage from "./features/auth";
 import Bridge from "./features/auth/Bridge";
 import Onboarding from "./features/auth/Onboarding";
 import Administrator from "./features/admin";
+import AuthCallback from "./features/auth/AuthCallback";
 import AttackPath from "./pages/AttackPath";
 import ComingSoon from "./pages/ComingSoon";
 import Emails from "./features/emails";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/auth/v1/callback" element={<AuthCallback />} />
 
             {/* Protected routes with persistent Sidebar (no blink on navigation) */}
             <Route
