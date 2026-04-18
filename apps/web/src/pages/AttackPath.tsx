@@ -331,22 +331,7 @@ const AttackPath = () => {
                                             </div>
                                             {!isMergeMode && (
                                                 <div className="flex items-center gap-2">
-                                                    <button 
-                                                        onClick={(e) => { e.stopPropagation(); handleRenameGroup(group); }}
-                                                        className="p-1 hover:bg-slate-100 rounded-md transition-colors"
-                                                        title="Project Settings"
-                                                    >
-                                                        <LayoutDashboard className="h-3.5 w-3.5 text-slate-400" />
-                                                    </button>
-                                                    {!group.isTemp && (
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); handleDeleteGroup(group.id); }}
-                                                            className="p-1 hover:bg-red-50 text-slate-300 hover:text-red-400 rounded-md transition-colors"
-                                                            title="Unsave Group"
-                                                        >
-                                                            <X className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    )}
+                                                    {/* Settings removed per request */}
                                                 </div>
                                             )}
                                         </div>
