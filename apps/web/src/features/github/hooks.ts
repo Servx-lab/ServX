@@ -149,7 +149,6 @@ export function useRepoDetails(selectedRepoId: number | null, repos: RepoSummary
         setError('Failed to load repository details.');
       })
       .finally(() => setLoadingDetails(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRepoId]);
 
   return { repoDetails, setRepoDetails, loadingDetails, error, setError };
