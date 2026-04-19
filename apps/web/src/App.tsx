@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,6 +23,7 @@ import ComingSoon from "./pages/ComingSoon";
 import Emails from "./features/emails";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import ExposureAnalysis from "./pages/ExposureAnalysis";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "./features/auth/RequireAuth";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -59,8 +60,9 @@ const App = () => (
               <Route path="/auto-medic" element={<AutoMedic />} />
               <Route path="/operations" element={<Operations />} />
               <Route path="/admin" element={<Administrator />} />
-              <Route path="/attack-paths" element={<AttackPath />} />
-              <Route path="/exposure" element={<ComingSoon />} />
+              <Route path="/attack" element={<AttackPath />} />
+              <Route path="/attack-paths" element={<Navigate to="/attack" replace />} />
+              <Route path="/exposure" element={<ExposureAnalysis />} />
               <Route path="/scenarios" element={<ComingSoon />} />
               <Route path="/emails" element={<Emails />} />
               <Route path="/reports" element={<ComingSoon />} />

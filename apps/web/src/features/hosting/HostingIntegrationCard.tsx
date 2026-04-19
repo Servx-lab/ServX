@@ -49,21 +49,21 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     return cachedData.connections.some((c: any) => c.provider === dbName);
   }, [config, cachedData]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isSilent = false) => {
     let cancelled = false;
-    setErrorMsg('');
+    if (!isSilent) setErrorMsg('');
 
     try {
-      const response = await apiClient.get(`/api/hosting/status?provider=${config.key}`);
+      const response = await apiClient.get(`/connections/hosting/${config.key}/status`);
       if (cancelled) return;
 
-      if (response.data.success) {
+      if (response.data.connected) {
         setProviderUser(response.data.user);
         setServices(response.data.services || []);
         setDeployments(response.data.deployments || []);
         setStatus('connected');
         
-        // Update cache implicitly (timestamp is handled by hook)
+        // Update cache implicitly (timestamp)
         if (updateCache) {
             updateCache({});
         }
@@ -75,8 +75,10 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
       if (err.response?.status === 404) {
         setStatus('idle');
       } else {
-        setStatus('error');
-        setErrorMsg(err.response?.data?.message || 'Failed to fetch status');
+        if (!isSilent) {
+          setStatus('error');
+          setErrorMsg(err.response?.data?.message || 'Failed to fetch status');
+        }
       }
     } finally {
         setRefreshing(false);
@@ -84,12 +86,13 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     }
 
     return () => { cancelled = true; };
-  }, [config, cachedData, updateCache]);
+  }, [config.key, updateCache]);
 
   useEffect(() => {
     let cancelled = false;
     if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
 
+    // Initial state reset for new provider
     setProviderUser(null);
     setServices([]);
     setDeployments([]);
@@ -101,16 +104,18 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
         return; 
     }
 
+    // Determine if we should show a loading state
     const shouldFetchAnyway = !cachedData?.lastUpdated; 
-    
-    if (!isConnectedInCache && !shouldFetchAnyway) {
+    const knownConnected = isConnectedInCache;
+
+    if (!knownConnected && !shouldFetchAnyway) {
         setStatus('idle');
         return;
     }
 
     setStatus('loading');
     
-    // Safety timeout: if backend hangs for 8s, fall back to idle
+    // Safety timeout
     loadingTimeoutRef.current = setTimeout(() => {
        if (!cancelled && status === 'loading') setStatus('idle');
     }, 8000);
@@ -121,7 +126,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
       cancelled = true; 
       if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
     };
-  }, [provider, config, isConnectedInCache, fetchData]);
+  }, [provider, config.key, isConnectedInCache, fetchData]);
 
   const handleConnect = async () => {
     if (!tokenInput.trim()) return;
@@ -135,9 +140,9 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
           payload.instanceUrl = urlInput;
       }
 
-      const res = await apiClient.post('/api/hosting/connect', payload);
+      const res = await apiClient.post(`/connections/hosting/${config.key}`, payload);
 
-      if (res.data.success) {
+      if (res.data.message.includes('successfully')) {
         setTokenInput('');
         setUrlInput('');
         await fetchData();

@@ -45,7 +45,7 @@ const navItems = [
   { icon: ServerIcon, label: "Hosting & Servers", to: "/hosting/render" },
   { icon: Github, label: "GitHub", to: "/github" },
   { icon: Search, label: "Exposure Analysis", to: "/exposure" },
-  { icon: Route, label: "Attack Paths", to: "/attack-paths" },
+  { icon: Route, label: "Attack Paths", to: "/attack" },
   { icon: PenTool, label: "Scenario Designer", to: "/scenarios" },
   { icon: Mail, label: "Emails", to: "/emails" },
   { icon: Shield, label: "Administration", to: "/admin" },
