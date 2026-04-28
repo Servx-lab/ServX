@@ -67,10 +67,10 @@
 - **Workspace Management** – Configure workspace settings
 
 ### Authentication & Security
-- **Firebase Auth** – Sign in with Email, Google, or GitHub
+- **Supabase Auth** – Sign in with Email, Google, or GitHub
 - **GitHub Bridge** – Link GitHub account for users who sign in with Google
 - **Encrypted Credentials** – API keys encrypted at rest
-- **Require Auth** – Protected routes with Firebase ID token verification
+- **Require Auth** – Protected routes with Supabase access token verification
 
 ### New User Pipeline
 - **Google Sheets Logging** – New user signups logged to a configurable spreadsheet
@@ -90,12 +90,12 @@
 - **TanStack Query** – Data fetching
 - **Recharts** – Charts and visualizations
 - **Three.js / React Three Fiber** – 3D graphics (Attack Paths)
-- **Firebase** – Authentication
+- **Supabase** – Authentication
 
 ### Backend
 - **Node.js** + **Express 5**
 - **MongoDB** + **Mongoose**
-- **Firebase Admin** – Token verification
+- **Supabase Admin** – Access token verification
 - **Google APIs** – Gmail, Sheets
 - **google-spreadsheet** – Sheets API wrapper
 
@@ -106,7 +106,8 @@
 ### Prerequisites
 - Node.js 18+
 - MongoDB
-- Firebase project
+- Supabase project
+- (Optional) Firebase project for Firebase User Manager workflows
 - (Optional) Google Cloud project for Gmail/Sheets
 
 ### Installation
@@ -114,23 +115,21 @@
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd orizons
+cd ServX
 
-# Install frontend dependencies
+# Install all workspace dependencies
 npm install
-
-# Install server dependencies
-cd server && npm install
 ```
 
 ### Environment Variables
 
-**Frontend** (`.env`):
+**Frontend** (`apps/web/.env`):
 ```
+VITE_API_BASE_URL=http://localhost:5000
 VITE_API_URL=http://localhost:5000
 ```
 
-**Backend** (`server/.env`):
+**Backend** (`apps/api/.env`):
 ```
 NODE_ENV=development
 PORT=5000
@@ -156,11 +155,11 @@ GOOGLE_SHEETS_PRIVATE_KEY=
 ### Running Locally
 
 ```bash
-# Terminal 1: Start backend
-cd server && npm run dev
-
-# Terminal 2: Start frontend
+# Start API + Web together
 npm run dev
+
+# Optional: start worker too
+npm run dev:full
 ```
 
 Frontend: http://localhost:5173  
@@ -171,21 +170,18 @@ Backend: http://localhost:5000
 ## Project Structure
 
 ```
-orizons/
-├── src/
-│   ├── components/     # Reusable UI components
-│   ├── contexts/      # React contexts (Auth, Project)
-│   ├── lib/           # API client, Firebase, utils
-│   ├── pages/         # Route pages
-│   └── hooks/         # Custom hooks
-├── server/
-│   ├── models/        # Mongoose models
-│   ├── routes/        # API routes
-│   ├── services/      # Sheets, Email services
-│   ├── middleware/    # Auth, Auto-Medic
-│   └── utils/         # Encryption, Firebase Admin
-├── index.html
-└── package.json
+ServX/
+├── apps/
+│   ├── web/           # React + Vite frontend
+│   │   └── src/
+│   ├── api/           # Express API
+│   │   ├── src/
+│   │   ├── models/
+│   │   └── services/
+│   └── worker/        # Background jobs
+├── packages/          # Shared package modules
+├── supabase/          # Supabase edge/functions assets
+└── package.json       # Workspace scripts
 ```
 
 ---
@@ -214,7 +210,7 @@ orizons/
 
 ## API Overview
 
-- `POST /api/auth/sync` – Sync user after Firebase login
+- `POST /api/auth/sync` – Sync user profile after authentication
 - `GET /api/auth/github/url` – GitHub OAuth URL
 - `GET /api/auth/github/callback` – GitHub OAuth callback
 - `GET /api/github/repos` – List repositories

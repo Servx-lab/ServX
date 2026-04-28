@@ -195,10 +195,11 @@ async function performHostingStatusFetch(
 
   // 3. Decrypt Token
   let token: string;
+  let parsedConfig: { token?: string; apiKey?: string; instanceUrl?: string } | null = null;
   try {
     const decrypted = decrypt({ iv: connection.iv, content: connection.encrypted_config });
-    const parsed = JSON.parse(decrypted) as { token?: string; apiKey?: string };
-    token = (parsed.token ?? parsed.apiKey) as string;
+    parsedConfig = JSON.parse(decrypted) as { token?: string; apiKey?: string; instanceUrl?: string };
+    token = (parsedConfig.token ?? parsedConfig.apiKey) as string;
   } catch {
     return {
       connected: true,
@@ -225,7 +226,7 @@ async function performHostingStatusFetch(
     } else if (providerKey === 'digitalocean') {
       ({ user, services } = await fetchDigitalOcean(token));
     } else if (providerKey === 'coolify') {
-      const instanceUrl = (connection.config as any)?.instanceUrl || (parsed as any)?.instanceUrl;
+      const instanceUrl = (connection.config as any)?.instanceUrl || parsedConfig?.instanceUrl;
       ({ user, services, deployments } = await fetchCoolify(instanceUrl, token));
     }
   } catch (apiErr) {

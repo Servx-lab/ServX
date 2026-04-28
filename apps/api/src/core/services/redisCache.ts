@@ -2,7 +2,6 @@ import { createClient, type RedisClientType } from 'redis';
 
 let client: RedisClientType | null = null;
 let isConnecting = false;
-let lastConnectAttempt = 0;
 let circuitBreakerUntil = 0;
 const CIRCUIT_BREAKER_DURATION_MS = 300000;
 

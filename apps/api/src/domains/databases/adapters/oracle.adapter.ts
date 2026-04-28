@@ -23,7 +23,6 @@ export class OracleAdapter implements IDbAdapter {
   }
 
   private async withConnection<T>(fn: (conn: any) => Promise<T>): Promise<T> {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const oracledb = require('oracledb');
     // Use thin mode — no Oracle Instant Client required
     oracledb.initOracleClient = undefined; // ensure thin mode
