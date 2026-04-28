@@ -1,6 +1,7 @@
 import { randomInt } from 'node:crypto';
 
-import User from '../auth/model';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
+export { supabaseAdmin };
 
 // In-memory OTP store: { "uid:email": { otp, expiresAt } }
 const otpStore = new Map<string, { otp: string; email: string; expiresAt: number }>();
@@ -50,6 +51,19 @@ export function verifyAndDeleteOtp(uid: string, email: string, otp: string): boo
 }
 
 export async function getUserProfile(uid: string) {
-  const user = await User.findOne({ uid }).select('-githubAccessToken').lean();
-  return user;
+  const { data: user, error } = await supabaseAdmin
+    .from('user_profiles')
+    .select('*')
+    .eq('id', uid)
+    .single();
+
+  if (error || !user) return null;
+
+  return {
+    uid: user.id,
+    email: user.email,
+    name: user.display_name,
+    avatarUrl: user.avatar_url,
+    createdAt: user.created_at,
+  };
 }

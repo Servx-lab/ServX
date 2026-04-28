@@ -58,7 +58,7 @@ export function useIntegrationRepos(isAuthenticated: boolean, githubTokenValid?:
   const reposRef = useRef(repos);
   reposRef.current = repos;
 
-  const fetchRepos = useCallback(async () => {
+  const fetchRepos = useCallback(async (options?: { forceRefresh?: boolean }) => {
     if (!isAuthenticated) return;
 
     const hasCachedRepos = reposRef.current.length > 0;
@@ -67,7 +67,7 @@ export function useIntegrationRepos(isAuthenticated: boolean, githubTokenValid?:
     const id = ++fetchIdRef.current;
 
     try {
-      const data = await getRepos();
+      const data = await getRepos(Boolean(options?.forceRefresh));
       if (id !== fetchIdRef.current) return;
       setRepos(data);
       updateCache({ githubRepos: data });
@@ -112,6 +112,16 @@ export function useIntegrationRepos(isAuthenticated: boolean, githubTokenValid?:
 
     fetchRepos();
   }, [fetchRepos, githubTokenValid]);
+
+  useEffect(() => {
+    if (!isAuthenticated || githubTokenValid !== true) return;
+
+    const interval = setInterval(() => {
+      fetchRepos();
+    }, 30_000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, githubTokenValid, fetchRepos]);
 
   return { repos, setRepos, error, setError, refetch: fetchRepos, isRefreshing };
 }

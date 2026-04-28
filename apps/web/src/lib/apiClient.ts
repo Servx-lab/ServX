@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAuth } from "firebase/auth";
+import { supabase } from './supabase';
 
 declare module 'axios' {
   interface InternalAxiosRequestConfig {
@@ -38,21 +38,15 @@ const apiClient = axios.create({
   },
 });
 
-// Request Interceptor: Attach Firebase ID Token
+// Request Interceptor: Attach Supabase JWT
 apiClient.interceptors.request.use(
   async (config) => {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const { data: { session } } = await supabase.auth.getSession();
     
-    if (user) {
-      try {
-        const token = await user.getIdToken();
-        config.headers.Authorization = `Bearer ${token}`;
-      } catch (error) {
-        console.error('Failed to get Firebase ID token:', error);
-      }
+    if (session?.access_token) {
+        config.headers.Authorization = `Bearer ${session.access_token}`;
     } else {
-      console.warn('[apiClient] No user detected, sending unauthenticated request to:', config.url);
+      console.warn('[apiClient] No session detected, sending unauthenticated request to:', config.url);
     }
 
     return config;

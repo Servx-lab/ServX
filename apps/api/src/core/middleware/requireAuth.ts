@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-
-import admin from '../../../utils/firebaseAdmin';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 declare global {
   namespace Express {
@@ -14,7 +13,6 @@ const requireAuth = async (req: Request, res: Response, next: NextFunction): Pro
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.log('[Auth] Missing or malformed header:', authHeader);
     res.status(401).json({
       error: 'Unauthorized',
       message: 'Missing or malformed Authorization header',
@@ -25,18 +23,27 @@ const requireAuth = async (req: Request, res: Response, next: NextFunction): Pro
   const token = authHeader.split('Bearer ')[1];
 
   try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    console.log('[Auth] Token verified for UID:', decodedToken.uid);
+    if (!supabaseAdmin) {
+        throw new Error('Supabase Admin client not initialized');
+    }
+
+    const { data: { user }, error: supabaseError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (supabaseError || !user) {
+        throw new Error(supabaseError?.message || 'Invalid session');
+    }
+
+    console.log('[Auth] Supabase token verified for UID:', user.id);
     req.user = {
-      uid: decodedToken.uid as string,
-      email: (decodedToken.email ?? '') as string,
+        uid: user.id,
+        email: (user.email ?? '') as string,
     };
     next();
-  } catch (error) {
-    console.error('Auth Middleware Error:', (error as Error).message);
+  } catch (error: any) {
+    console.error('[Auth] Middleware Error:', error.message);
     res.status(401).json({
-      error: 'Unauthorized',
-      message: 'Invalid or expired token',
+        error: 'Unauthorized',
+        message: error.message || 'Invalid or expired token',
     });
   }
 };

@@ -11,15 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { auth } from '@/lib/firebase';
-import { 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword,
-    signInWithPopup,
-    GoogleAuthProvider,
-    GithubAuthProvider
-} from 'firebase/auth';
+import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 import { useToast } from "@/components/ui/use-toast";
 
 const GoogleIcon = () => (
@@ -51,6 +45,7 @@ const AuthCard = () => {
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { signInWithGitHub, signInWithGoogle } = useAuth();
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -58,16 +53,26 @@ const AuthCard = () => {
 
         try {
             if (isLogin) {
-                await signInWithEmailAndPassword(auth, email, password);
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) throw error;
                 toast({
                     title: "Welcome back!",
                     description: "Successfully signed in to ServX.",
                 });
             } else {
-                await createUserWithEmailAndPassword(auth, email, password);
+                const { error } = await supabase.auth.signUp({ 
+                    email, 
+                    password,
+                    options: {
+                        data: {
+                            full_name: email.split('@')[0],
+                        }
+                    }
+                });
+                if (error) throw error;
                 toast({
                     title: "Account created",
-                    description: "Welcome to ServX! Your account has been created.",
+                    description: "Please check your email to confirm your account.",
                 });
             }
             navigate('/dashboard');
@@ -83,23 +88,22 @@ const AuthCard = () => {
     };
 
     const handleSocialLogin = async (provider: 'google' | 'github') => {
+        setIsLoading(true);
         try {
-            const authProvider = provider === 'google' 
-                ? new GoogleAuthProvider() 
-                : new GithubAuthProvider();
-            
-            await signInWithPopup(auth, authProvider);
-            toast({
-                title: "Welcome back!",
-                description: `Successfully signed in with ${provider}.`,
-            });
-            navigate('/dashboard');
+            if (provider === 'github') {
+                await signInWithGitHub();
+            } else {
+                await signInWithGoogle();
+            }
+            // Note: Supabase OAuth usually redirects, so navigation here might not be reached
         } catch (error: any) {
             toast({
                 variant: "destructive",
                 title: "Authentication Error",
                 description: error.message || "Failed to sign in with social provider.",
             });
+        } finally {
+            setIsLoading(false);
         }
     };
 

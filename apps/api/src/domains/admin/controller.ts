@@ -12,10 +12,7 @@ import {
 } from './service';
 import type { AdminDoc, Permissions } from './types';
 
-interface AdminRequest extends Request {
-  uid: string;
-  admin: AdminDoc;
-}
+
 
 export async function inviteAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -58,7 +55,7 @@ export async function revokeAdmin(req: Request, res: Response, next: NextFunctio
   }
 }
 
-export async function getPermissions(req: AdminRequest, res: Response, next: NextFunction): Promise<void> {
+export async function getPermissions(req: any, res: Response, next: NextFunction): Promise<void> {
   try {
     const { userUid } = req.params as { userUid: string };
     const ownerUid = req.uid;
@@ -70,7 +67,7 @@ export async function getPermissions(req: AdminRequest, res: Response, next: Nex
 }
 
 export async function updatePermissions(
-  req: AdminRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
@@ -84,7 +81,7 @@ export async function updatePermissions(
   }
 }
 
-export async function getResources(req: AdminRequest, res: Response, next: NextFunction): Promise<void> {
+export async function getResources(req: any, res: Response, next: NextFunction): Promise<void> {
   try {
     const resources = await getAdminResources(req.admin);
     res.json(resources);

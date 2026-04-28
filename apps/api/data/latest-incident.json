@@ -1,17 +1,17 @@
 {
-  "id": "INC-1776232390309",
-  "timestamp": "2026-04-15T05:53:10.309Z",
-  "path": "/api/admin/invite",
+  "id": "INC-1776532473343",
+  "timestamp": "2026-04-18T17:14:33.343Z",
+  "path": "/api/security/scan-target",
   "method": "POST",
   "error": {
-    "message": "Credential implementation provided to initializeApp() via the \"credential\" property failed to fetch a valid Google OAuth2 access token with the following error: \"Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.\".",
-    "stack": "Error: Credential implementation provided to initializeApp() via the \"credential\" property failed to fetch a valid Google OAuth2 access token with the following error: \"Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.\".\n    at /home/chitkul-lakshya/VS/ServX/node_modules/firebase-admin/lib/app/firebase-app.js:87:19\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async inviteUserAsAdmin (/home/chitkul-lakshya/VS/ServX/apps/api/src/domains/admin/service.ts:47:18)\n    at async inviteAdmin (/home/chitkul-lakshya/VS/ServX/apps/api/src/domains/admin/controller.ts:27:19)",
-    "code": "app/invalid-credential"
+    "message": "scanLiveDeployment is not defined",
+    "stack": "ReferenceError: scanLiveDeployment is not defined\n    at scanTarget (C:\\VS\\Servx\\apps\\api\\src\\domains\\security\\controller.ts:24:22)\n    at Layer.handleRequest (C:\\VS\\Servx\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\VS\\Servx\\node_modules\\router\\lib\\route.js:157:13)\n    at requireAuth (C:\\VS\\Servx\\apps\\api\\src\\core\\middleware\\requireAuth.ts:41:5)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)",
+    "code": 500
   },
   "analysis": {
     "diagnosis": "Unknown system error. Please check logs.",
     "fix": "// Check server logs for details",
     "severity": "HIGH",
-    "cached": false
+    "cached": true
   }
 }

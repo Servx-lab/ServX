@@ -2,34 +2,52 @@ import axios from 'axios';
 import { Octokit } from '@octokit/rest';
 
 import { AuthError, ForbiddenError, NotFoundError, ValidationError } from '@servx/errors';
+import { decrypt, encrypt } from '@servx/crypto';
 import type { RepoDetails, RepoSummary } from '@servx/types';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
-import User from './model';
 import { cacheDelPattern } from '../../core/services/redisCache';
 
 export async function getGithubToken(uid: string): Promise<{ accessToken: string; refreshToken?: string; expiry?: Date }> {
-  const user = await User.findOne({ uid }).select('+githubAccessToken +githubRefreshToken +githubTokenExpiry');
+  const { data: vaultData, error } = await supabaseAdmin
+    .from('github_vault')
+    .select('*')
+    .eq('user_id', uid)
+    .single();
 
-  if (!user) {
-    throw new NotFoundError('User record not found in database.');
+  if (error || !vaultData) {
+    throw new AuthError('GitHub account not connected or record not found.');
   }
 
-  if (!user.githubAccessToken) {
+  if (!vaultData.encrypted_access_token) {
     throw new AuthError('GitHub account not connected.');
   }
 
-  return {
-    accessToken: user.githubAccessToken as string,
-    refreshToken: user.githubRefreshToken as string,
-    expiry: user.githubTokenExpiry as Date,
-  };
+  try {
+      const accessToken = decrypt({
+          content: vaultData.encrypted_access_token,
+          iv: vaultData.iv,
+      });
+      const refreshToken = vaultData.encrypted_refresh_token 
+        ? decrypt({ content: vaultData.encrypted_refresh_token, iv: vaultData.iv })
+        : undefined;
+
+      return {
+        accessToken,
+        refreshToken,
+        expiry: vaultData.token_expiry ? new Date(vaultData.token_expiry) : undefined,
+      };
+  } catch (err) {
+      console.error('[GitHub] Decryption failed:', (err as Error).message);
+      throw new AuthError('Failed to access GitHub credentials.');
+  }
 }
 
 export async function clearInvalidToken(uid: string): Promise<void> {
-  await User.findOneAndUpdate(
-    { uid }, 
-    { $unset: { githubAccessToken: '', githubRefreshToken: '', githubTokenExpiry: '' } }
-  );
+  await supabaseAdmin
+    .from('github_vault')
+    .delete()
+    .eq('user_id', uid);
 }
 
 export async function refreshGithubToken(uid: string, refreshToken: string): Promise<string> {
@@ -65,14 +83,20 @@ export async function refreshGithubToken(uid: string, refreshToken: string): Pro
 
     const expiryDate = expires_in ? new Date(Date.now() + expires_in * 1000) : undefined;
 
-    await User.findOneAndUpdate(
-      { uid },
-      {
-        githubAccessToken: access_token,
-        githubRefreshToken: refresh_token, // Rotation: always update with new refresh token
-        githubTokenExpiry: expiryDate,
-      }
-    );
+    const encryptedAccess = encrypt(access_token);
+    const encryptedRefresh = refresh_token ? encrypt(refresh_token) : null;
+
+    const { error: vaultError } = await supabaseAdmin
+      .from('github_vault')
+      .update({
+        encrypted_access_token: encryptedAccess.content,
+        encrypted_refresh_token: encryptedRefresh?.content,
+        iv: encryptedAccess.iv,
+        token_expiry: expiryDate,
+      })
+      .eq('user_id', uid);
+
+    if (vaultError) throw vaultError;
 
     console.log(`[GitHub Auth] Token refreshed successfully for user ${uid}.`);
     await cacheDelPattern(`gh:*:${uid}*`);

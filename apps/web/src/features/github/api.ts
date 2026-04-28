@@ -13,13 +13,17 @@ export async function getGitHubStatus(): Promise<GitHubConnectionStatus> {
   return res.data;
 }
 
-export async function getRepos(): Promise<RepoSummary[]> {
-  const res = await apiClient.get('/github/repos');
+export async function getRepos(forceRefresh = false): Promise<RepoSummary[]> {
+  const res = await apiClient.get('/github/repos', {
+    params: forceRefresh ? { refresh: 1 } : undefined,
+  });
   return res.data;
 }
 
-export async function getDashboardRepos(): Promise<Repository[]> {
-  const res = await apiClient.get('/github/repos');
+export async function getDashboardRepos(forceRefresh = false): Promise<Repository[]> {
+  const res = await apiClient.get('/github/repos', {
+    params: forceRefresh ? { refresh: 1 } : undefined,
+  });
   return res.data;
 }
 
@@ -33,8 +37,10 @@ export async function getRepoCommits(repoName: string): Promise<Commit[]> {
   return res.data;
 }
 
-export async function getRepoDetails(owner: string, name: string): Promise<RepoDetails> {
-  const res = await apiClient.get(`/github/repos/${owner}/${name}/details`);
+export async function getRepoDetails(owner: string, name: string, forceRefresh = false): Promise<RepoDetails> {
+  const res = await apiClient.get(`/github/repos/${owner}/${name}/details`, {
+    params: forceRefresh ? { refresh: 1 } : undefined,
+  });
   const { details, commits, contributors, languages, deployments } = res.data;
   return { ...details, commits, contributors, languages, deployments };
 }

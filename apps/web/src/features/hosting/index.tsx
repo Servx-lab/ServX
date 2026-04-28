@@ -6,13 +6,14 @@ import HostingIntegrationCard from './HostingIntegrationCard';
 const HostingRender = () => {
     const { providerId } = useParams();
 
-    const getProviderName = (id: string | undefined): 'Render' | 'Vercel' | 'AWS' | 'Railway' | 'DigitalOcean' | 'Fly.io' => {
+    const getProviderName = (id: string | undefined): 'Render' | 'Vercel' | 'AWS' | 'Railway' | 'DigitalOcean' | 'Fly.io' | 'Coolify' => {
         switch (id?.toLowerCase()) {
             case 'vercel': return 'Vercel';
             case 'aws': return 'AWS';
             case 'railway': return 'Railway';
             case 'digitalocean': return 'DigitalOcean';
             case 'fly': return 'Fly.io';
+            case 'coolify': return 'Coolify';
             case 'render': 
             default: return 'Render';
         }

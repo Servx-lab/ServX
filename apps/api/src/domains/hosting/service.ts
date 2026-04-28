@@ -4,7 +4,7 @@ import { decrypt } from '@servx/crypto';
 import { VERCEL_REDIRECT_URI, DO_REDIRECT_URI } from '@servx/config';
 import { NotFoundError } from '@servx/errors';
 
-import UserConnection from './model';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 // ─── Vercel ───────────────────────────────────────────────────────────────────
 
@@ -12,7 +12,12 @@ const VERCEL_CLIENT_ID = process.env.VERCEL_CLIENT_ID;
 const VERCEL_CLIENT_SECRET = process.env.VERCEL_CLIENT_SECRET;
 
 export async function getVercelOAuthUrl(ownerUid: string): Promise<string> {
-  const connection = await (UserConnection as any).findOne({ ownerUid, provider: 'Vercel' });
+  const { data: connection } = await supabaseAdmin
+    .from('hosting_vault')
+    .select('*')
+    .eq('user_id', ownerUid)
+    .eq('provider', 'Vercel')
+    .single();
 
   const state = Math.random().toString(36).substring(7);
 
@@ -25,7 +30,7 @@ export async function getVercelOAuthUrl(ownerUid: string): Promise<string> {
   }
 
   const decryptedConfig = JSON.parse(
-    decrypt({ content: connection.encryptedConfig as string, iv: connection.iv as string })
+    decrypt({ content: connection.encrypted_config, iv: connection.iv })
   ) as { clientId?: string };
 
   const clientId = decryptedConfig.clientId;
@@ -37,14 +42,19 @@ export async function getVercelOAuthUrl(ownerUid: string): Promise<string> {
 }
 
 export async function exchangeVercelCode(code: string, ownerUid: string): Promise<string> {
-  const connection = await (UserConnection as any).findOne({ ownerUid, provider: 'Vercel' });
+  const { data: connection } = await supabaseAdmin
+    .from('hosting_vault')
+    .select('*')
+    .eq('user_id', ownerUid)
+    .eq('provider', 'Vercel')
+    .single();
 
   let clientId = VERCEL_CLIENT_ID;
   let clientSecret = VERCEL_CLIENT_SECRET;
 
   if (connection) {
     const decryptedConfig = JSON.parse(
-      decrypt({ content: connection.encryptedConfig as string, iv: connection.iv as string })
+      decrypt({ content: connection.encrypted_config, iv: connection.iv })
     ) as { clientId?: string; clientSecret?: string };
     clientId = decryptedConfig.clientId ?? clientId;
     clientSecret = decryptedConfig.clientSecret ?? clientSecret;

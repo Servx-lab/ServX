@@ -24,7 +24,7 @@ function getServiceAccountCredentials() {
 
 const CREDENTIALS = getServiceAccountCredentials();
 
-const HEADERS = ['Username', 'Firebase UID', 'Email', 'Date'];
+const HEADERS = ['Username', 'UID', 'Email', 'Date'];
 
 const formatDate = (date) => {
   if (!date) date = new Date();

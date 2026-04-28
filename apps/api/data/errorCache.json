@@ -1608,11 +1608,39 @@
     "severity": "HIGH",
     "timestamp": "2026-03-17T02:04:03.662Z"
   },
-  "6d5d0613994f9df99179c9ca9f68f1d8c0d38b7769dfb354c9bb9e21176b602b": {
-    "originalError": "Credential implementation provided to initializeApp() via the \"credential\" property failed to fetch a valid Google OAuth2 access token with the following error: \"Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.\".",
+  "6a6ed7a76372a2ca5777e9218ce63b1bb442eb47bcada3e0027dc30595befde9": {
+    "originalError": "insert or update on table \"hosting_vault\" violates foreign key constraint \"hosting_vault_user_id_fkey\"",
     "diagnosis": "Unknown system error. Please check logs.",
     "suggestedFix": "// Check server logs for details",
     "severity": "HIGH",
-    "timestamp": "2026-04-15T05:53:10.305Z"
+    "timestamp": "2026-04-17T16:10:46.879Z"
+  },
+  "b3d280629781b2f2ed6c358d47c736a8d80013597180655492653ec0fea5de5f": {
+    "originalError": "conn is not defined",
+    "diagnosis": "Unknown system error. Please check logs.",
+    "suggestedFix": "// Check server logs for details",
+    "severity": "HIGH",
+    "timestamp": "2026-04-18T14:11:30.990Z"
+  },
+  "d7e21e19167e432127b156ba4245e0e7e679719db9df6e3b0cb21b720d8365e9": {
+    "originalError": "providerInfo is not defined",
+    "check": {
+      "originalError": "providerInfo is not defined",
+      "diagnosis": "Unknown system error. Please check logs.",
+      "suggestedFix": "// Check server logs for details",
+      "severity": "HIGH",
+      "timestamp": "2026-04-18T15:16:27.254Z"
+    },
+    "diagnosis": "Unknown system error. Please check logs.",
+    "suggestedFix": "// Check server logs for details",
+    "severity": "HIGH",
+    "timestamp": "2026-04-18T15:16:27.256Z"
+  },
+  "b2dea053451d1a071b2a312100810c46c1ef1d1e2cc90822b359467db74eb5d6": {
+    "originalError": "scanLiveDeployment is not defined",
+    "diagnosis": "Unknown system error. Please check logs.",
+    "suggestedFix": "// Check server logs for details",
+    "severity": "HIGH",
+    "timestamp": "2026-04-18T16:41:17.585Z"
   }
 }

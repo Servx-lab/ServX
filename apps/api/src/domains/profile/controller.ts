@@ -13,11 +13,8 @@ export async function getProfile(req: any, res: Response, next: NextFunction) {
     }
 
     res.json({
-      username: user.username || '',
       name: user.name || '',
-      surname: user.surname || '',
       email: user.email || '',
-      emailVerified: user.emailVerified || false,
       avatarUrl: user.avatarUrl || '',
     });
   } catch (err) {
@@ -27,25 +24,25 @@ export async function getProfile(req: any, res: Response, next: NextFunction) {
 
 export async function updateProfile(req: any, res: Response, next: NextFunction) {
   try {
-    const { username, name, surname } = req.body;
-    const user = await User.findOne({ uid: req.user.uid });
+    const { name, avatarUrl } = req.body;
+    const { data: updated, error } = await profileService.supabaseAdmin
+        .from('user_profiles')
+        .update({
+            display_name: name,
+            avatar_url: avatarUrl,
+        })
+        .eq('id', req.user.uid)
+        .select()
+        .single();
 
-    if (!user) {
-      throw new AuthError('User not found');
+    if (error || !updated) {
+      throw new AuthError('Failed to update profile');
     }
 
-    if (username !== undefined) user.username = String(username).trim();
-    if (name !== undefined) user.name = String(name).trim() || user.name;
-    if (surname !== undefined) user.surname = String(surname).trim();
-
-    await user.save();
-
     res.json({
-      username: user.username || '',
-      name: user.name || '',
-      surname: user.surname || '',
-      email: user.email || '',
-      emailVerified: user.emailVerified || false,
+      name: updated.display_name || '',
+      email: updated.email || '',
+      avatarUrl: updated.avatar_url || '',
     });
   } catch (err) {
     next(err);
@@ -99,19 +96,18 @@ export async function verifyEmail(req: any, res: Response, next: NextFunction) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
     }
 
-    const user = await User.findOne({ uid });
-    if (!user) {
-      throw new AuthError('User not found');
-    }
+    const { error } = await profileService.supabaseAdmin
+        .from('user_profiles')
+        .update({ email: normalizedEmail })
+        .eq('id', uid);
 
-    user.email = normalizedEmail;
-    user.emailVerified = true;
-    await user.save();
+    if (error) {
+      throw new AuthError('Failed to update email');
+    }
 
     res.json({
       message: 'Email verified successfully',
       email: normalizedEmail,
-      emailVerified: true,
     });
   } catch (err) {
     next(err);

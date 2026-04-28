@@ -1,7 +1,6 @@
-/** Provider slug strings — mirrors HOSTING_PROVIDERS keys from @servx/config */
-export type HostingProviderKey = 'vercel' | 'render' | 'railway' | 'digitalocean' | 'fly' | 'aws';
+import React from 'react';
 
-export interface HostingService {
+export interface ServiceItem {
   id: string;
   name: string;
   type: string;
@@ -10,7 +9,7 @@ export interface HostingService {
   updatedAt: number;
 }
 
-export interface HostingDeployment {
+export interface DeploymentItem {
   id: string;
   name: string;
   url: string | null;
@@ -20,46 +19,25 @@ export interface HostingDeployment {
   branch: string | null;
 }
 
-export interface HostingUser {
+export interface ProviderUser {
   username: string;
   name: string;
   email: string;
   avatar?: string;
 }
 
-export interface HostingStatusResponse {
-  connected: boolean;
-  connectionId?: string;
-  createdAt?: string;
-  user?: HostingUser;
-  services: HostingService[];
-  deployments: HostingDeployment[];
-  error?: string;
-}
-
-export interface ConnectHostingBody {
-  name: string;
-  token: string;
-  edgeConfigId?: string;
-}
-
-export interface HostingEnvVariable {
+export interface ProviderConfig {
   key: string;
-  value: string;
-  target?: string;
-}
-
-export interface ConnectionResponse {
-  id: string;
-  name: string;
-  provider: string;
-  createdAt: string;
-}
-
-export interface ConnectionListItem {
-  id: string;
-  name: string;
-  provider: string;
-  type: string;
-  createdAt: string;
+  label: string;
+  tokenLabel: string;
+  placeholder: string;
+  tokenPageUrl: string;
+  tokenPageLabel: string;
+  description: string;
+  guideTitle: string;
+  guideSubtitle: string;
+  steps: { title: string; detail: string }[];
+  features: string[];
+  logo: React.ReactNode;
+  logoSmall: React.ReactNode;
 }

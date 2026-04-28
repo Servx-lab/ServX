@@ -3,7 +3,7 @@ import { HOSTING_PROVIDERS } from '@servx/config';
 import { ValidationError } from '@servx/errors';
 import type { HostingCreds, Project } from '@servx/types';
 
-import UserConnection from './model';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 export async function getHostingCredentials(
   ownerUid: string,
@@ -12,13 +12,19 @@ export async function getHostingCredentials(
   const providerInfo = HOSTING_PROVIDERS[provider];
   if (!providerInfo) return null;
 
-  const connection = await (UserConnection as any).findOne({ ownerUid, provider: providerInfo.dbName });
-  if (!connection) return null;
+  const { data: connection, error } = await supabaseAdmin
+    .from('hosting_vault')
+    .select('*')
+    .eq('user_id', ownerUid)
+    .eq('provider', providerInfo.dbName)
+    .single();
+
+  if (!connection || error) return null;
 
   try {
     const decrypted = decrypt({
-      iv: connection.iv as string,
-      content: connection.encryptedConfig as string,
+      iv: connection.iv,
+      content: connection.encrypted_config,
     });
     const parsed = JSON.parse(decrypted) as { token?: string; apiKey?: string; edgeConfigId?: string };
     const token = parsed.token || parsed.apiKey;

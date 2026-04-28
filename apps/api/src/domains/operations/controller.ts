@@ -10,12 +10,10 @@ import {
   logTask,
 } from './service';
 
-interface AuthenticatedRequest extends Request {
-  user: { uid: string };
-}
+
 
 export async function getProjects(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
@@ -28,7 +26,7 @@ export async function getProjects(
 }
 
 export async function toggleMaintenance(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {
@@ -86,7 +84,7 @@ export async function toggleMaintenance(
 }
 
 export async function executeTask(
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ): Promise<void> {

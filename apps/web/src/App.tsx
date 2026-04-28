@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,6 +17,7 @@ import AuthPage from "./features/auth";
 import Bridge from "./features/auth/Bridge";
 import Onboarding from "./features/auth/Onboarding";
 import Administrator from "./features/admin";
+import AuthCallback from "./features/auth/AuthCallback";
 import AttackPath from "./pages/AttackPath";
 import ComingSoon from "./pages/ComingSoon";
 import ExposureAnalysis from "./pages/ExposureAnalysis";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/auth/v1/callback" element={<AuthCallback />} />
 
             {/* Protected routes with persistent Sidebar (no blink on navigation) */}
             <Route
@@ -58,7 +60,8 @@ const App = () => (
               <Route path="/auto-medic" element={<AutoMedic />} />
               <Route path="/operations" element={<Operations />} />
               <Route path="/admin" element={<Administrator />} />
-              <Route path="/attack-paths" element={<AttackPath />} />
+              <Route path="/attack" element={<AttackPath />} />
+              <Route path="/attack-paths" element={<Navigate to="/attack" replace />} />
               <Route path="/exposure" element={<ExposureAnalysis />} />
               <Route path="/scenarios" element={<ComingSoon />} />
               <Route path="/emails" element={<Emails />} />
