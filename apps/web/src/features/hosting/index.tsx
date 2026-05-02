@@ -33,7 +33,7 @@ const HostingRender = () => {
             <div className="flex-1 flex flex-col h-full overflow-hidden">
                 <div className="flex-1 overflow-auto p-4 md:p-6 mb-20 md:mb-0 scroll-smooth">
                     <div className="max-w-[1600px] mx-auto space-y-6 animate-fade-in pb-10">
-                        <header className="flex justify-between items-center mb-0 sticky top-0 bg-background/80 backdrop-blur-md z-40 py-4">
+                        <header className="flex justify-between items-center mb-0 sticky top-0 bg-white/95 backdrop-blur-md z-50 py-4 -mx-6 px-6 border-b border-transparent transition-all duration-200">
                             <div>
                                 <h1 className="text-3xl font-bold tracking-tight text-black">
                                     Hosting Integration
