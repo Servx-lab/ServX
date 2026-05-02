@@ -63,12 +63,26 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
         setDeployments(response.data.deployments || []);
         setStatus('connected');
         
-        // Update cache implicitly (timestamp)
-        if (updateCache) {
-            updateCache({});
+        // Update cache with full data
+        if (updateCache && cachedData) {
+            const updatedStatuses = { 
+                ...(cachedData.hostingStatuses || {}),
+                [config.key]: {
+                    user: response.data.user,
+                    services: response.data.services || [],
+                    deployments: response.data.deployments || []
+                }
+            };
+            updateCache({ hostingStatuses: updatedStatuses });
         }
       } else {
         setStatus('idle');
+        // Clear from cache if no longer connected
+        if (updateCache && cachedData?.hostingStatuses?.[config.key]) {
+            const updatedStatuses = { ...cachedData.hostingStatuses };
+            delete updatedStatuses[config.key];
+            updateCache({ hostingStatuses: updatedStatuses });
+        }
       }
     } catch (err: any) {
       if (cancelled) return;
@@ -104,15 +118,27 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
         return; 
     }
 
-    // Determine if we should show a loading state
-    const shouldFetchAnyway = !cachedData?.lastUpdated; 
+    // 1. Check for cached data (SWR Pattern)
+    const cachedProviderData = cachedData?.hostingStatuses?.[config.key];
     const knownConnected = isConnectedInCache;
 
-    if (!knownConnected && !shouldFetchAnyway) {
+    if (cachedProviderData) {
+        // We have data! Show it immediately
+        setProviderUser(cachedProviderData.user);
+        setServices(cachedProviderData.services || []);
+        setDeployments(cachedProviderData.deployments || []);
+        setStatus('connected');
+        setRefreshing(true); // Show a subtle "refreshing" state if needed
+        fetchData(true); // Fetch in background
+        return;
+    }
+
+    if (!knownConnected) {
         setStatus('idle');
         return;
     }
 
+    // Known connected but no data yet, or refresh required
     setStatus('loading');
     
     // Safety timeout
