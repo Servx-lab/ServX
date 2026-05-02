@@ -88,7 +88,9 @@ const AttackPath = () => {
                     if (hRes.data.connected && hRes.data.services) {
                         allServices.push(...hRes.data.services.map((s: any) => ({ ...s, provider: p })));
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.debug(`Failed to fetch status for ${p}:`, e);
+                }
             }
 
             const clustered = clusterAssets(allServices, repoRes.data, groupsRes.data);
