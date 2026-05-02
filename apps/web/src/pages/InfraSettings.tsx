@@ -15,10 +15,13 @@ import {
   EyeOff,
   HelpCircle
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import apiClient from '@/lib/apiClient';
 
 // --- Mock Connect State ---
@@ -73,6 +76,13 @@ const InfraSettings = () => {
   const [vercelToken, setVercelToken] = useState('');
   const [showVercelToken, setShowVercelToken] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
+
+  // OpenMetadata States
+  const [useCustomOMD, setUseCustomOMD] = useState(false);
+  const [omdUrl, setOmdUrl] = useState('');
+  const [omdToken, setOmdToken] = useState('');
+  const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
@@ -168,6 +178,21 @@ const InfraSettings = () => {
 
   const handleInputChange = (provider: 'render' | 'fly', value: string) => {
     setApiKeys(prev => ({ ...prev, [provider]: value }));
+  };
+
+  const handleTestOMDConnection = async () => {
+    setTestStatus('loading');
+    
+    // Mock API call
+    try {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      // In a real app, you would validate the URL and Token here via apiClient
+      setTestStatus('success');
+      setTimeout(() => setTestStatus('idle'), 3000);
+    } catch (err) {
+      setTestStatus('error');
+      setTimeout(() => setTestStatus('idle'), 3000);
+    }
   };
 
   const ConnectionStatusBadge = ({ isConnected }: { isConnected: boolean }) => (
@@ -433,6 +458,104 @@ const InfraSettings = () => {
                         >
                             {loading === 'fly' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                             Connect Key
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </div>
+        </section>
+
+        {/* Integrations & API Keys Section */}
+        <section className="space-y-4 pt-4 pb-12">
+            <div className="flex items-center gap-2 text-[#00C2CB]">
+                <Globe className="w-5 h-5" />
+                <h2 className="text-xl font-semibold tracking-tight text-black">Integrations & API Keys</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+                    <CardHeader className="pb-3 border-b border-gray-50">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-[#00C2CB]/10 rounded-lg">
+                                    <Database className="w-5 h-5 text-[#00C2CB]" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg text-black">OpenMetadata Integration</CardTitle>
+                                    <CardDescription className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Asset Governance & Lineage</CardDescription>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Label htmlFor="custom-omd" className="text-xs font-semibold text-gray-400">Custom OMD</Label>
+                                <Switch 
+                                    id="custom-omd" 
+                                    checked={useCustomOMD}
+                                    onCheckedChange={setUseCustomOMD}
+                                />
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="pt-6 space-y-6">
+                        {!useCustomOMD ? (
+                            <div className="py-4 text-center space-y-2">
+                                <p className="text-sm text-gray-500">Currently using ServX standard observability connector.</p>
+                                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Managed Pipeline Active</p>
+                            </div>
+                        ) : (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-4"
+                            >
+                                <div className="grid gap-2">
+                                    <Label htmlFor="omd-url" className="text-xs font-black uppercase text-gray-500 tracking-tighter">Server Base URL</Label>
+                                    <Input 
+                                        id="omd-url"
+                                        placeholder="https://sandbox.open-metadata.org" 
+                                        className="bg-gray-50 border-gray-200 text-black placeholder:text-gray-400 focus:border-[#00C2CB]/50 focus:ring-[#00C2CB]/20"
+                                        value={omdUrl}
+                                        onChange={(e) => setOmdUrl(e.target.value)}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="omd-token" className="text-xs font-black uppercase text-gray-500 tracking-tighter">JWT Token / API Key</Label>
+                                    <Input 
+                                        id="omd-token"
+                                        type="password"
+                                        placeholder="Enter your OMD JWT token" 
+                                        className="bg-gray-50 border-gray-200 text-black placeholder:text-gray-400 focus:border-[#00C2CB]/50 focus:ring-[#00C2CB]/20"
+                                        value={omdToken}
+                                        onChange={(e) => setOmdToken(e.target.value)}
+                                    />
+                                </div>
+                            </motion.div>
+                        )}
+                        
+                        {testStatus === 'success' && (
+                            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-100 rounded-lg text-green-600 animate-in fade-in zoom-in duration-300">
+                                <CheckCircle2 size={16} className="shrink-0" />
+                                <span className="text-xs font-bold uppercase tracking-tight">Connected Successfully</span>
+                            </div>
+                        )}
+
+                        {testStatus === 'error' && (
+                            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 animate-in fade-in zoom-in duration-300">
+                                <AlertCircle size={16} className="shrink-0" />
+                                <span className="text-xs font-bold uppercase tracking-tight">Connection Failed. Check credentials.</span>
+                            </div>
+                        )}
+                    </CardContent>
+                    <CardFooter className="bg-gray-50/50 border-t border-gray-100 py-4">
+                        <Button 
+                            className="w-full bg-[#00C2CB] hover:bg-[#00B0B8] text-white shadow-[#00C2CB]/20 shadow-lg transition-all font-black uppercase tracking-[0.1em] text-[10px] h-11"
+                            onClick={handleTestOMDConnection}
+                            disabled={testStatus === 'loading' || (useCustomOMD && (!omdUrl || !omdToken))}
+                        >
+                            {testStatus === 'loading' ? (
+                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            ) : (
+                                <Zap size={14} className="mr-2 fill-current" />
+                            )}
+                            Test Connection & Save
                         </Button>
                     </CardFooter>
                 </Card>

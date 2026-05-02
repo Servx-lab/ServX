@@ -49,7 +49,7 @@ const navItems = [
   { icon: PenTool, label: "Scenario Designer", to: "/scenarios" },
   { icon: Mail, label: "Emails", to: "/emails" },
   { icon: Shield, label: "Administration", to: "/admin" },
-  { icon: FileText, label: "Report Center", to: "/reports" },
+  { icon: FileText, label: "Governance Center", to: "/reports" },
 ];
 
 const bottomItems = [

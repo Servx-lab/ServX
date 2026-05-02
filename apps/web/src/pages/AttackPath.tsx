@@ -45,7 +45,7 @@ const AttackPath = () => {
         hosting.forEach(s => {
             if (groupedIds.has(s.id)) return;
             const pName = getProjectName(s.name);
-            let group = groups.find(g => g.name.toLowerCase() === pName.toLowerCase());
+            const group = groups.find(g => g.name.toLowerCase() === pName.toLowerCase());
             
             const assetItem = { type: 'hosting', id: s.id, name: s.name, provider: s.provider, url: s.url || s.websiteUrl };
             if (group) {
@@ -59,7 +59,7 @@ const AttackPath = () => {
         gitRepos.forEach(r => {
             if (groupedIds.has(String(r.id))) return;
             const pName = getProjectName(r.name);
-            let group = groups.find(g => g.name.toLowerCase() === pName.toLowerCase());
+            const group = groups.find(g => g.name.toLowerCase() === pName.toLowerCase());
 
             const assetItem = { type: 'repo', id: String(r.id), name: r.name, url: r.html_url };
             if (group) {
