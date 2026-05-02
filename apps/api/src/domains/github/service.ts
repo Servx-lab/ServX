@@ -2,7 +2,7 @@ import axios from 'axios';
 import { Octokit } from '@octokit/rest';
 
 import { AuthError, ForbiddenError, NotFoundError, ValidationError } from '@servx/errors';
-import { decrypt, encrypt } from '@servx/crypto';
+
 import type { RepoDetails, RepoSummary } from '@servx/types';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
@@ -24,13 +24,8 @@ export async function getGithubToken(uid: string): Promise<{ accessToken: string
   }
 
   try {
-      const accessToken = decrypt({
-          content: vaultData.encrypted_access_token,
-          iv: vaultData.iv,
-      });
-      const refreshToken = vaultData.encrypted_refresh_token 
-        ? decrypt({ content: vaultData.encrypted_refresh_token, iv: vaultData.iv })
-        : undefined;
+      const accessToken = vaultData.encrypted_access_token;
+      const refreshToken = vaultData.encrypted_refresh_token || undefined;
 
       return {
         accessToken,
@@ -83,15 +78,15 @@ export async function refreshGithubToken(uid: string, refreshToken: string): Pro
 
     const expiryDate = expires_in ? new Date(Date.now() + expires_in * 1000) : undefined;
 
-    const encryptedAccess = encrypt(access_token);
-    const encryptedRefresh = refresh_token ? encrypt(refresh_token) : null;
+    const plainAccess = access_token;
+    const plainRefresh = refresh_token || null;
 
     const { error: vaultError } = await supabaseAdmin
       .from('github_vault')
       .update({
-        encrypted_access_token: encryptedAccess.content,
-        encrypted_refresh_token: encryptedRefresh?.content,
-        iv: encryptedAccess.iv,
+        encrypted_access_token: plainAccess,
+        encrypted_refresh_token: plainRefresh,
+        iv: '',
         token_expiry: expiryDate,
       })
       .eq('user_id', uid);

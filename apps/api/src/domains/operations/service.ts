@@ -1,4 +1,4 @@
-import { decrypt } from '@servx/crypto';
+
 import { HOSTING_PROVIDERS } from '@servx/config';
 import { ValidationError } from '@servx/errors';
 import type { HostingCreds, Project } from '@servx/types';
@@ -22,11 +22,7 @@ export async function getHostingCredentials(
   if (!connection || error) return null;
 
   try {
-    const decrypted = decrypt({
-      iv: connection.iv,
-      content: connection.encrypted_config,
-    });
-    const parsed = JSON.parse(decrypted) as { token?: string; apiKey?: string; edgeConfigId?: string };
+    const parsed = JSON.parse(connection.encrypted_config) as { token?: string; apiKey?: string; edgeConfigId?: string };
     const token = parsed.token || parsed.apiKey;
     return token ? { token, edgeConfigId: parsed.edgeConfigId } : null;
   } catch {

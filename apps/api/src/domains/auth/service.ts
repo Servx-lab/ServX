@@ -1,4 +1,4 @@
-import { decrypt } from '@servx/crypto';
+
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 const { logNewUserToSheet } = require('../../../services/sheetsService');
 import { sendServXAlertService } from '../../core/services/emailService';
