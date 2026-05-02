@@ -90,7 +90,7 @@
   }
 
   .glass-sidebar {
-    @apply bg-sidebar backdrop-blur-xl border-r border-border/30;
+    @apply bg-sidebar backdrop-blur-xl;
   }
 
   .cyber-glow-blue {

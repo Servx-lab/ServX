@@ -54,6 +54,7 @@
     "@react-three/fiber": "^8.18.0",
     "@supabase/supabase-js": "^2.103.3",
     "@tanstack/react-query": "^5.83.0",
+    "@xyflow/react": "^12.10.2",
     "axios": "^1.13.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
