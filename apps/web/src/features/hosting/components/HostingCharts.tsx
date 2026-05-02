@@ -41,7 +41,11 @@ export const HostingCharts: React.FC<HostingChartsProps> = ({
         <div className="h-[140px] w-full">
           {deploymentTimeline.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={deploymentTimeline} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+            <AreaChart 
+              key={`area-${deploymentTimeline.length}-${deploymentTimeline[0]?.date}`}
+              data={deploymentTimeline} 
+              margin={{ top: 5, right: 0, left: -20, bottom: 0 }}
+            >
                 <defs>
                   <linearGradient id="colorBlue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
@@ -70,7 +74,11 @@ export const HostingCharts: React.FC<HostingChartsProps> = ({
         <div className="h-[140px] w-full">
           {serviceStatusData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={serviceStatusData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+            <BarChart 
+              key={`bar-${serviceStatusData.length}`}
+              data={serviceStatusData} 
+              margin={{ top: 5, right: 0, left: -20, bottom: 0 }}
+            >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                 <XAxis dataKey="name" stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
@@ -98,6 +106,7 @@ export const HostingCharts: React.FC<HostingChartsProps> = ({
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
+                key={`pie-${readyCount}-${errorCount}`}
                 data={[
                   { name: 'Healthy', value: readyCount },
                   { name: 'Errors', value: errorCount },

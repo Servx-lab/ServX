@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { useLocalCache } from '@/hooks/useLocalCache';
+import { Skeleton } from '@/components/ui/skeleton';
 
 import { 
   ServiceItem, 
@@ -122,14 +123,28 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     const cachedProviderData = cachedData?.hostingStatuses?.[config.key];
     const knownConnected = isConnectedInCache;
 
+    // Artificial brief delay to allow entry animations to trigger (the "vibe" the user wants)
+    const MIN_LOADING_MS = 500;
+    const startTime = Date.now();
+
+    const handleDataFetch = async (isSilent: boolean) => {
+        await fetchData(isSilent);
+        const elapsed = Date.now() - startTime;
+        if (elapsed < MIN_LOADING_MS) {
+            await new Promise(resolve => setTimeout(resolve, MIN_LOADING_MS - elapsed));
+        }
+        if (!cancelled) setStatus('connected');
+    };
+
     if (cachedProviderData) {
-        // We have data! Show it immediately
+        // We have data! Show it but stay in loading state briefly for animations
         setProviderUser(cachedProviderData.user);
         setServices(cachedProviderData.services || []);
         setDeployments(cachedProviderData.deployments || []);
-        setStatus('connected');
-        setRefreshing(true); // Show a subtle "refreshing" state if needed
-        fetchData(true); // Fetch in background
+        
+        setStatus('loading'); // Stay in loading to show skeleton
+        
+        handleDataFetch(true); // Revalidate in background
         return;
     }
 
@@ -138,7 +153,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
         return;
     }
 
-    // Known connected but no data yet, or refresh required
+    // Known connected but no data yet
     setStatus('loading');
     
     // Safety timeout
@@ -146,7 +161,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
        if (!cancelled && status === 'loading') setStatus('idle');
     }, 8000);
 
-    fetchData();
+    handleDataFetch(false);
 
     return () => { 
       cancelled = true; 
@@ -222,6 +237,33 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
 
   // --- Main Render States ---
   if (status === 'loading') {
+    // If we have cached data, show a skeleton that matches the dashboard layout
+    if (cachedData?.hostingStatuses?.[config.key]) {
+        return (
+            <div className="p-8 space-y-8 min-h-[calc(100vh-12rem)] rounded-xl border border-gray-100 bg-white/50 animate-in fade-in duration-500">
+                <div className="flex items-center gap-4 mb-8">
+                    <Skeleton className="h-12 w-12 rounded-xl" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-3 w-48" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-4 gap-4">
+                    {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+                </div>
+                <div className="grid grid-cols-3 gap-6">
+                    <Skeleton className="h-[200px] rounded-xl" />
+                    <Skeleton className="h-[200px] rounded-xl" />
+                    <Skeleton className="h-[200px] rounded-xl" />
+                </div>
+                <div className="space-y-4">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                </div>
+            </div>
+        );
+    }
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-12rem)] rounded-xl border border-gray-100 bg-white/50 animate-in fade-in duration-500">
         <Loader2 className="h-8 w-8 text-blue-500 animate-spin mb-4" />

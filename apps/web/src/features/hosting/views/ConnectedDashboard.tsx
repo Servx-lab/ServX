@@ -51,7 +51,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
   const serviceStatusData = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white min-h-[calc(100vh-12rem)]">
+    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white min-h-[calc(100vh-12rem)] animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">{config.logo}</div>
 
       <div className="flex flex-col h-full min-h-[calc(100vh-12rem)]">
