@@ -7,27 +7,31 @@ const { createApp } = require('./src/app');
 
 const PORT = process.env.PORT || 5000;
 
+console.log('🎬 Starting server boot...');
 const app = createApp();
+console.log('🚀 App created successfully');
 
 async function connectDB() {
+  console.log('📡 Connecting to MongoDB...');
   const uri = process.env.MONGODB_URI;
   if (!uri) {
-    console.error('❌ MONGODB_URI is not defined in environment variables');
+    console.error('❌ MONGODB_URI is not defined');
     process.exit(1);
   }
   try {
     await mongoose.connect(uri);
-    console.log('✅ MongoDB');
+    console.log('✅ MongoDB connected');
   } catch (error) {
-    console.error(`❌ MongoDB Connection Error: ${error.message}`);
+    console.error(`❌ MongoDB Error: ${error.message}`);
     process.exit(1);
   }
 }
 
 async function connectRedis() {
+  console.log('📡 Connecting to Redis...');
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) {
-    console.warn('Redis URL not found in environment, skipping Redis log.');
+    console.warn('⚠️ No Redis URL, skipping...');
     return;
   }
 
@@ -35,19 +39,20 @@ async function connectRedis() {
     const { getRedisClient } = require('./src/core/services/redisCache');
     const client = await getRedisClient();
     if (client) {
-      console.log('✅ Redis');
+      console.log('✅ Redis connected');
     }
   } catch (error) {
-    console.error(`Redis Connection Error: ${error.message}`);
+    console.error(`❌ Redis Error: ${error.message}`);
   }
 }
 
-// Start connections in parallel without blocking the server boot
+// Start connections
 connectDB();
 connectRedis();
 
+console.log(`📡 Attempting to listen on port ${PORT}...`);
 app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  console.log(`✅ Server is LIVE on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 });
 
 process.on('unhandledRejection', (err) => {
