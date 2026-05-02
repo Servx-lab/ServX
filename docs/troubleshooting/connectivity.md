@@ -18,6 +18,15 @@ VITE_API_URL=http://127.0.0.1:5000
 ---
 
 ## 2. Supabase DNS Not Found (`DNS_PROBE_POSSIBLE`)
+- **NEW**: Managing the Stale-While-Revalidate (SWR) cache for hosting providers.
+
+## SWR & Hosting Cache
+If you notice that a hosting provider's status is out of date and "Sync Now" doesn't fix it, you may need to clear the local browser cache:
+1. Open DevTools (F12).
+2. Go to the **Application** tab.
+3. Select **Local Storage** -> `http://localhost:5173`.
+4. Delete the key `servx_cached_data`.
+5. Refresh the page.
 
 ### Symptom
 Browser shows `bxmnuzqujamyuvsomfdj.supabase.co’s DNS address could not be found.`
