@@ -135,7 +135,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
             totalResources={services.length + deployments.length}
           />
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <div className="space-y-8">
             <ServicesTable 
                 services={services}
                 providerKey={config.key}
