@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { encrypt, decrypt } from '@servx/crypto';
+
 import { HOSTING_PROVIDERS } from '@servx/config';
 import type { HostingProviderKey } from '@servx/config';
 import type {
@@ -66,7 +66,8 @@ export async function saveConnection(
   await ensureUserProfile(ownerUid, email);
   const table = getVaultTable(provider);
   const configString = JSON.stringify(config);
-  const encrypted = encrypt(configString);
+  // No manual encryption; relying on Supabase RLS for row-level access control
+  const configContent = configString;
 
   const { data, error } = await supabaseAdmin
     .from(table)
@@ -74,8 +75,8 @@ export async function saveConnection(
       name,
       user_id: ownerUid,
       provider: provider,
-      encrypted_config: encrypted.content,
-      iv: encrypted.iv,
+      encrypted_config: configContent,
+      iv: '', // Manual encryption removed; iv remains empty to satisfy schema constraints
     })
     .select()
     .single();
@@ -193,12 +194,9 @@ async function performHostingStatusFetch(
     return { connected: false };
   }
 
-  // 3. Decrypt Token
-  let token: string;
-  let parsedConfig: { token?: string; apiKey?: string; instanceUrl?: string } | null = null;
   try {
-    const decrypted = decrypt({ iv: connection.iv, content: connection.encrypted_config });
-    parsedConfig = JSON.parse(decrypted) as { token?: string; apiKey?: string; instanceUrl?: string };
+    const rawConfig = connection.encrypted_config;
+    parsedConfig = JSON.parse(rawConfig) as { token?: string; apiKey?: string; instanceUrl?: string };
     token = (parsedConfig.token ?? parsedConfig.apiKey) as string;
   } catch {
     return {
@@ -310,15 +308,15 @@ export async function saveHostingToken(
     config.instanceUrl = (extras as any).instanceUrl;
   }
 
-  const encrypted = encrypt(JSON.stringify(config));
+
 
   const { data, error } = await supabaseAdmin
     .from('hosting_vault')
     .upsert({
       user_id: ownerUid,
       provider: providerInfo.dbName,
-      encrypted_config: encrypted.content,
-      iv: encrypted.iv,
+      encrypted_config: JSON.stringify(config),
+      iv: '',
       name: name,
     })
     .select()
@@ -764,8 +762,7 @@ export async function getHostingCredentials(
   if (!data || error) return null;
 
   try {
-    const decrypted = decrypt({ iv: data.iv, content: data.encrypted_config });
-    const parsed = JSON.parse(decrypted);
+    const parsed = JSON.parse(data.encrypted_config);
     return {
         ...parsed,
         token: parsed.token || parsed.apiKey // Normalize token field

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { decrypt } from '@servx/crypto';
+
 import { VERCEL_REDIRECT_URI, DO_REDIRECT_URI } from '@servx/config';
 import { NotFoundError } from '@servx/errors';
 
@@ -29,9 +29,7 @@ export async function getVercelOAuthUrl(ownerUid: string): Promise<string> {
     return `https://vercel.com/oauth/authorize?client_id=${VERCEL_CLIENT_ID}&state=${state}&redirect_uri=${VERCEL_REDIRECT_URI}`;
   }
 
-  const decryptedConfig = JSON.parse(
-    decrypt({ content: connection.encrypted_config, iv: connection.iv })
-  ) as { clientId?: string };
+  const decryptedConfig = JSON.parse(connection.encrypted_config) as { clientId?: string };
 
   const clientId = decryptedConfig.clientId;
   if (!clientId) {
@@ -53,9 +51,7 @@ export async function exchangeVercelCode(code: string, ownerUid: string): Promis
   let clientSecret = VERCEL_CLIENT_SECRET;
 
   if (connection) {
-    const decryptedConfig = JSON.parse(
-      decrypt({ content: connection.encrypted_config, iv: connection.iv })
-    ) as { clientId?: string; clientSecret?: string };
+    const decryptedConfig = JSON.parse(connection.encrypted_config) as { clientId?: string; clientSecret?: string };
     clientId = decryptedConfig.clientId ?? clientId;
     clientSecret = decryptedConfig.clientSecret ?? clientSecret;
   }

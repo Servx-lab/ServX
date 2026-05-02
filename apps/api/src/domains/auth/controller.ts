@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 import { AuthError, ValidationError } from '@servx/errors';
-import { encrypt, decrypt } from '@servx/crypto';
+
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 import { 
@@ -141,8 +141,8 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
       userProfile?.email || profile.email || `${profile.login}@users.noreply.github.com`;
 
     // 2. Encrypt and store tokens in GitHub Vault
-    const encryptedAccess = encrypt(accessToken);
-    const encryptedRefresh = refreshToken ? encrypt(refreshToken) : null;
+    const plainAccess = accessToken;
+    const plainRefresh = refreshToken || null;
 
     const { error: vaultError } = await supabaseAdmin
         .from('github_vault')
@@ -150,9 +150,9 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
             user_id: targetUid,
             github_id: profile.id.toString(),
             github_username: profile.login,
-            encrypted_access_token: encryptedAccess.content,
-            encrypted_refresh_token: encryptedRefresh?.content,
-            iv: encryptedAccess.iv, // Use access token IV for the row
+            encrypted_access_token: plainAccess,
+            encrypted_refresh_token: plainRefresh,
+            iv: '', // Manual encryption removed; iv remains empty to satisfy schema constraints
             token_expiry: expiryDate,
         });
 
@@ -249,17 +249,17 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
 
     // 2. Sync GitHub Vault if tokens are provided
     if (githubAccessToken) {
-        const encryptedAccess = encrypt(githubAccessToken);
-        const encryptedRefresh = githubRefreshToken ? encrypt(githubRefreshToken) : null;
+        const plainAccess = githubAccessToken;
+        const plainRefresh = githubRefreshToken || null;
 
         const { error: vaultError } = await supabaseAdmin
             .from('github_vault')
             .upsert({
                 user_id: uid,
                 github_id: githubId,
-                encrypted_access_token: encryptedAccess.content,
-                encrypted_refresh_token: encryptedRefresh?.content,
-                iv: encryptedAccess.iv,
+                encrypted_access_token: plainAccess,
+                encrypted_refresh_token: plainRefresh,
+                iv: '',
                 token_expiry: githubTokenExpiry ? new Date(githubTokenExpiry) : undefined,
             });
 
