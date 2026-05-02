@@ -50,9 +50,9 @@ async function connectRedis() {
 connectDB();
 connectRedis();
 
-console.log(`📡 Attempting to listen on port ${PORT}...`);
-app.listen(PORT, () => {
-  console.log(`✅ Server is LIVE on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+console.log(`📡 Attempting to listen on port ${PORT} at host 0.0.0.0...`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server is LIVE on port ${PORT} at 0.0.0.0 in ${process.env.NODE_ENV || 'development'} mode`);
 });
 
 process.on('unhandledRejection', (err) => {
