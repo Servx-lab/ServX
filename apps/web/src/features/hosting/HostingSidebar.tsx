@@ -40,7 +40,7 @@ const providers: {
 
 const HostingSidebar = () => {
   return (
-    <div className="w-64 h-full border-r border-gray-200 bg-gray-50 flex flex-col pt-6 pb-4">
+    <div className="w-64 h-full border-l border-gray-200 bg-gray-50 flex flex-col pt-6 pb-4">
       <div className="px-6 mb-6">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Providers</h2>
       </div>
