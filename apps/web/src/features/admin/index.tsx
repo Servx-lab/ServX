@@ -41,7 +41,7 @@ const Administrator = () => {
   };
 
   return (
-    <main className="flex min-h-full flex-1 flex-col bg-white p-8 pt-24 font-sans text-black">
+    <main className="flex h-full flex-1 flex-col overflow-y-auto bg-white p-8 pt-24 font-sans text-black no-scrollbar">
       <div className="mx-auto w-full max-w-6xl space-y-10">
         {/* Page header */}
         <div className="flex items-center gap-3">

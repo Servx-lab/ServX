@@ -1,3 +1,4 @@
+import path from 'path';
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 
@@ -59,6 +60,15 @@ export function createApp(): Express {
   });
 
   registerApiRoutes(app);
+  
+  if (process.env.NODE_ENV === 'production') {
+    const distPath = path.join(__dirname, '../../web/dist');
+    app.use(express.static(distPath));
+    app.get('*', (_req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
   registerErrorHandler(app);
 
   return app;

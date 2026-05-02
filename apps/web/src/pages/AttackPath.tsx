@@ -560,7 +560,7 @@ const AttackPath = () => {
                                 key={i}
                                 initial={{ opacity: 0, scale: 0 }}
                                 animate={{ 
-                                    opacity: 1, scale: 1, x, y,
+                                    opacity: 1, scale: 1, x,
                                     y: [y, y - 15, y] 
                                 }}
                                 transition={{ 
