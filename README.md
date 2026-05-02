@@ -40,7 +40,9 @@
 
 ### Hosting & Servers
 - **Multi-Provider Support** – Vercel, Render, Railway, DigitalOcean, Fly.io, AWS
-- **Deployment Management** – View services, deployments, and status
+- **High-Performance Dashboard** – Stale-While-Revalidate (SWR) pattern for near-instant provider switching
+- **Smooth Transitions** – Premium skeleton loaders and animated chart reveals
+- **Optimized Layout** – Full-width vertical service lists and sticky command headers for better visibility
 - **Connection Vault** – Encrypted storage of API keys and tokens
 - **Per-User Isolation** – Credentials stored and used only for your account
 
