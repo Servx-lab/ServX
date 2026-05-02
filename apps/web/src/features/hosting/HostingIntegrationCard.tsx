@@ -50,6 +50,10 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     return cachedData.connections.some((c: any) => c.provider === dbName);
   }, [config, cachedData]);
 
+  /**
+   * Fetches the latest status and data for the current hosting provider.
+   * @param isSilent - If true, prevents showing a full-screen loading state or error message.
+   */
   const fetchData = useCallback(async (isSilent = false) => {
     let cancelled = false;
     if (!isSilent) setErrorMsg('');
@@ -64,7 +68,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
         setDeployments(response.data.deployments || []);
         setStatus('connected');
         
-        // Update cache with full data
+        // Update cache with full data for SWR (Stale-While-Revalidate)
         if (updateCache && cachedData) {
             const updatedStatuses = { 
                 ...(cachedData.hostingStatuses || {}),
@@ -103,6 +107,9 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     return () => { cancelled = true; };
   }, [config.key, updateCache]);
 
+  /**
+   * Effect to handle provider switching and initial data loading with SWR pattern.
+   */
   useEffect(() => {
     let cancelled = false;
     if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
