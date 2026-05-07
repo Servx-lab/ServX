@@ -10,7 +10,7 @@ import {
   Loader2, Target, RadioTower, Scan
 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { useAuth } from "@/features/auth/AuthContext";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -550,8 +550,8 @@ function generateVulnerabilities(repo: RepoSummary): Vulnerability[] {
 
 const AttackPath = () => {
   const navigate = useNavigate();
-
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   const [repos, setRepos] = useState<RepoSummary[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<RepoSummary | null>(null);
   const [repoDropdownOpen, setRepoDropdownOpen] = useState(false);
@@ -568,14 +568,6 @@ const AttackPath = () => {
 
   const deviceUUID = useMemo(() => getDeviceUUID(), []);
 
-  // Auth + fetch repos
-  useEffect(() => {
-    const auth = getAuth();
-    const unsub = onAuthStateChanged(auth, (user) => {
-      setIsAuthenticated(!!user);
-    });
-    return () => unsub();
-  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
