@@ -60,12 +60,8 @@ const App = () => (
               <Route path="/auto-medic" element={<AutoMedic />} />
               <Route path="/operations" element={<Operations />} />
               <Route path="/admin" element={<Administrator />} />
-<<<<<<< HEAD
               <Route path="/attack" element={<AttackPath />} />
               <Route path="/attack-paths" element={<Navigate to="/attack" replace />} />
-=======
-              <Route path="/attack-paths" element={<AttackPath />} />
->>>>>>> fork/supabase
               <Route path="/exposure" element={<ExposureAnalysis />} />
               <Route path="/scenarios" element={<ComingSoon />} />
               <Route path="/emails" element={<Emails />} />
