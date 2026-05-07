@@ -1,21 +1,9 @@
 import axios from 'axios';
-<<<<<<< HEAD
-
 import { AuthError, ValidationError } from '@servx/errors';
-
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
-
 import { 
   logNewUserToSheetService, 
   sendServXAlert 
-=======
-import { AuthError, ValidationError } from '@servx/errors';
-import { encrypt } from '@servx/crypto';
-import { supabaseAdmin } from '../../utils/supabaseAdmin';
-import {
-  logNewUserToSheetService,
-  sendServXAlert,
->>>>>>> fork/supabase
 } from './service';
 import { prefetchHostingStatuses } from '../connections/service';
 import { cacheDelPattern } from '../../core/services/redisCache';
@@ -113,12 +101,12 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
       avatar_url?: string;
     };
 
-    const targetUid = ownerId || `legacy-${profile.id}`;
+    const targetId = ownerId || `legacy-${profile.id}`;
 
     const { data: existingProfile } = await supabaseAdmin
         .from('user_profiles')
         .select('id')
-        .eq('id', targetUid)
+        .eq('id', targetId)
         .single();
     
     const isNewUser = !existingProfile;
@@ -127,7 +115,7 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
     const { data: userProfile, error: profileError } = await supabaseAdmin
         .from('user_profiles')
         .upsert({
-            id: targetUid,
+            id: targetId,
             email: profile.email || `${profile.login}@users.noreply.github.com`,
             display_name: profile.name || profile.login,
             avatar_url: profile.avatar_url,
@@ -147,25 +135,19 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
     const effectiveEmail =
       userProfile?.email || profile.email || `${profile.login}@users.noreply.github.com`;
 
-    // 2. Encrypt and store tokens in GitHub Vault
+    // 2. store tokens in GitHub Vault (Plaintext as per migration policy)
     const plainAccess = accessToken;
     const plainRefresh = refreshToken || null;
 
     const { error: vaultError } = await supabaseAdmin
         .from('github_vault')
         .upsert({
-            user_id: targetUid,
+            user_id: targetId,
             github_id: profile.id.toString(),
             github_username: profile.login,
-<<<<<<< HEAD
             encrypted_access_token: plainAccess,
             encrypted_refresh_token: plainRefresh,
-            iv: '', // Manual encryption removed; iv remains empty to satisfy schema constraints
-=======
-            encrypted_access_token: encryptedAccess.content,
-            encrypted_refresh_token: encryptedRefresh?.content,
-            iv: encryptedAccess.iv,
->>>>>>> fork/supabase
+            iv: '', 
             token_expiry: expiryDate,
         });
 
@@ -183,7 +165,7 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
     // New User Logging Pipeline: Sheet + Admin Alert (only if new)
     if (isNewUser) {
         try {
-            await logNewUserToSheetService({ uid: targetUid, email: effectiveEmail });
+            await logNewUserToSheetService({ uid: targetId, email: effectiveEmail });
         } catch (sheetErr) {
             console.error('[Auth] GitHub Sheet log failed:', (sheetErr as Error).message);
         }
@@ -195,15 +177,15 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
             await sendServXAlert(
                 ADMIN_EMAIL,
                 'User GitHub Linked',
-                `<h1>GitHub Linked</h1><p><b>Email:</b> ${effectiveEmail}</p><p><b>UID:</b> ${targetUid}</p>`
+                `<h1>GitHub Linked</h1><p><b>Email:</b> ${effectiveEmail}</p><p><b>UID:</b> ${targetId}</p>`
             );
         } catch (emailErr) {
             console.error('[Auth] Admin alert failed:', (emailErr as Error).message);
         }
     }
 
-        const degradedQuery = degradedByMissingNet ? '&degraded=true' : '';
-        res.redirect(`${FRONTEND_URL}/github?success=true${degradedQuery}`);
+    const degradedQuery = degradedByMissingNet ? '&degraded=true' : '';
+    res.redirect(`${FRONTEND_URL}/github?success=true${degradedQuery}`);
   } catch (error) {
     const details = error instanceof Error ? error.message : 'auth_failed';
     res.redirect(`${FRONTEND_URL}/github?error=auth_failed&details=${encodeURIComponent(details)}`);
@@ -234,7 +216,7 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
     const { data: existingProfile } = await supabaseAdmin
         .from('user_profiles')
         .select('id')
-        .eq('id', uid)
+        .eq('id', id)
         .single();
     
     const isNewUser = !existingProfile;
@@ -276,7 +258,6 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
                 token_expiry: githubTokenExpiry ? new Date(githubTokenExpiry) : undefined,
             });
 
-<<<<<<< HEAD
         if (vaultError && !isMissingNetHttpPostError(vaultError)) {
           throw vaultError;
         }
@@ -285,13 +266,13 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
           vaultDegradedByMissingNet = true;
           console.warn('[Auth] github_vault upsert skipped due to missing net.http_post extension.');
         }
-        await cacheDelPattern(userGhCachePattern(uid));
+        await cacheDelPattern(userGhCachePattern(id));
     }
 
     const degradedByMissingNet = profileDegradedByMissingNet || vaultDegradedByMissingNet;
 
     // 3. Pre-fetch hosting statuses in the background if Redis is available
-    prefetchHostingStatuses(uid).catch(err => {
+    prefetchHostingStatuses(id).catch(err => {
         console.error('[Auth] Background pre-fetch failed:', err.message);
     });
 
@@ -301,14 +282,8 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
         : 'Profile synced successfully',
       isNewUser,
       degradedByMissingNet,
+      uid: id,
     });
-=======
-        if (vaultError) throw vaultError;
-        await cacheDelPattern(userGhCachePattern(id));
-    }
-
-    res.json({ message: 'User synced', uid: id });
->>>>>>> fork/supabase
   } catch (error) {
     next(error);
   }
@@ -316,14 +291,14 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
 
 export async function disconnectGitHub(req: any, res: any, next: any): Promise<void> {
   try {
-    const ownerUid = req.user.id;
+    const ownerId = req.user.id;
     const { error } = await supabaseAdmin
         .from('github_vault')
         .delete()
-        .eq('user_id', ownerUid);
+        .eq('user_id', ownerId);
 
     if (error) throw error;
-    await cacheDelPattern(userGhCachePattern(ownerUid));
+    await cacheDelPattern(userGhCachePattern(ownerId));
 
     res.json({ message: 'GitHub connection removed successfully' });
   } catch (error) {
@@ -341,8 +316,6 @@ export async function searchUsers(req: any, res: any, next: any): Promise<void> 
   }
 
   try {
-<<<<<<< HEAD
-    // Firebase is disabled. Returning mock data or searching user_profiles.
     const { data: profile } = await supabaseAdmin
         .from('user_profiles')
         .select('*')
@@ -351,7 +324,7 @@ export async function searchUsers(req: any, res: any, next: any): Promise<void> 
 
     if (profile) {
         res.json({
-            uid: profile.id,
+            id: profile.id,
             displayName: profile.display_name,
             email: profile.email,
             avatarUrl: profile.avatar_url
@@ -359,26 +332,25 @@ export async function searchUsers(req: any, res: any, next: any): Promise<void> 
         return;
     }
 
-    throw new AuthError('User not found in Supabase');
-=======
+    // Fallback to Supabase Auth Admin
     const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
     if (error) throw error;
 
     const userRecord = users.find(u => u.email === email);
 
-    if (!userRecord) {
-      throw new AuthError('User not found');
+    if (userRecord) {
+      res.json({
+        id: userRecord.id,
+        displayName: userRecord.user_metadata?.full_name || userRecord.email?.split('@')[0],
+        email: userRecord.email,
+        creationTime: userRecord.created_at,
+        lastSignInTime: userRecord.last_sign_in_at,
+        disabled: !!userRecord.banned_until,
+      });
+      return;
     }
 
-    res.json({
-      id: userRecord.id,
-      displayName: userRecord.user_metadata?.full_name || userRecord.email?.split('@')[0],
-      email: userRecord.email,
-      creationTime: userRecord.created_at,
-      lastSignInTime: userRecord.last_sign_in_at,
-      disabled: !!userRecord.banned_until,
-    });
->>>>>>> fork/supabase
+    throw new AuthError('User not found');
   } catch (error) {
     const err = error as { code?: string; message?: string };
     console.error('Error in /users/search:', err.message);
@@ -397,20 +369,26 @@ export async function searchUsers(req: any, res: any, next: any): Promise<void> 
 
 export async function listUsers(req: any, res: any): Promise<void> {
   try {
-<<<<<<< HEAD
-    const { data: profiles, error } = await supabaseAdmin
+    const limit = parseInt(req.query.limit as string) || 10;
+    
+    // Try user_profiles first
+    const { data: profiles, error: profileError } = await supabaseAdmin
         .from('user_profiles')
         .select('*')
         .limit(limit);
 
-    if (error) throw error;
+    if (!profileError && profiles && profiles.length > 0) {
+        const users = profiles.map((user: any) => ({
+          id: user.id,
+          displayName: user.display_name,
+          email: user.email,
+          avatarUrl: user.avatar_url,
+        }));
+        res.json({ users });
+        return;
+    }
 
-    const users = (profiles || []).map((user: any) => ({
-      uid: user.id,
-      displayName: user.display_name,
-      email: user.email,
-      avatarUrl: user.avatar_url,
-=======
+    // Fallback to Supabase Auth Admin
     const { data: { users: authUsers }, error } = await supabaseAdmin.auth.admin.listUsers();
     if (error) throw error;
 
@@ -421,7 +399,6 @@ export async function listUsers(req: any, res: any): Promise<void> {
       creationTime: userRecord.created_at,
       lastSignInTime: userRecord.last_sign_in_at,
       disabled: !!userRecord.banned_until,
->>>>>>> fork/supabase
     }));
 
     res.json({ users });

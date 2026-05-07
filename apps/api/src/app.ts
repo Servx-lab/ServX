@@ -16,11 +16,8 @@ import adminRouter from './domains/admin/router';
 import usersRouter from './domains/users/router';
 import profileRouter from './domains/profile/router';
 import securityRouter from './domains/security/router';
-<<<<<<< HEAD
 import webhooksRouter from './domains/webhooks/router';
 import feedRouter from './domains/feed/router';
-=======
->>>>>>> fork/supabase
 
 export function createApp(): Express {
   const app = express();
@@ -90,11 +87,8 @@ export function registerApiRoutes(app: Express): void {
   app.use('/api/tasks', operationsRouter);
   app.use('/api/profile', profileRouter);
   app.use('/api/security', securityRouter);
-<<<<<<< HEAD
   app.use('/api/webhooks', webhooksRouter);
   app.use('/api/feed', feedRouter);
-=======
->>>>>>> fork/supabase
 }
 
 export function registerErrorHandler(app: Express): void {

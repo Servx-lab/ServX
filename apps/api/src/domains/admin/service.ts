@@ -12,12 +12,7 @@ import type {
   ServerResource,
 } from './types';
 
-<<<<<<< HEAD
-const firebaseAdmin = require('../../../utils/firebaseAdmin');
-
-=======
 import { decrypt } from '@servx/crypto';
->>>>>>> fork/supabase
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 const HOSTING_PROVIDERS = new Set(['Vercel', 'Render', 'Railway', 'DigitalOcean', 'Fly.io', 'AWS']);

@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-
-=======
 import { decrypt } from '@servx/crypto';
->>>>>>> fork/supabase
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 const { logNewUserToSheet } = require('../../../services/sheetsService');
 import { sendServXAlertService } from '../../core/services/emailService';
@@ -24,8 +20,6 @@ export async function sendServXAlert(
 ): Promise<void> {
   await sendServXAlertService(to, subject, htmlBody);
 }
-<<<<<<< HEAD
-=======
 
 export async function findFirebaseConnectionId(): Promise<string | null> {
   const { data: connection } = await supabaseAdmin
@@ -37,4 +31,3 @@ export async function findFirebaseConnectionId(): Promise<string | null> {
 
   return connection ? connection.id : null;
 }
->>>>>>> fork/supabase

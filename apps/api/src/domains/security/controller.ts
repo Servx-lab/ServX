@@ -1,43 +1,7 @@
-<<<<<<< HEAD
-import { type Response, type NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { ValidationError } from '@servx/errors';
 import * as svc from './service';
 import { scanLiveDeployment } from '../../services/dastScanner';
-import { ValidationError } from '@servx/errors';
-
-/**
- * Trigger a dynamic target scan for a given URL.
- */
-export async function scanTarget(req: any, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const { url } = req.body;
-
-    if (!url) {
-      throw new ValidationError('A target URL is required for scanning.');
-    }
-
-    // Basic URL validation
-    try {
-      new URL(url);
-    } catch {
-      throw new ValidationError('Invalid target URL format.');
-    }
-
-    console.log(`[Security] Triggering scan for: ${url} (User: ${req.user.uid})`);
-    
-    // Perform the scan
-    const findings = await scanLiveDeployment(url);
-
-    res.json({
-      success: true,
-      url,
-      timestamp: new Date().toISOString(),
-      score: findings.length === 0 ? 100 : Math.max(0, 100 - findings.length * 20),
-      findings
-=======
-import type { Request, Response, NextFunction } from 'express';
-
-import { ValidationError } from '@servx/errors';
-
 import { cacheGet, cacheSet } from '../../core/services/redisCache';
 import { fetchRepoSecurityData } from '../../services/githubGraphScanner';
 import {
@@ -83,12 +47,47 @@ function writeMemoryCache(key: string, value: TransformedVulnerabilityResponse):
   });
 }
 
+/**
+ * Trigger a dynamic target scan for a given URL.
+ */
+export async function scanTarget(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { url } = req.body;
+
+    if (!url) {
+      throw new ValidationError('A target URL is required for scanning.');
+    }
+
+    // Basic URL validation
+    try {
+      new URL(url);
+    } catch {
+      throw new ValidationError('Invalid target URL format.');
+    }
+
+    console.log(`[Security] Triggering scan for: ${url} (User: ${req.user?.id})`);
+    
+    // Perform the scan
+    const findings = await scanLiveDeployment(url);
+
+    res.json({
+      success: true,
+      url,
+      timestamp: new Date().toISOString(),
+      score: findings.length === 0 ? 100 : Math.max(0, 100 - findings.length * 20),
+      findings
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function saveInstallationToken(
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  const uid = req.user?.uid;
+  const uid = req.user?.id;
   const token = String(req.body?.token || '').trim();
   const installationId = String(req.body?.installationId || '').trim();
 
@@ -114,7 +113,7 @@ export async function getRepositoryVulnerabilities(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  const uid = req.user?.uid;
+  const uid = req.user?.id;
   const owner = getSingleParam(req.params?.owner as string | string[] | undefined).trim();
   const repo = getSingleParam(req.params?.repo as string | string[] | undefined).trim();
 
@@ -156,20 +155,18 @@ export async function getRepositoryVulnerabilities(
       source: 'live',
       totalOpenAlertsFromGitHub: raw.totalCount,
       ...transformed,
->>>>>>> fork/supabase
     });
   } catch (err) {
     next(err);
   }
 }
-<<<<<<< HEAD
 
 /**
  * Fetch all project groups for the authenticated user.
  */
-export async function listGroups(req: any, res: Response, next: NextFunction): Promise<void> {
+export async function listGroups(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const groups = await svc.getUserProjectGroups(req.user.uid);
+    const groups = await svc.getUserProjectGroups(req.user?.id || '');
     res.json(groups);
   } catch (err) {
     next(err);
@@ -179,9 +176,9 @@ export async function listGroups(req: any, res: Response, next: NextFunction): P
 /**
  * Create or update a project group.
  */
-export async function saveGroup(req: any, res: Response, next: NextFunction): Promise<void> {
+export async function saveGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const group = await svc.saveProjectGroup(req.user.uid, req.body);
+    const group = await svc.saveProjectGroup(req.user?.id || '', req.body);
     res.json(group);
   } catch (err) {
     next(err);
@@ -191,14 +188,12 @@ export async function saveGroup(req: any, res: Response, next: NextFunction): Pr
 /**
  * Delete a project group.
  */
-export async function deleteGroup(req: any, res: Response, next: NextFunction): Promise<void> {
+export async function deleteGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    await svc.deleteProjectGroup(req.user.uid, id);
+    await svc.deleteProjectGroup(req.user?.id || '', id);
     res.json({ success: true, message: 'Group deleted successfully' });
   } catch (err) {
     next(err);
   }
 }
-=======
->>>>>>> fork/supabase
