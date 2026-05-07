@@ -13,7 +13,7 @@ import type {
 } from './types';
 
 const firebaseAdmin = require('../../../utils/firebaseAdmin');
-import { decrypt } from '@servx/crypto';
+
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 const HOSTING_PROVIDERS = new Set(['Vercel', 'Render', 'Railway', 'DigitalOcean', 'Fly.io', 'AWS']);
@@ -156,10 +156,7 @@ export async function getAdminResources(
 
   if (githubData) {
     try {
-      const accessToken = decrypt({
-        content: githubData.encrypted_access_token,
-        iv: githubData.iv,
-      });
+      const accessToken = githubData.encrypted_access_token;
       const repoResponse = await axios.get('https://api.github.com/user/repos', {
         headers: { Authorization: `Bearer ${accessToken}` },
         params: { sort: 'updated', per_page: 50 },

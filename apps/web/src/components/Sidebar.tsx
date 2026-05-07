@@ -45,11 +45,11 @@ const navItems = [
   { icon: ServerIcon, label: "Hosting & Servers", to: "/hosting/render" },
   { icon: Github, label: "GitHub", to: "/github" },
   { icon: Search, label: "Exposure Analysis", to: "/exposure" },
-  { icon: Route, label: "Attack Paths", to: "/attack-paths" },
+  { icon: Route, label: "Attack Paths", to: "/attack" },
   { icon: PenTool, label: "Scenario Designer", to: "/scenarios" },
   { icon: Mail, label: "Emails", to: "/emails" },
   { icon: Shield, label: "Administration", to: "/admin" },
-  { icon: FileText, label: "Report Center", to: "/reports" },
+  { icon: FileText, label: "Governance Center", to: "/reports" },
 ];
 
 const bottomItems = [
@@ -62,7 +62,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="glass-sidebar w-56 shrink-0 h-full min-h-0 flex flex-col py-6 px-3 relative z-40 overflow-y-auto no-scrollbar">
+    <div className="glass-sidebar w-56 shrink-0 h-full min-h-0 flex flex-col py-6 px-3 relative z-40 overflow-y-auto no-scrollbar rounded-tl-[2rem] rounded-bl-[2rem]">
       {/* Logo */}
       <div className="flex flex-col items-center px-3 mb-8">
         <ServXLogo showTagline={false} size="sm" className="items-start w-full" />
@@ -130,7 +130,7 @@ const Sidebar = () => {
       {/* User Profile with Logout */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div className="glass-card px-3 py-3 flex items-center gap-3 cursor-pointer hover:bg-secondary/80 transition-colors mt-4">
+          <div className="flex cursor-pointer items-center gap-3 rounded-xl bg-card/25 px-3 py-3 backdrop-blur-md transition-colors hover:bg-secondary/80 mt-4">
             <ProfilePhoto
               src={user?.photoURL}
               alt={user?.displayName || "User"}

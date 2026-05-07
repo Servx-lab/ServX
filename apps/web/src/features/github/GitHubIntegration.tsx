@@ -78,7 +78,7 @@ const GitHubIntegration = () => {
     if (repos.length > 0 && selectedRepoId === null) {
       setSelectedRepoId(repos[0].id);
     }
-  }, [repos]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [repos]);
 
   // Close the access panel whenever a new details fetch starts.
   useEffect(() => {

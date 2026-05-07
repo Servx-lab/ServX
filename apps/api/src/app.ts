@@ -1,3 +1,4 @@
+import path from 'path';
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 
@@ -14,6 +15,9 @@ import operationsRouter from './domains/operations/router';
 import adminRouter from './domains/admin/router';
 import usersRouter from './domains/users/router';
 import profileRouter from './domains/profile/router';
+import securityRouter from './domains/security/router';
+import webhooksRouter from './domains/webhooks/router';
+import feedRouter from './domains/feed/router';
 
 export function createApp(): Express {
   const app = express();
@@ -56,6 +60,15 @@ export function createApp(): Express {
   });
 
   registerApiRoutes(app);
+  
+  if (process.env.NODE_ENV === 'production') {
+    const distPath = path.join(__dirname, '../../web/dist');
+    app.use(express.static(distPath));
+    app.get(/.*/, (_req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
   registerErrorHandler(app);
 
   return app;
@@ -73,6 +86,9 @@ export function registerApiRoutes(app: Express): void {
   app.use('/api/operations', operationsRouter);
   app.use('/api/tasks', operationsRouter);
   app.use('/api/profile', profileRouter);
+  app.use('/api/security', securityRouter);
+  app.use('/api/webhooks', webhooksRouter);
+  app.use('/api/feed', feedRouter);
 }
 
 export function registerErrorHandler(app: Express): void {

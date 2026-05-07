@@ -7,4 +7,17 @@ if (!supabaseServiceKey) {
   console.warn('Supabase Service Role Key is missing. Supabase token verification will fail.');
 }
 
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+let supabaseAdmin: any = null;
+
+if (supabaseUrl && supabaseServiceKey) {
+    try {
+        supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+        console.log('✅ Supabase');
+    } catch (err: any) {
+        console.error('[Supabase] Failed to initialize admin client:', err.message);
+    }
+} else {
+    console.error('[Supabase] Cannot initialize client: SUPABASE_SERVICE_ROLE_KEY is missing in environment.');
+}
+
+export { supabaseAdmin };

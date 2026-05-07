@@ -7,42 +7,69 @@ const { createApp } = require('./src/app');
 
 const PORT = process.env.PORT || 5000;
 
-const app = createApp();
 
-async function connectDB() {
+
+// Safety nets for silent crashes
+process.on('uncaughtException', (err) => {
+  console.error('❌ FATAL: Uncaught Exception');
+  console.error(err.stack || err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ FATAL: Unhandled Rejection at:', promise);
+  console.error('Reason:', reason);
+});
+
+async function startServer() {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`Error: ${error.message}`);
+    console.log('🎬 Starting server boot...');
+    const app = createApp();
+    console.log('🚀 App created successfully');
+
+    // Connections
+    await connectDB();
+    await connectRedis();
+
+    const host = '0.0.0.0';
+    console.log(`📡 Attempting to listen on ${host}:${PORT}...`);
+    
+    app.listen(PORT, host, () => {
+      console.log(`✅ Server is LIVE at http://${host}:${PORT}`);
+      console.log(`   Mode: ${process.env.NODE_ENV || 'development'}`);
+    });
+
+  } catch (err) {
+    console.error('❌ CRITICAL: Server failed to start');
+    console.error(err.stack || err);
     process.exit(1);
   }
 }
 
+async function connectDB() {
+  console.log('📡 Connecting to MongoDB...');
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error('MONGODB_URI is not defined in environment');
+  }
+  await mongoose.connect(uri);
+  console.log('✅ MongoDB connected');
+}
+
 async function connectRedis() {
+  console.log('📡 Connecting to Redis...');
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) {
-    console.warn('Redis URL not found in environment, skipping Redis log.');
+    console.warn('⚠️ No Redis URL, skipping...');
     return;
   }
 
-  try {
-    const { getRedisClient } = require('./src/core/services/redisCache');
-    const client = await getRedisClient();
-    if (client) {
-      console.log('Redis Cache Connected (persistent)');
-    }
-  } catch (error) {
-    console.error(`Redis Connection Error: ${error.message}`);
+  const { getRedisClient } = require('./src/core/services/redisCache');
+  const client = await getRedisClient();
+  if (client) {
+    console.log('✅ Redis connected');
   }
 }
 
-Promise.all([connectDB(), connectRedis()]).then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-  });
-});
-
-process.on('unhandledRejection', (err) => {
-  console.log(`Error: ${err.message}`);
-});
+// Execute boot
+startServer();

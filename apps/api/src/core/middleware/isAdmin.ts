@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-
-import admin from '../../../utils/firebaseAdmin';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 const AdminModel = require('../../../models/Admin');
 
@@ -9,6 +8,7 @@ declare global {
     interface Request {
       admin?: Record<string, unknown>;
       uid?: string;
+      user?: { uid: string; email: string };
     }
   }
 }
@@ -21,11 +21,20 @@ const isAdmin = async (req: Request, res: Response, next: NextFunction): Promise
     return;
   }
 
-  const idToken = authHeader.split('Bearer ')[1];
+  const token = authHeader.split('Bearer ')[1];
 
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const uid = decodedToken.uid as string;
+    if (!supabaseAdmin) {
+      throw new Error('Supabase Admin client not initialized');
+    }
+
+    const { data: { user }, error: supabaseError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (supabaseError || !user) {
+      throw new Error(supabaseError?.message || 'Invalid session');
+    }
+
+    const uid = user.id;
 
     const adminRecord = await AdminModel.findOne({ uid });
 
@@ -36,9 +45,14 @@ const isAdmin = async (req: Request, res: Response, next: NextFunction): Promise
 
     req.admin = adminRecord as Record<string, unknown>;
     req.uid = uid;
+    req.user = {
+      uid,
+      email: user.email || '',
+    };
+    
     next();
-  } catch (error) {
-    console.error('isAdmin Middleware Error:', (error as Error).message);
+  } catch (error: any) {
+    console.error('isAdmin Middleware Error:', error.message);
     res.status(401).json({ message: 'Unauthorized: Invalid token' });
   }
 };

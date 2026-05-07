@@ -3,8 +3,7 @@ import { useState, useCallback } from 'react';
 export interface CachedData {
   connections: any[];
   githubRepos: any[];
-  vercelStatus: any;
-  renderStatus: any;
+  hostingStatuses: Record<string, any>;
   lastUpdated: string;
 }
 
@@ -22,8 +21,7 @@ export function useLocalCache() {
         ...(prev || {
           connections: [],
           githubRepos: [],
-          vercelStatus: null,
-          renderStatus: null,
+          hostingStatuses: {},
           lastUpdated: '',
         }),
         ...newData,

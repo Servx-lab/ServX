@@ -11,28 +11,36 @@ import {
 import type { IconType } from 'react-icons';
 
 /** Brand-accurate colors (Simple Icons / official guidelines) */
+const CoolifyLogoSVG = ({ className = "h-4 w-4" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M12 2L2 7L12 12L2 17L12 22L22 17L12 12L22 7L12 2Z" fill="#6B16ED" fillOpacity="0.8"/>
+    <circle cx="12" cy="12" r="3" fill="#6B16ED" />
+  </svg>
+);
+
 const providers: {
   name: string;
   path: string;
-  Icon: IconType;
+  Icon: IconType | React.FC<{ className?: string }>;
   brandColor: string;
 }[] = [
-  { name: 'Render', path: '/hosting/render', Icon: SiRender, brandColor: '#000000' },
-  { name: 'Vercel', path: '/hosting/vercel', Icon: SiVercel, brandColor: '#000000' },
-  { name: 'AWS', path: '/hosting/aws', Icon: FaAws, brandColor: '#FF9900' },
-  { name: 'Railway', path: '/hosting/railway', Icon: SiRailway, brandColor: '#0B0D0E' },
-  {
-    name: 'DigitalOcean',
-    path: '/hosting/digitalocean',
-    Icon: SiDigitalocean,
-    brandColor: '#0080FF',
-  },
-  { name: 'Fly.io', path: '/hosting/fly', Icon: SiFlydotio, brandColor: '#7B36ED' },
-];
+    { name: 'Render', path: '/hosting/render', Icon: SiRender, brandColor: '#000000' },
+    { name: 'Vercel', path: '/hosting/vercel', Icon: SiVercel, brandColor: '#000000' },
+    { name: 'AWS', path: '/hosting/aws', Icon: FaAws, brandColor: '#FF9900' },
+    { name: 'Railway', path: '/hosting/railway', Icon: SiRailway, brandColor: '#0B0D0E' },
+    {
+      name: 'DigitalOcean',
+      path: '/hosting/digitalocean',
+      Icon: SiDigitalocean,
+      brandColor: '#0080FF',
+    },
+    { name: 'Fly.io', path: '/hosting/fly', Icon: SiFlydotio, brandColor: '#7B36ED' },
+    { name: 'Coolify', path: '/hosting/coolify', Icon: CoolifyLogoSVG, brandColor: '#6B16ED' },
+  ];
 
 const HostingSidebar = () => {
   return (
-    <div className="w-64 h-full border-r border-gray-200 bg-gray-50 flex flex-col pt-6 pb-4">
+    <div className="w-64 h-full border-l border-gray-200 bg-gray-50 flex flex-col pt-6 pb-4">
       <div className="px-6 mb-6">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Providers</h2>
       </div>

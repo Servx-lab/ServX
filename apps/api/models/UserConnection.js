@@ -24,8 +24,14 @@ const userConnectionSchema = new mongoose.Schema({
       'AWS RDS', 
       'Oracle', 
       'Redis', 
-      'MariaDB'
+      'MariaDB',
+      'GitHub'
     ]
+  },
+  // GitHub specific: store the app's installation ID for multi-tenant webhooks
+  installationId: {
+    type: String,
+    index: true
   },
   // Store encrypted configuration as a JSON string
   encryptedConfig: {

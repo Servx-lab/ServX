@@ -114,6 +114,10 @@ export default {
         "flow-dash": {
           to: { strokeDashoffset: "-20" },
         },
+        "blast-edge-dash": {
+          "0%": { strokeDashoffset: "0" },
+          "100%": { strokeDashoffset: "-32" },
+        },
         "fade-in": {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
@@ -124,6 +128,7 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "flow-dash": "flow-dash 1s linear infinite",
+        "blast-edge-dash": "blast-edge-dash 0.85s linear infinite",
         "fade-in": "fade-in 0.5s ease-out forwards",
       },
     },
