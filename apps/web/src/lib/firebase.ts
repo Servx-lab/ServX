@@ -5,18 +5,29 @@ import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAqnG5B4LUOlfb9_D_7y2j2zDNnMNd-Dlo",
-  authDomain: "orizon-lab.firebaseapp.com",
-  projectId: "orizon-lab",
-  storageBucket: "orizon-lab.firebasestorage.app",
-  messagingSenderId: "50681054193",
-  appId: "1:50681054193:web:d40f9c9b8581ce30207a50",
-  measurementId: "G-YRFWCDZ591"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-export const auth = getAuth(app);
+// Initialize Firebase only if API key is provided
+let app;
+let analytics;
+let auth;
+
+if (firebaseConfig.apiKey) {
+  app = initializeApp(firebaseConfig);
+  analytics = getAnalytics(app);
+  auth = getAuth(app);
+} else {
+  console.warn('[Firebase] API Key missing. Analytics and Firebase Auth are disabled.');
+}
+
+export { app, analytics, auth };
+
 
 export default app;
