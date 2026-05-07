@@ -1,12 +1,12 @@
 const mongoose = require('mongoose');
 
 const AccessControlSchema = new mongoose.Schema({
-  ownerUid: {
+  ownerId: {
     type: String,
     required: true,
     index: true
   },
-  userUid: {
+  userId: {
     type: String,
     required: true,
     index: true
@@ -46,6 +46,6 @@ const AccessControlSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Ensure unique combination of owner and user
-AccessControlSchema.index({ ownerUid: 1, userUid: 1 }, { unique: true });
+AccessControlSchema.index({ ownerId: 1, userId: 1 }, { unique: true });
 
 module.exports = mongoose.model('AccessControl', AccessControlSchema);

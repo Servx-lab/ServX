@@ -9,14 +9,15 @@
     "sync-users": "tsx scripts/syncUsersToSheets.js"
   },
   "dependencies": {
+    "@octokit/graphql": "^9.0.3",
     "@octokit/rest": "^22.0.1",
     "@supabase/supabase-js": "^2.103.0",
     "axios": "^1.13.6",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
-    "firebase-admin": "^13.7.0",
     "google-spreadsheet": "^4.1.5",
+
     "googleapis": "^171.4.0",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.1.0",

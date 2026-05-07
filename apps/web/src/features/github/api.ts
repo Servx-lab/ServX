@@ -8,6 +8,16 @@ export interface GitHubConnectionStatus {
   expired: boolean;
 }
 
+export async function saveGitHubInstallationToken(
+  token: string,
+  installationId?: string,
+): Promise<void> {
+  await apiClient.post('/security/installation-token', {
+    token,
+    installationId,
+  });
+}
+
 export async function getGitHubStatus(): Promise<GitHubConnectionStatus> {
   const res = await apiClient.get('/github/status', { skipAuthErrorLog: true });
   return res.data;

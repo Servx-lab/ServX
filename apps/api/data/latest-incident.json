@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "id": "INC-1776532473343",
   "timestamp": "2026-04-18T17:14:33.343Z",
   "path": "/api/security/scan-target",
@@ -6,12 +7,21 @@
   "error": {
     "message": "scanLiveDeployment is not defined",
     "stack": "ReferenceError: scanLiveDeployment is not defined\n    at scanTarget (C:\\VS\\Servx\\apps\\api\\src\\domains\\security\\controller.ts:24:22)\n    at Layer.handleRequest (C:\\VS\\Servx\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\VS\\Servx\\node_modules\\router\\lib\\route.js:157:13)\n    at requireAuth (C:\\VS\\Servx\\apps\\api\\src\\core\\middleware\\requireAuth.ts:41:5)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)",
+=======
+  "id": "INC-1776237101556",
+  "timestamp": "2026-04-15T07:11:41.556Z",
+  "path": "/api/security/installation-token",
+  "method": "POST",
+  "error": {
+    "message": "Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.",
+    "stack": "Error: Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.\n    at GoogleAuth.getApplicationDefaultAsync (/home/chitkul-lakshya/VS/ServX/node_modules/google-gax/node_modules/google-auth-library/build/src/auth/googleauth.js:287:15)\n    at async GoogleAuth._GoogleAuth_determineClient (/home/chitkul-lakshya/VS/ServX/node_modules/google-gax/node_modules/google-auth-library/build/src/auth/googleauth.js:834:32)\n    at async GoogleAuth.getClient (/home/chitkul-lakshya/VS/ServX/node_modules/google-gax/node_modules/google-auth-library/build/src/auth/googleauth.js:698:20)\n    at async GrpcClient._getCredentials (/home/chitkul-lakshya/VS/ServX/node_modules/google-gax/src/grpc.ts:209:20)\n    at async GrpcClient.createStub (/home/chitkul-lakshya/VS/ServX/node_modules/google-gax/src/grpc.ts:426:19)\nCaused by: Error\n    at /home/chitkul-lakshya/VS/ServX/node_modules/@google-cloud/firestore/build/src/index.js:1040:27\n    at /home/chitkul-lakshya/VS/ServX/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30\n    at NoopContextManager.with (/home/chitkul-lakshya/VS/ServX/node_modules/@opentelemetry/api/src/context/NoopContextManager.ts:31:15)\n    at ContextAPI.with (/home/chitkul-lakshya/VS/ServX/node_modules/@opentelemetry/api/src/api/context.ts:77:42)\n    at NoopTracer.startActiveSpan (/home/chitkul-lakshya/VS/ServX/node_modules/@opentelemetry/api/src/trace/NoopTracer.ts:98:27)\n    at ProxyTracer.startActiveSpan (/home/chitkul-lakshya/VS/ServX/node_modules/@opentelemetry/api/src/trace/ProxyTracer.ts:51:20)\n    at EnabledTraceUtil.startActiveSpan (/home/chitkul-lakshya/VS/ServX/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)\n    at Firestore.getAll (/home/chitkul-lakshya/VS/ServX/node_modules/@google-cloud/firestore/build/src/index.js:1031:32)\n    at /home/chitkul-lakshya/VS/ServX/node_modules/@google-cloud/firestore/build/src/reference/document-reference.js:182:36\n    at /home/chitkul-lakshya/VS/ServX/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30",
+>>>>>>> fork/supabase
     "code": 500
   },
   "analysis": {
     "diagnosis": "Unknown system error. Please check logs.",
     "fix": "// Check server logs for details",
     "severity": "HIGH",
-    "cached": true
+    "cached": false
   }
 }

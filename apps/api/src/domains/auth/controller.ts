@@ -1,4 +1,5 @@
 import axios from 'axios';
+<<<<<<< HEAD
 
 import { AuthError, ValidationError } from '@servx/errors';
 
@@ -7,12 +8,18 @@ import { supabaseAdmin } from '../../utils/supabaseAdmin';
 import { 
   logNewUserToSheetService, 
   sendServXAlert 
+=======
+import { AuthError, ValidationError } from '@servx/errors';
+import { encrypt } from '@servx/crypto';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
+import {
+  logNewUserToSheetService,
+  sendServXAlert,
+>>>>>>> fork/supabase
 } from './service';
 import { prefetchHostingStatuses } from '../connections/service';
 import { cacheDelPattern } from '../../core/services/redisCache';
 import { userGhCachePattern } from '../github/controller';
-
-// Using global Express.Request extension from requireAuth.ts
 
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
@@ -24,13 +31,13 @@ function isMissingNetHttpPostError(error: unknown): boolean {
 
 export function getGitHubAuthUrl(req: any, res: any): void {
   const clientId = process.env.GITHUB_CLIENT_ID;
-  const ownerUid = req.user.uid;
+  const ownerId = req.user.id;
 
   if (!clientId) {
     throw new AuthError('GitHub Client ID not configured');
   }
 
-  const state = encodeURIComponent(JSON.stringify({ ownerUid }));
+  const state = encodeURIComponent(JSON.stringify({ ownerId }));
   const authorizeUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,read:user&state=${state}`;
 
   res.json({ url: authorizeUrl });
@@ -38,9 +45,9 @@ export function getGitHubAuthUrl(req: any, res: any): void {
 
 export function redirectToGitHub(req: any, res: any): void {
   const clientId = process.env.GITHUB_CLIENT_ID;
-  const ownerUid = req.user.uid;
+  const ownerId = req.user.id;
 
-  const state = encodeURIComponent(JSON.stringify({ ownerUid }));
+  const state = encodeURIComponent(JSON.stringify({ ownerId }));
   const redirectUri = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,read:user&state=${state}`;
 
   res.redirect(redirectUri);
@@ -50,12 +57,12 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
   const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
   const code = req.query.code as string | undefined;
   const state = req.query.state as string | undefined;
-  let ownerUid: string | null = null;
+  let ownerId: string | null = null;
 
   if (state) {
     try {
-      const decodedState = JSON.parse(decodeURIComponent(state)) as { ownerUid?: string };
-      ownerUid = decodedState.ownerUid || null;
+      const decodedState = JSON.parse(decodeURIComponent(state)) as { ownerId?: string };
+      ownerId = decodedState.ownerId || null;
     } catch (error) {
       console.error('Failed to parse OAuth state:', (error as Error).message);
     }
@@ -106,7 +113,7 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
       avatar_url?: string;
     };
 
-    const targetUid = ownerUid || `legacy-${profile.id}`;
+    const targetUid = ownerId || `legacy-${profile.id}`;
 
     const { data: existingProfile } = await supabaseAdmin
         .from('user_profiles')
@@ -150,9 +157,15 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
             user_id: targetUid,
             github_id: profile.id.toString(),
             github_username: profile.login,
+<<<<<<< HEAD
             encrypted_access_token: plainAccess,
             encrypted_refresh_token: plainRefresh,
             iv: '', // Manual encryption removed; iv remains empty to satisfy schema constraints
+=======
+            encrypted_access_token: encryptedAccess.content,
+            encrypted_refresh_token: encryptedRefresh?.content,
+            iv: encryptedAccess.iv,
+>>>>>>> fork/supabase
             token_expiry: expiryDate,
         });
 
@@ -200,7 +213,7 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
 
 export async function syncUser(req: any, res: any, next: any): Promise<void> {
   try {
-    const { uid, email } = req.user;
+    const { id, email } = req.user;
     const { 
       name, 
       avatarUrl, 
@@ -230,7 +243,7 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
     const { error: profileError } = await supabaseAdmin
         .from('user_profiles')
         .upsert({
-            id: uid,
+            id: id,
             email: email,
             display_name: name || email.split('@')[0],
             avatar_url: avatarUrl || '',
@@ -255,7 +268,7 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
         const { error: vaultError } = await supabaseAdmin
             .from('github_vault')
             .upsert({
-                user_id: uid,
+                user_id: id,
                 github_id: githubId,
                 encrypted_access_token: plainAccess,
                 encrypted_refresh_token: plainRefresh,
@@ -263,6 +276,7 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
                 token_expiry: githubTokenExpiry ? new Date(githubTokenExpiry) : undefined,
             });
 
+<<<<<<< HEAD
         if (vaultError && !isMissingNetHttpPostError(vaultError)) {
           throw vaultError;
         }
@@ -288,6 +302,13 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
       isNewUser,
       degradedByMissingNet,
     });
+=======
+        if (vaultError) throw vaultError;
+        await cacheDelPattern(userGhCachePattern(id));
+    }
+
+    res.json({ message: 'User synced', uid: id });
+>>>>>>> fork/supabase
   } catch (error) {
     next(error);
   }
@@ -295,7 +316,7 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
 
 export async function disconnectGitHub(req: any, res: any, next: any): Promise<void> {
   try {
-    const ownerUid = req.user.uid;
+    const ownerUid = req.user.id;
     const { error } = await supabaseAdmin
         .from('github_vault')
         .delete()
@@ -312,7 +333,6 @@ export async function disconnectGitHub(req: any, res: any, next: any): Promise<v
 
 export async function searchUsers(req: any, res: any, next: any): Promise<void> {
   const email = req.query.email as string | undefined;
-  const connectionId = req.query.connectionId as string | undefined;
 
   if (!email) {
     throw new ValidationError('Email query parameter is required', {
@@ -321,6 +341,7 @@ export async function searchUsers(req: any, res: any, next: any): Promise<void> 
   }
 
   try {
+<<<<<<< HEAD
     // Firebase is disabled. Returning mock data or searching user_profiles.
     const { data: profile } = await supabaseAdmin
         .from('user_profiles')
@@ -339,17 +360,31 @@ export async function searchUsers(req: any, res: any, next: any): Promise<void> 
     }
 
     throw new AuthError('User not found in Supabase');
-  } catch (error) {
-    const err = error as { code?: string; message?: string };
-    if (err.code === 'auth/user-not-found') {
-      next(new AuthError('User not found'));
-      return;
+=======
+    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+    if (error) throw error;
+
+    const userRecord = users.find(u => u.email === email);
+
+    if (!userRecord) {
+      throw new AuthError('User not found');
     }
 
+    res.json({
+      id: userRecord.id,
+      displayName: userRecord.user_metadata?.full_name || userRecord.email?.split('@')[0],
+      email: userRecord.email,
+      creationTime: userRecord.created_at,
+      lastSignInTime: userRecord.last_sign_in_at,
+      disabled: !!userRecord.banned_until,
+    });
+>>>>>>> fork/supabase
+  } catch (error) {
+    const err = error as { code?: string; message?: string };
     console.error('Error in /users/search:', err.message);
 
     const mockUser = {
-      uid: `mock-search-${Date.now()}`,
+      id: `mock-search-${Date.now()}`,
       displayName: `Searched Mock: ${email.split('@')[0]}`,
       email,
       creationTime: new Date().toISOString(),
@@ -361,11 +396,8 @@ export async function searchUsers(req: any, res: any, next: any): Promise<void> 
 }
 
 export async function listUsers(req: any, res: any): Promise<void> {
-  const rawLimit = req.query.limit as string | undefined;
-  const limit = Number.parseInt(rawLimit || '100', 10);
-  const connectionId = req.query.connectionId as string | undefined;
-
   try {
+<<<<<<< HEAD
     const { data: profiles, error } = await supabaseAdmin
         .from('user_profiles')
         .select('*')
@@ -378,6 +410,18 @@ export async function listUsers(req: any, res: any): Promise<void> {
       displayName: user.display_name,
       email: user.email,
       avatarUrl: user.avatar_url,
+=======
+    const { data: { users: authUsers }, error } = await supabaseAdmin.auth.admin.listUsers();
+    if (error) throw error;
+
+    const users = authUsers.map((userRecord: any) => ({
+      id: userRecord.id,
+      displayName: userRecord.user_metadata?.full_name || userRecord.email?.split('@')[0],
+      email: userRecord.email,
+      creationTime: userRecord.created_at,
+      lastSignInTime: userRecord.last_sign_in_at,
+      disabled: !!userRecord.banned_until,
+>>>>>>> fork/supabase
     }));
 
     res.json({ users });
@@ -385,7 +429,7 @@ export async function listUsers(req: any, res: any): Promise<void> {
     console.error('Error in /users/list:', (error as Error).message);
 
     const mockUsers = Array.from({ length: 5 }).map((_, index) => ({
-      uid: `mock-uid-${index + 1}`,
+      id: `mock-id-${index + 1}`,
       displayName: `Mock User ${index + 1}`,
       email: `mockuser${index + 1}@example.com`,
       creationTime: new Date().toISOString(),
@@ -395,7 +439,7 @@ export async function listUsers(req: any, res: any): Promise<void> {
 
     res.json({
       users: mockUsers,
-      warning: 'Showing mock data because Firebase Admin could not connect. Check server logs for details.',
+      warning: 'Showing mock data because Supabase Admin could not connect. Check server logs for details.',
     });
   }
 }

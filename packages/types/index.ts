@@ -26,7 +26,7 @@ export interface UserConnection {
 	iv: string;
 	isActive: boolean;
 	lastTestedAt?: string | Date;
-	ownerUid: string;
+	ownerId: string;
 	status: ConnectionStatus;
 	createdAt?: string | Date;
 	updatedAt?: string | Date;
@@ -35,12 +35,16 @@ export interface UserConnection {
 export interface User {
 	_id?: string;
 	name: string;
-	uid: string;
+	id: string;
 	email: string;
 	githubId?: string;
 	githubAccessToken?: string;
 	githubRefreshToken?: string;
 	githubTokenExpiry?: Date | string;
+	githubInstallationTokenEncrypted?: string;
+	githubInstallationTokenIv?: string;
+	githubInstallationId?: string;
+	githubInstallationTokenUpdatedAt?: Date | string;
 	avatarUrl?: string;
 	username?: string;
 	surname?: string;
@@ -48,6 +52,7 @@ export interface User {
 	role: string;
 	createdAt?: string | Date;
 }
+
 
 export type DatabaseType =
 	| 'Firebase'

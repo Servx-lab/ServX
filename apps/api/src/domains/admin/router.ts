@@ -14,8 +14,9 @@ const router = Router();
 
 router.post('/invite', inviteAdmin);
 router.get('/list', listAdmins);
-router.delete('/revoke/:uid', revokeAdmin);
-router.get('/permissions/:userUid', isAdmin, getPermissions);
+router.delete('/revoke/:id', revokeAdmin);
+router.get('/permissions/:userId', isAdmin, getPermissions);
+
 router.post('/permissions/update', isAdmin, updatePermissions);
 router.get('/resources', isAdmin, getResources);
 

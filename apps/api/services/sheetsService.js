@@ -24,7 +24,7 @@ function getServiceAccountCredentials() {
 
 const CREDENTIALS = getServiceAccountCredentials();
 
-const HEADERS = ['Username', 'UID', 'Email', 'Date'];
+const HEADERS = ['Username', 'Supabase ID', 'Email', 'Date'];
 
 const formatDate = (date) => {
   if (!date) date = new Date();
@@ -56,8 +56,9 @@ async function logNewUserToSheet(userData) {
     await doc.loadInfo();
 
     const sheet = doc.sheetsByIndex[0];
-    const { uid, email } = userData;
-    const username = email ? email.split('@')[0] : (uid || 'unknown');
+    const id = userData.id || userData.uid;
+    const email = userData.email;
+    const username = email ? email.split('@')[0] : (id || 'unknown');
     const dateStr = formatDate(new Date());
 
     try {
@@ -68,7 +69,7 @@ async function logNewUserToSheet(userData) {
 
     await sheet.addRow({
       [HEADERS[0]]: username,
-      [HEADERS[1]]: uid,
+      [HEADERS[1]]: id,
       [HEADERS[2]]: email,
       [HEADERS[3]]: dateStr,
     });
@@ -121,13 +122,15 @@ async function batchLogUsersToSheet(usersData, overwrite = false) {
     }
 
     const rows = usersData.map(userData => {
-      const { uid, email, createdAt } = userData;
-      const username = email ? email.split('@')[0] : (uid || 'unknown');
+      const id = userData.id || userData.uid;
+      const email = userData.email;
+      const createdAt = userData.createdAt;
+      const username = email ? email.split('@')[0] : (id || 'unknown');
       const dateStr = formatDate(createdAt);
       
       return {
         [HEADERS[0]]: username,
-        [HEADERS[1]]: uid,
+        [HEADERS[1]]: id,
         [HEADERS[2]]: email,
         [HEADERS[3]]: dateStr,
       };
