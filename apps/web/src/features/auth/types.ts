@@ -1,9 +1,10 @@
 export interface AuthUser {
-  uid: string;
+  id: string;
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
 }
+
 
 export interface AuthContextValue {
   user: AuthUser | null;

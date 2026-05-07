@@ -38,3 +38,4 @@ export async function searchUsers(q: string, limit = 20): Promise<SafeUserSearch
     avatarUrl: u.avatar_url || undefined,
   }));
 }
+
