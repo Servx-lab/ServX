@@ -1,5 +1,4 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  "outputDirectory": "apps/web/dist",
+  "framework": "vite"
 }
