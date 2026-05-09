@@ -26,19 +26,30 @@ export function createApp(): Express {
   app.use(
     cors({
       origin(origin, callback) {
+        // Parse FRONTEND_URL as a comma-separated list
+        const envOrigins = process.env.FRONTEND_URL 
+          ? process.env.FRONTEND_URL.split(',').map(o => o.trim()) 
+          : [];
+
         const allowedOrigins = [
-          process.env.FRONTEND_URL,
+          ...envOrigins,
+          'https://servx.vercel.app',
           'http://localhost:8080',
           'http://localhost:8083',
           'http://localhost:5173',
-        ].filter(Boolean) as string[];
+        ].filter(Boolean);
 
         if (!origin) {
           callback(null, true);
           return;
         }
 
-        if (!allowedOrigins.includes(origin) && process.env.NODE_ENV === 'production') {
+        // Check if origin is explicitly allowed or matches a Vercel preview domain
+        const isAllowed = allowedOrigins.includes(origin) || 
+                         (origin.endsWith('.vercel.app') && process.env.NODE_ENV !== 'production');
+
+        if (!isAllowed && process.env.NODE_ENV === 'production') {
+          console.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
           callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'));
           return;
         }
