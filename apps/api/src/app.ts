@@ -1,4 +1,5 @@
 import path from 'path';
+import fs from 'fs';
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 
@@ -55,17 +56,37 @@ export function createApp(): Express {
     next();
   });
 
-  app.get('/', (_req, res) => {
-    res.send('API is running...');
-  });
-
   registerApiRoutes(app);
   
-  if (process.env.NODE_ENV === 'production') {
-    const distPath = path.join(__dirname, '../../web/dist');
-    app.use(express.static(distPath));
-    app.get(/.*/, (_req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+  const isProduction = process.env.NODE_ENV?.toLowerCase().trim() === 'production';
+  const serveFrontend = isProduction || process.env.SERVE_FRONTEND === 'true';
+
+  if (serveFrontend) {
+    const distPath = path.resolve(__dirname, '../../web/dist');
+    
+    console.log(`[Frontend] Initializing static file server...`);
+    console.log(`[Frontend] Target directory: ${distPath}`);
+
+    if (fs.existsSync(distPath)) {
+      console.log(`[Frontend] Found 'web/dist' directory. Serving static files.`);
+      app.use(express.static(distPath));
+      
+      // Catch-all route for SPA (React Router)
+      // We use a regex that matches anything NOT starting with /api
+      app.get(/^(?!\/api).*/, (_req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+    } else {
+      console.warn(`[Frontend] WARNING: 'web/dist' directory NOT FOUND at ${distPath}`);
+      console.warn(`[Frontend] Fallback: Root route will return API status.`);
+      app.get('/', (_req, res) => {
+        res.send('API is running (Frontend build missing)...');
+      });
+    }
+  } else {
+    // Development mode fallback
+    app.get('/', (_req, res) => {
+      res.send('API is running (Development Mode)...');
     });
   }
 
