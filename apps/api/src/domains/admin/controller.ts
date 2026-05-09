@@ -15,6 +15,7 @@ import type { AdminDoc, Permissions } from './types';
 interface AdminRequest extends Request {
   user: {
     id: string;
+    uid: string;
     email: string;
   };
   admin: any;

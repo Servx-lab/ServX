@@ -8,7 +8,7 @@ declare global {
     interface Request {
       admin?: Record<string, unknown>;
       id?: string;
-      user?: { id: string; email: string };
+      user?: { id: string; uid: string; email: string };
     }
   }
 }
@@ -46,6 +46,7 @@ const isAdmin = async (req: Request, res: Response, next: NextFunction): Promise
     req.id = id;
     req.user = {
       id,
+      uid: id,
       email: user.email || '',
     };
     

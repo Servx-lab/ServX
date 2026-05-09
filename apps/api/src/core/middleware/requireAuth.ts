@@ -4,7 +4,7 @@ import { supabaseAdmin } from '../../utils/supabaseAdmin';
 declare global {
   namespace Express {
     interface Request {
-      user?: { id: string; email: string };
+      user?: { id: string; uid: string; email: string };
     }
   }
 }
@@ -36,6 +36,7 @@ const requireAuth = async (req: Request, res: Response, next: NextFunction): Pro
     console.log('[Auth] Supabase token verified for ID:', user.id);
     req.user = {
         id: user.id,
+        uid: user.id, // For compatibility with legacy controllers
         email: (user.email ?? '') as string,
     };
     next();
