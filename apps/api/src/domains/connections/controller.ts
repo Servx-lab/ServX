@@ -5,6 +5,8 @@ import { HOSTING_PROVIDERS } from '@servx/config';
 import type { UserConnectionProvider } from '@servx/types';
 
 import * as svc from './service';
+import { getEffectivePermissions } from '../admin/service';
+import { ForbiddenError } from '@servx/errors';
 
 
 
@@ -65,8 +67,40 @@ export async function listConnections(
   next: NextFunction
 ): Promise<void> {
   try {
-    const connections = await svc.getUserConnections(req.user.uid);
-    res.json(connections);
+    const uid = req.user.uid;
+    const perms = await getEffectivePermissions(uid, uid);
+
+    const connections = await svc.getUserConnections(uid);
+    
+    // Filter by category toggles first
+    let filtered = connections;
+    
+    if (!perms.global.canAccessHosting && !perms.global.canAccessDatabases && !perms.global.isFullControl) {
+      res.json([]);
+      return;
+    }
+
+    filtered = connections.filter(c => {
+      const isHosting = HOSTING_PROVIDERS[c.provider.toLowerCase()] != null;
+      const isDb = !isHosting; // Assuming anything not hosting is DB for simplicity here
+
+      if (isHosting && !perms.global.canAccessHosting) return false;
+      if (isDb && !perms.global.canAccessDatabases) return false;
+
+      // Then filter by granular allow lists if they exist
+      if (perms.granularAllow) {
+        if (isHosting && perms.granularAllow.serverIds) {
+          return perms.granularAllow.serverIds.includes(c._id);
+        }
+        if (isDb && perms.granularAllow.databaseIds) {
+          return perms.granularAllow.databaseIds.includes(c._id);
+        }
+      }
+
+      return true;
+    });
+
+    res.json(filtered);
   } catch (err) {
     next(err);
   }

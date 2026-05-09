@@ -22,6 +22,9 @@ export interface GlobalPermission {
   isFullControl: boolean;
   canBanIPs: boolean;
   canViewDeviceUUIDs: boolean;
+  canAccessHosting: boolean;
+  canAccessGithub: boolean;
+  canAccessDatabases: boolean;
 }
 
 /** When set, only listed resource keys/ids are visible; when omitted, all connected resources are allowed. */

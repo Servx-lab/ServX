@@ -155,6 +155,19 @@ const GranularAccessModal: React.FC<GranularAccessModalProps> = ({
   const dbAllowed = (id: string) =>
     isAllowed(id, ga?.databaseIds ?? null, fallbackFull);
 
+  const toggleGlobalArea = (area: keyof Pick<GlobalPermissions, 'canAccessHosting' | 'canAccessGithub' | 'canAccessDatabases'>, on: boolean) => {
+    setPermissions(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        global: {
+          ...prev.global,
+          [area]: on
+        }
+      };
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto border border-gray-200 bg-white p-0 text-gray-900 shadow-lg sm:max-w-lg">
@@ -186,12 +199,20 @@ const GranularAccessModal: React.FC<GranularAccessModalProps> = ({
                 <AccordionTrigger className="px-4 py-3 text-left text-sm font-medium hover:no-underline [&[data-state=open]]:bg-gray-100/80">
                   <span className="flex items-center gap-2 text-gray-900">
                     <Github className="h-4 w-4 text-cyan-600" />
-                    Repositories
+                    GitHub repositories
                     <span className="text-xs font-normal text-gray-500">({res.repos.length})</span>
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="border-t border-gray-100 px-2 pb-3 pt-1">
-                  <ul className="max-h-56 space-y-1 overflow-y-auto">
+                  <div className="mb-2 flex items-center justify-between border-b border-gray-50 px-3 py-2">
+                    <span className="text-xs font-semibold text-gray-700">Enable GitHub Access</span>
+                    <Switch
+                      checked={permissions?.global.canAccessGithub ?? false}
+                      onCheckedChange={(c) => toggleGlobalArea('canAccessGithub', c)}
+                      className="data-[state=checked]:bg-cyan-600"
+                    />
+                  </div>
+                  <ul className={`max-h-56 space-y-1 overflow-y-auto ${!(permissions?.global.canAccessGithub) ? 'pointer-events-none opacity-50' : ''}`}>
                     {res.repos.length === 0 ? (
                       <li className="px-2 py-2 text-xs text-gray-500">No repositories linked.</li>
                     ) : (
@@ -225,7 +246,15 @@ const GranularAccessModal: React.FC<GranularAccessModalProps> = ({
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="border-t border-gray-100 px-2 pb-3 pt-1">
-                  <ul className="max-h-56 space-y-1 overflow-y-auto">
+                  <div className="mb-2 flex items-center justify-between border-b border-gray-50 px-3 py-2">
+                    <span className="text-xs font-semibold text-gray-700">Enable Server Access</span>
+                    <Switch
+                      checked={permissions?.global.canAccessHosting ?? false}
+                      onCheckedChange={(c) => toggleGlobalArea('canAccessHosting', c)}
+                      className="data-[state=checked]:bg-cyan-600"
+                    />
+                  </div>
+                  <ul className={`max-h-56 space-y-1 overflow-y-auto ${!(permissions?.global.canAccessHosting) ? 'pointer-events-none opacity-50' : ''}`}>
                     {res.servers.length === 0 ? (
                       <li className="px-2 py-2 text-xs text-gray-500">No hosting connections.</li>
                     ) : (
@@ -264,7 +293,15 @@ const GranularAccessModal: React.FC<GranularAccessModalProps> = ({
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="border-t border-gray-100 px-2 pb-3 pt-1">
-                  <ul className="max-h-56 space-y-1 overflow-y-auto">
+                  <div className="mb-2 flex items-center justify-between border-b border-gray-50 px-3 py-2">
+                    <span className="text-xs font-semibold text-gray-700">Enable Database Access</span>
+                    <Switch
+                      checked={permissions?.global.canAccessDatabases ?? false}
+                      onCheckedChange={(c) => toggleGlobalArea('canAccessDatabases', c)}
+                      className="data-[state=checked]:bg-cyan-600"
+                    />
+                  </div>
+                  <ul className={`max-h-56 space-y-1 overflow-y-auto ${!(permissions?.global.canAccessDatabases) ? 'pointer-events-none opacity-50' : ''}`}>
                     {res.databases.length === 0 ? (
                       <li className="px-2 py-2 text-xs text-gray-500">No database connections.</li>
                     ) : (

@@ -7,6 +7,7 @@ import {
   refreshGithubToken,
   updateCollaboratorRole as updateCollaboratorRoleService,
 } from './service';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
 import { cacheGet, cacheSet } from '../../core/services/redisCache';
 
 const REPOS_TTL = 45;       // 45 seconds
@@ -15,6 +16,9 @@ const DETAILS_TTL = 30;     // 30 seconds
 function reposCacheKey(uid: string) { return `gh:repos:${uid}`; }
 function detailsCacheKey(uid: string, owner: string, repo: string) { return `gh:details:${uid}:${owner}/${repo}`; }
 export function userGhCachePattern(uid: string) { return `gh:*:${uid}*`; }
+
+import { getEffectivePermissions } from '../admin/service';
+import { ForbiddenError } from '@servx/errors';
 
 async function handleGithubRequest<T>(
   uid: string,
@@ -57,15 +61,31 @@ export async function getRepos(req: any, res: any, next: any): Promise<void> {
   }
 
   try {
+    // 1. Check Permissions (Master Toggle)
+    const perms = await getEffectivePermissions(uid, uid); 
+    if (!perms.global.canAccessGithub) {
+      throw new ForbiddenError('GitHub access is disabled for your account');
+    }
+
+    // 2. Check Cache
     const cached = !forceRefresh ? await cacheGet<any[]>(reposCacheKey(uid)) : null;
     if (cached) {
       res.json(cached);
       return;
     }
 
+    // 3. Fetch Fresh
     const repos = await handleGithubRequest(uid, (token) => fetchRepos(token));
-    await cacheSet(reposCacheKey(uid), repos, REPOS_TTL);
-    res.json(repos);
+
+    // 4. Filter by Granular Allow List
+    let filtered = repos;
+    if (perms.granularAllow && perms.granularAllow.repoKeys) {
+      const allowed = new Set(perms.granularAllow.repoKeys);
+      filtered = repos.filter(r => allowed.has(r.full_name));
+    }
+
+    await cacheSet(reposCacheKey(uid), filtered, REPOS_TTL);
+    res.json(filtered);
   } catch (error) {
     next(error);
   }
@@ -110,26 +130,24 @@ export async function linkInstallation(req: any, res: any): Promise<void> {
     throw new ValidationError('installation_id is required');
   }
 
-  // Find or create a GitHub connection for this user
-  let connection = await UserConnection.findOne({ ownerUid, provider: 'GitHub' });
-
-  if (connection) {
-    connection.installationId = installation_id;
-    connection.status = 'connected';
-    await connection.save();
-  } else {
-    connection = await UserConnection.create({
-      name: 'GitHub App Main',
-      provider: 'GitHub',
-      ownerUid,
-      installationId: installation_id,
+  // Link a GitHub App installation_id to the authenticated user in Supabase
+  const { error } = await supabaseAdmin
+    .from('github_vault')
+    .upsert({
+      user_id: ownerUid,
+      installation_id: installation_id,
       status: 'connected',
-      iv: 'managed-by-app', // Placeholder for app-managed connections
-      encryptedConfig: 'null'
-    });
+      iv: '', // Matches schema requirement
+      encrypted_access_token: 'managed-by-app', // Placeholder for app-managed connections
+    }, { onConflict: 'user_id' });
+
+  if (error) {
+    console.error('[GitHub] Failed to link installation:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to link GitHub App' });
+    return;
   }
 
-  res.json({ success: true, connectionId: connection._id });
+  res.json({ success: true, message: 'GitHub App linked successfully' });
 }
 
 export async function getGitHubStatus(req: any, res: any, next: any): Promise<void> {

@@ -36,6 +36,9 @@ function defaultPermissions(): Permissions {
       isFullControl: false,
       canBanIPs: false,
       canViewDeviceUUIDs: false,
+      canAccessHosting: false,
+      canAccessGithub: false,
+      canAccessDatabases: false,
     },
     granularAllow: null,
   };
@@ -91,13 +94,25 @@ export async function revokeAdmin(id: string): Promise<void> {
 }
 
 export async function getAdminPermissions(ownerId: string, userId: string): Promise<Permissions> {
-  const found = await (AccessControl as any).findOne({ ownerId, userId });
-  if (!found?.permissions) {
+  const { data, error } = await supabaseAdmin
+    .from('team_access_control')
+    .select('permissions')
+    .eq('owner_id', ownerId)
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !data?.permissions) {
+    // Fallback to MongoDB if Supabase record not found yet (for migration)
+    const found = await (AccessControl as any).findOne({ ownerId, userId });
+    if (found?.permissions) {
+      return {
+        ...(typeof found.toObject === 'function' ? found.toObject().permissions : found.permissions),
+      } as Permissions;
+    }
     return defaultPermissions();
   }
-  const p = {
-    ...(typeof found.toObject === 'function' ? found.toObject().permissions : found.permissions),
-  } as Permissions;
+
+  const p = data.permissions as Permissions;
   if (p.granularAllow === undefined) {
     p.granularAllow = null;
   }
@@ -109,13 +124,29 @@ export async function updateAdminPermissions(
   userId: string,
   permissions: Permissions
 ): Promise<Permissions> {
-  const updated = await (AccessControl as any).findOneAndUpdate(
+  // 1. Update Supabase (Primary Source of Truth)
+  const { error } = await supabaseAdmin
+    .from('team_access_control')
+    .upsert({
+      owner_id: ownerId,
+      user_id: userId,
+      permissions: permissions,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'owner_id,user_id' });
+
+  if (error) {
+    console.error('[Admin] Failed to update permissions in Supabase:', error.message);
+    // Continue to MongoDB for backward compatibility during transition
+  }
+
+  // 2. Also update MongoDB (Secondary/Backup for now)
+  await (AccessControl as any).findOneAndUpdate(
     { ownerId, userId },
     { permissions },
     { upsert: true, new: true }
   );
 
-  return (updated?.permissions as Permissions) ?? defaultPermissions();
+  return permissions;
 }
 
 export async function getAdminResources(
@@ -174,4 +205,30 @@ export async function getAdminResources(
     servers,
     repos,
   };
+}
+
+/**
+ * Returns permissions for a given user under a given owner.
+ * If the user is the owner themselves, they get full control.
+ */
+export async function getEffectivePermissions(
+  ownerId: string,
+  userId: string
+): Promise<Permissions> {
+  if (ownerId === userId) {
+    return {
+      repos: [],
+      dbs: [],
+      global: {
+        isFullControl: true,
+        canBanIPs: true,
+        canViewDeviceUUIDs: true,
+        canAccessHosting: true,
+        canAccessGithub: true,
+        canAccessDatabases: true,
+      },
+      granularAllow: null,
+    };
+  }
+  return getAdminPermissions(ownerId, userId);
 }

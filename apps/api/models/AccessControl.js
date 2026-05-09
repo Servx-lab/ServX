@@ -26,7 +26,10 @@ const AccessControlSchema = new mongoose.Schema({
     global: {
       isFullControl: { type: Boolean, default: false },
       canBanIPs: { type: Boolean, default: false },
-      canViewDeviceUUIDs: { type: Boolean, default: false }
+      canViewDeviceUUIDs: { type: Boolean, default: false },
+      canAccessHosting: { type: Boolean, default: false },
+      canAccessGithub: { type: Boolean, default: false },
+      canAccessDatabases: { type: Boolean, default: false }
     },
     /**
      * Optional per-resource allow lists. When omitted, all connected resources are allowed.

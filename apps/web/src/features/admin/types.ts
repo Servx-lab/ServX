@@ -32,6 +32,9 @@ export interface GlobalPermissions {
   isFullControl: boolean;
   canBanIPs: boolean;
   canViewDeviceUUIDs: boolean;
+  canAccessHosting: boolean;
+  canAccessGithub: boolean;
+  canAccessDatabases: boolean;
 }
 
 export interface GranularAllow {

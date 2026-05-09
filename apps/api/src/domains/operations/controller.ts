@@ -11,7 +11,7 @@ import {
 } from './service';
 
 interface AuthenticatedRequest extends Request {
-  user: { id: string; email: string };
+  user: { id: string; uid: string; email: string };
 }
 
 
