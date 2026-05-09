@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
+import { useAuth } from "@/contexts/AuthContext";
 import { searchUsers } from "./api";
 import type { AdminRole, UserSearchHit } from "./types";
 
@@ -19,6 +20,7 @@ interface UserSearchInviteBarProps {
 }
 
 const UserSearchInviteBar: React.FC<UserSearchInviteBarProps> = ({ onInvite, inviting }) => {
+  const { user, loading: authLoading } = useAuth();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [results, setResults] = useState<UserSearchHit[]>([]);
@@ -33,7 +35,10 @@ const UserSearchInviteBar: React.FC<UserSearchInviteBarProps> = ({ onInvite, inv
   }, [query]);
 
   useEffect(() => {
-    if (debounced.trim().length < 3) {
+    if (authLoading || !user || debounced.trim().length < 3) {
+      if (!authLoading && !user && debounced.trim().length >= 3) {
+        console.warn('[Search] Skipping search: User not authenticated');
+      }
       setResults([]);
       setLoading(false);
       return;

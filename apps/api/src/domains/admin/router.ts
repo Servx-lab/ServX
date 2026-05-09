@@ -12,12 +12,13 @@ import {
 
 const router = Router();
 
+router.use(isAdmin);
+
 router.post('/invite', inviteAdmin);
 router.get('/list', listAdmins);
 router.delete('/revoke/:id', revokeAdmin);
-router.get('/permissions/:userId', isAdmin, getPermissions);
-
-router.post('/permissions/update', isAdmin, updatePermissions);
-router.get('/resources', isAdmin, getResources);
+router.get('/permissions/:userId', getPermissions);
+router.post('/permissions/update', updatePermissions);
+router.get('/resources', getResources);
 
 export default router;

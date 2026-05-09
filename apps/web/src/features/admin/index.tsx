@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { Shield, Users, Trash2, Settings, UserCheck } from "lucide-react";
 import {
   Table,
@@ -101,9 +102,13 @@ const Administrator = () => {
                     <TableRow key={admin.id} className="border-gray-200 hover:bg-gray-50/80">
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200 bg-cyan-100 text-sm font-bold text-cyan-700">
-                            {admin.email[0]?.toUpperCase() ?? "?"}
-                          </div>
+                          <ProfilePhoto
+                            src={admin.avatarUrl}
+                            alt=""
+                            label={admin.email}
+                            className="h-10 w-10 border border-gray-200"
+                            fallbackClassName="border-cyan-200 bg-cyan-100 text-cyan-700 font-bold"
+                          />
                           <div className="min-w-0">
                             <div className="truncate font-medium text-gray-900">{admin.email}</div>
                             <code className="text-[10px] text-gray-500">{admin.id}</code>
@@ -155,7 +160,7 @@ const Administrator = () => {
       <GranularAccessModal
         open={accessUser !== null}
         onOpenChange={(o) => !o && setAccessUser(null)}
-        userUid={accessUser?.uid ?? ""}
+        userUid={accessUser?.id ?? ""}
         userEmail={accessUser?.email ?? ""}
       />
     </main>

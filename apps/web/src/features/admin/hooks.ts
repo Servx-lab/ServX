@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   getAdminList, 
   inviteAdmin, 
@@ -8,9 +9,17 @@ import {
 import { toast } from 'sonner';
 
 export const useAdminList = () => {
+  const { user } = useAuth();
+  
   return useQuery({
     queryKey: ['admin-list'],
     queryFn: getAdminList,
+    enabled: !!user,
+    retry: (failureCount, error: any) => {
+      // Don't retry on auth errors
+      if (error.response?.status === 401 || error.response?.status === 403) return false;
+      return failureCount < 3;
+    }
   });
 };
 
@@ -43,8 +52,15 @@ export const useRevokeAdmin = () => {
 };
 
 export const useAdminResources = () => {
+  const { user } = useAuth();
+  
   return useQuery({
     queryKey: ['admin-resources'],
     queryFn: getAdminResources,
+    enabled: !!user,
+    retry: (failureCount, error: any) => {
+      if (error.response?.status === 401 || error.response?.status === 403) return false;
+      return failureCount < 3;
+    }
   });
 };

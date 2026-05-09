@@ -41,12 +41,25 @@ const apiClient = axios.create({
 // Request Interceptor: Attach Supabase JWT
 apiClient.interceptors.request.use(
   async (config) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    let { data: { session } } = await supabase.auth.getSession();
+    
+    // Micro-retry: If no session, wait 50ms and try once more.
+    // This catches the edge case where Supabase is just finishing _recoverAndRefresh.
+    if (!session) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const retry = await supabase.auth.getSession();
+      session = retry.data.session;
+    }
     
     if (session?.access_token) {
         config.headers.Authorization = `Bearer ${session.access_token}`;
+        if (process.env.NODE_ENV === 'development') {
+          console.debug(`[Axios] Token attached for: ${config.url}`);
+        }
     } else {
-      console.warn('[apiClient] No session detected, sending unauthenticated request to:', config.url);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`[Axios] No session found for: ${config.url}. Proceeding unauthenticated.`);
+      }
     }
 
     return config;

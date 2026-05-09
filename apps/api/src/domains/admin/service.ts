@@ -78,12 +78,34 @@ export async function inviteUserAsAdmin(email: string, role: string): Promise<Ad
 
 export async function listAdmins(): Promise<AdminRecord[]> {
   const admins = await (Admin as any).find().sort({ addedAt: -1 });
-  return admins.map((a: any) => ({
-    id: a.id,
-    email: a.email,
-    role: a.role,
-    addedAt: a.addedAt?.toISOString?.() ?? String(a.addedAt),
-  }));
+  const userIds = admins.map((a: any) => a.id);
+
+  // 1. Fetch from MongoDB (Secondary/Legacy source)
+  const mongoUsers = await (User as any).find({ id: { $in: userIds } });
+  const mongoMap = new Map(mongoUsers.map((u: any) => [u.id, u]));
+
+  // 2. Fetch from Supabase (Primary source for profiles)
+  const { data: supabaseProfiles } = await supabaseAdmin
+    .from('user_profiles')
+    .select('id, avatar_url')
+    .in('id', userIds);
+  const supabaseMap = new Map((supabaseProfiles || []).map((p: any) => [p.id, p]));
+
+  return admins.map((a: any) => {
+    const mongoUser = mongoMap.get(a.id) as any;
+    const supabaseProfile = supabaseMap.get(a.id) as any;
+    
+    // Prefer Supabase avatar, fall back to MongoDB
+    const avatarUrl = supabaseProfile?.avatar_url || mongoUser?.avatarUrl;
+
+    return {
+      id: a.id,
+      email: a.email,
+      role: a.role,
+      avatarUrl,
+      addedAt: a.addedAt?.toISOString?.() ?? String(a.addedAt),
+    };
+  });
 }
 
 export async function revokeAdmin(id: string): Promise<void> {

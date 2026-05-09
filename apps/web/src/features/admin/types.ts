@@ -13,6 +13,7 @@ export interface AdminRecord {
   email: string;
   role: AdminRole;
   addedAt: string;
+  avatarUrl?: string;
 }
 
 export interface RepoPermissions {
