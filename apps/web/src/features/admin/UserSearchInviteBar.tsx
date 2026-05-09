@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
+import { useAuth } from "@/contexts/AuthContext";
 import { searchUsers } from "./api";
 import type { AdminRole, UserSearchHit } from "./types";
 
@@ -19,6 +20,7 @@ interface UserSearchInviteBarProps {
 }
 
 const UserSearchInviteBar: React.FC<UserSearchInviteBarProps> = ({ onInvite, inviting }) => {
+  const { user, loading: authLoading } = useAuth();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [results, setResults] = useState<UserSearchHit[]>([]);
@@ -33,7 +35,10 @@ const UserSearchInviteBar: React.FC<UserSearchInviteBarProps> = ({ onInvite, inv
   }, [query]);
 
   useEffect(() => {
-    if (debounced.trim().length < 2) {
+    if (authLoading || !user || debounced.trim().length < 3) {
+      if (!authLoading && !user && debounced.trim().length >= 3) {
+        console.warn('[Search] Skipping search: User not authenticated');
+      }
       setResults([]);
       setLoading(false);
       return;
@@ -42,9 +47,11 @@ const UserSearchInviteBar: React.FC<UserSearchInviteBarProps> = ({ onInvite, inv
     setLoading(true);
     void searchUsers(debounced)
       .then((users) => {
+        console.log('[Search] Results received:', users.length);
         if (!cancelled) setResults(users);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('[Search] API error:', err);
         if (!cancelled) setResults([]);
       })
       .finally(() => {
@@ -99,13 +106,18 @@ const UserSearchInviteBar: React.FC<UserSearchInviteBarProps> = ({ onInvite, inv
           />
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
 
-          {open && (results.length > 0 || loading) && query.trim().length >= 2 && (
+          {open && query.trim().length >= 3 && (
             <ul
               className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
               role="listbox"
             >
               {loading ? (
-                <li className="px-4 py-3 text-sm text-gray-500">Searching…</li>
+                <li className="px-4 py-3 text-sm text-gray-500 flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-600 border-t-transparent"></div>
+                  Searching...
+                </li>
+              ) : results.length === 0 ? (
+                <li className="px-4 py-3 text-sm text-gray-500 italic">No users found for &quot;{query}&quot;</li>
               ) : (
                 results.map((u) => (
                   <li key={u.id}>

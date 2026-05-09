@@ -32,6 +32,12 @@ export interface UserConnection {
 	updatedAt?: string | Date;
 }
 
+export interface UserPermissions {
+	canAccessHosting: boolean;
+	canAccessGithub: boolean;
+	canAccessDatabases: boolean;
+}
+
 export interface User {
 	_id?: string;
 	name: string;
@@ -50,6 +56,7 @@ export interface User {
 	surname?: string;
 	emailVerified?: boolean;
 	role: string;
+	permissions?: UserPermissions;
 	createdAt?: string | Date;
 }
 

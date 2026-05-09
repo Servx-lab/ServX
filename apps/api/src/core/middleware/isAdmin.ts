@@ -35,7 +35,20 @@ const isAdmin = async (req: Request, res: Response, next: NextFunction): Promise
     }
 
     const id = user.id;
-    const adminRecord = await AdminModel.findOne({ id });
+    const userEmail = (user.email || '').toLowerCase();
+    let adminRecord = await AdminModel.findOne({ id });
+
+    // Fallback: Check if user is among the system admins defined in .env
+    const adminEmails = (process.env.ADMIN_EMAIL || '').split(',').map(e => e.trim().toLowerCase());
+    const isEnvAdmin = userEmail && adminEmails.includes(userEmail);
+    
+    if (!adminRecord && isEnvAdmin) {
+      adminRecord = {
+        id,
+        email: userEmail,
+        role: 'owner',
+      };
+    }
 
     if (!adminRecord) {
       res.status(403).json({ message: 'Forbidden: Admin access required' });

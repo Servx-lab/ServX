@@ -194,6 +194,8 @@ async function performHostingStatusFetch(
     return { connected: false };
   }
 
+  let parsedConfig: any;
+  let token: string;
   try {
     const rawConfig = connection.encrypted_config;
     parsedConfig = JSON.parse(rawConfig) as { token?: string; apiKey?: string; instanceUrl?: string };
@@ -716,7 +718,7 @@ export async function getHostingEnvironmentVariables(
     throw new ValidationError('Service or project ID is required.');
   }
 
-  const creds = await getHostingCredentials(ownerUid, pk as HostingProviderKey);
+  const creds = await getHostingCredentials(ownerUid, pk as 'vercel' | 'render');
   const token = creds?.token || (creds as any)?.apiKey;
 
   if (!token) {

@@ -66,9 +66,9 @@ const Emails = () => {
   };
 
   return (
-    <main className="flex-1 flex flex-col h-full overflow-hidden bg-white text-black font-sans">
+    <main className="flex-1 flex flex-col h-full overflow-hidden bg-background text-black font-sans">
         {/* Header */}
-        <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md px-8 py-5 flex items-center justify-between z-10">
+        <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md px-8 py-5 flex items-center justify-between z-10 rounded-t-[2rem]">
           <div className="flex items-center gap-3">
              <div className="p-2 bg-blue-50 rounded-lg border border-blue-100 shadow-sm">
                 <Mail className="w-5 h-5 text-blue-500" />

@@ -191,7 +191,7 @@ export async function saveGroup(req: Request, res: Response, next: NextFunction)
 export async function deleteGroup(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    await svc.deleteProjectGroup(req.user?.id || '', id);
+    await svc.deleteProjectGroup(req.user?.id || '', String(id));
     res.json({ success: true, message: 'Group deleted successfully' });
   } catch (err) {
     next(err);

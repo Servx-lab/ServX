@@ -22,6 +22,9 @@ export interface GlobalPermission {
   isFullControl: boolean;
   canBanIPs: boolean;
   canViewDeviceUUIDs: boolean;
+  canAccessHosting: boolean;
+  canAccessGithub: boolean;
+  canAccessDatabases: boolean;
 }
 
 /** When set, only listed resource keys/ids are visible; when omitted, all connected resources are allowed. */
@@ -47,12 +50,20 @@ export interface DbResource {
 export interface RepoResource {
   name: string;
   full_name: string;
+  deployments: ServerResource[];
 }
 
 export interface ServerResource {
   id: string;
   name: string;
   provider: string;
+  repo_full_name?: string;
+}
+
+export interface AdminResource {
+  databases: DbResource[];
+  repos: RepoResource[];
+  standaloneDeployments: ServerResource[];
 }
 
 export interface AdminDoc {

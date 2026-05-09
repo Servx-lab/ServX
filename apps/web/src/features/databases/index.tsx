@@ -8,7 +8,7 @@ const Databases = () => {
   const sourceParam = searchParams.get('source');
 
   return (
-    <main className="flex-1 p-8 flex flex-col h-full overflow-hidden">
+    <main className="flex-1 p-8 flex flex-col h-full overflow-hidden rounded-[2rem]">
         {/* Breadcrumb */}
         <motion.div
           className="flex items-center gap-2 text-sm text-muted-foreground mb-6"

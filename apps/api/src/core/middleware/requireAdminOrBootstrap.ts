@@ -18,7 +18,21 @@ const requireAdminOrBootstrap = async (
   }
 
   try {
-    const adminRecord = await AdminModel.findOne({ id });
+    const userEmail = (req.user?.email || '').toLowerCase();
+    let adminRecord = await AdminModel.findOne({ id });
+
+    // Fallback 1: Check if user is among the system admins defined in .env
+    const adminEmails = (process.env.ADMIN_EMAIL || '').split(',').map(e => e.trim().toLowerCase());
+    const isEnvAdmin = userEmail && adminEmails.includes(userEmail);
+    
+    if (!adminRecord && isEnvAdmin) {
+      adminRecord = {
+        id,
+        email: userEmail,
+        role: 'owner',
+      };
+    }
+
     if (adminRecord) {
       req.admin = adminRecord as Record<string, unknown>;
       req.id = id;
@@ -26,6 +40,7 @@ const requireAdminOrBootstrap = async (
       return;
     }
 
+    // Fallback 2: Bootstrap mode if no admins exist at all
     const count = await AdminModel.countDocuments();
     if (count === 0) {
       req.id = id;

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { Shield, Users, Trash2, Settings, UserCheck } from "lucide-react";
 import {
   Table,
@@ -41,7 +42,7 @@ const Administrator = () => {
   };
 
   return (
-    <main className="flex h-full flex-1 flex-col overflow-y-auto bg-white p-8 pt-24 font-sans text-black no-scrollbar">
+    <main className="flex h-full flex-1 flex-col overflow-y-auto bg-background p-8 pt-24 font-sans text-black no-scrollbar rounded-[2rem]">
       <div className="mx-auto w-full max-w-6xl space-y-10">
         {/* Page header */}
         <div className="flex items-center gap-3">
@@ -85,28 +86,32 @@ const Administrator = () => {
               </TableHeader>
               <TableBody>
                 {isLoadingAdmins ? (
-                  <TableRow>
+                  <TableRow key="loading">
                     <TableCell colSpan={4} className="h-40 animate-pulse text-center text-gray-500">
                       Loading team…
                     </TableCell>
                   </TableRow>
                 ) : admins.length === 0 ? (
-                  <TableRow>
+                  <TableRow key="empty">
                     <TableCell colSpan={4} className="h-40 text-center italic text-gray-500">
                       No team members yet. Invite someone above.
                     </TableCell>
                   </TableRow>
                 ) : (
                   admins.map((admin) => (
-                    <TableRow key={admin.uid} className="border-gray-200 hover:bg-gray-50/80">
+                    <TableRow key={admin.id} className="border-gray-200 hover:bg-gray-50/80">
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200 bg-cyan-100 text-sm font-bold text-cyan-700">
-                            {admin.email[0]?.toUpperCase() ?? "?"}
-                          </div>
+                          <ProfilePhoto
+                            src={admin.avatarUrl}
+                            alt=""
+                            label={admin.email}
+                            className="h-10 w-10 border border-gray-200"
+                            fallbackClassName="border-cyan-200 bg-cyan-100 text-cyan-700 font-bold"
+                          />
                           <div className="min-w-0">
                             <div className="truncate font-medium text-gray-900">{admin.email}</div>
-                            <code className="text-[10px] text-gray-500">{admin.uid}</code>
+                            <code className="text-[10px] text-gray-500">{admin.id}</code>
                           </div>
                         </div>
                       </TableCell>
@@ -136,7 +141,7 @@ const Administrator = () => {
                             size="icon"
                             className="h-9 w-9 text-red-600 hover:bg-red-50 hover:text-red-700"
                             title="Revoke access"
-                            onClick={() => handleRevoke(admin.uid)}
+                            onClick={() => handleRevoke(admin.id)}
                             disabled={revokeMutation.isPending}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -155,7 +160,7 @@ const Administrator = () => {
       <GranularAccessModal
         open={accessUser !== null}
         onOpenChange={(o) => !o && setAccessUser(null)}
-        userUid={accessUser?.uid ?? ""}
+        userUid={accessUser?.id ?? ""}
         userEmail={accessUser?.email ?? ""}
       />
     </main>
