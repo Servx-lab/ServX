@@ -13,7 +13,9 @@ import {
   Server,
   Eye,
   EyeOff,
-  HelpCircle
+  HelpCircle,
+  Database,
+  Zap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
