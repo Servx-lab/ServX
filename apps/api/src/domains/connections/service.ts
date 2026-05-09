@@ -749,7 +749,7 @@ export async function getHostingCredentials(
   ownerUid: string,
   provider: 'vercel' | 'render'
 ): Promise<{ token: string; edgeConfigId?: string } | null> {
-  const providerInfo = HOSTING_PROVIDERS[providerKey];
+  const providerInfo = HOSTING_PROVIDERS[provider as keyof typeof HOSTING_PROVIDERS];
   if (!providerInfo) return null;
 
   const { data, error } = await supabaseAdmin

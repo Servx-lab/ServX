@@ -7,6 +7,8 @@ import {
   exchangeVercelCode,
   getDigitalOceanOAuthUrl,
 } from './service';
+import { saveHostingToken } from '../connections/service';
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 // ─── Redirect helpers ─────────────────────────────────────────────────────────
 
@@ -65,7 +67,20 @@ export async function handleVercelCallback(
 
   try {
     const accessToken = await exchangeVercelCode(code, targetOwnerUid);
-    console.log('Vercel Auth Success for uid:', targetOwnerUid, '— token length:', accessToken?.length);
+    
+    // Fetch user email for saveHostingToken (needed by ensureUserProfile)
+    const { data: user } = await supabaseAdmin.auth.admin.getUserById(targetOwnerUid);
+    const email = user?.user?.email ?? 'oauth-user@servx.app';
+
+    await saveHostingToken(
+        targetOwnerUid,
+        email,
+        'vercel',
+        'Vercel Account',
+        accessToken
+    );
+
+    console.log('Vercel Auth Success and saved for uid:', targetOwnerUid);
     redirectSuccess(res, '/infrastructure', { vercel_connected: 'true' });
   } catch (err) {
     const axiosErr = err as any;

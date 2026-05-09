@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://bxmnuzqujamyuvsomfdj.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseServiceKey) {
   console.warn('Supabase Service Role Key is missing. Supabase token verification will fail.');
@@ -12,7 +12,7 @@ let supabaseAdmin: any = null;
 if (supabaseUrl && supabaseServiceKey) {
     try {
         supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-        console.log('✅ Supabase');
+        console.log(`✅ Supabase Admin initialized for: ${supabaseUrl}`);
     } catch (err: any) {
         console.error('[Supabase] Failed to initialize admin client:', err.message);
     }
