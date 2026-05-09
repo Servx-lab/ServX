@@ -16,7 +16,13 @@ export interface GranularAllow {
 }
 ```
 
-## 3. Enforcement Logic
+## 3. Nested Resource Mapping
+Starting in v2.4, the system implements a parent-child relationship between source code (GitHub) and production environments (Hosting):
+
+- **Auto-Linking**: When fetching resources, the backend `getAdminResources` service attempts to link Vercel/Render projects to their GitHub repositories using `repo_full_name` metadata.
+- **Standalone Category**: Resources that cannot be linked are grouped into a `standaloneDeployments` array.
+
+## 4. Enforcement Logic
 The enforcement happens at the **Controller** level in the API. Before returning any resource list, the API performs the following steps:
 
 1.  **Retrieve Permissions**: Fetches the user's permissions using `getEffectivePermissions`.
@@ -26,5 +32,5 @@ The enforcement happens at the **Controller** level in the API. Before returning
     - It filters the array using `.filter(item => allowedIds.includes(item.id))`.
     - Only the authorized items are returned to the frontend.
 
-## 4. Impact on Security
-This architecture ensures that even if a team member knows the ID of a repository or server they aren't assigned to, the API will refuse to return any metadata or allow any operations on that resource.
+## 5. Security Guard: Ghost Permissions
+The UI prevents "Ghost Permissions" by automatically stripping associated deployment IDs when a repository's master deployment toggle is turned off. This ensures that permissions are always logically consistent.

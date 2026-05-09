@@ -16,11 +16,17 @@ When opened, the modal triggers two parallel requests:
 - **Initial Sync**: If the user has never had granular permissions before, the UI defaults to "Full Access" (all items checked) to ensure backward compatibility with simple category toggles.
 
 ## 2. Visual Hierarchy
-- **Accordions**: Resources are grouped into GitHub, Servers, and Databases to reduce cognitive load.
-- **Category Toggles**: Each section has a "Master Toggle" at the top. If this is turned off, the individual resource switches below it are disabled and visually dimmed.
-- **Truncation & Tooltips**: Long repository names (`owner/very-long-repo-name`) are truncated with ellipsis to maintain layout integrity.
+- **Nested Accordions**: Resources are grouped into a primary "Infrastructure & Apps" section. Each repository is an `AccordionItem` that expands to show associated deployments.
+- **Dual Toggles**: Each repo has a "GitHub Graph Access" switch and a "Deployment Access" switch.
+- **Conditional Visibility**: Deployment checklists only appear if the master "Deployment Access" toggle is ON. If OFF, the children are dimmed and disabled.
+- **Standalone Section**: Unmapped deployments are listed in a separate "Standalone Deployments" section below the repos.
 
-## 3. Saving Workflow
+## 3. Security Logic: Ghost Permissions
+To ensure data integrity, the modal implements a reactive cleanup strategy:
+- When the `Deployment Access` master toggle for a repo is turned **OFF**, the UI automatically filters the `ga.serverIds` array to remove all child IDs belonging to that repo.
+- This prevents a scenario where a user might retain hidden access to sub-resources after the parent access is revoked.
+
+## 4. Saving Workflow
 - When "Save Access" is clicked, the UI constructs a unified `AccessPermissions` object.
-- It translates the local "Set" of checked IDs back into standard arrays for the API.
-- Upon success, it triggers a "Toast" notification and refreshes the parent dashboard state.
+- It translates the local state back into standard arrays (`repoKeys`, `serverIds`, `databaseIds`).
+- Upon success, it triggers a "Toast" notification and closes the modal.

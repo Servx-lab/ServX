@@ -43,7 +43,6 @@ const isAdmin = async (req: Request, res: Response, next: NextFunction): Promise
     const isEnvAdmin = userEmail && adminEmails.includes(userEmail);
     
     if (!adminRecord && isEnvAdmin) {
-      console.log(`[isAdmin] Bootstrapping admin access for system owner: ${userEmail}`);
       adminRecord = {
         id,
         email: userEmail,
@@ -51,10 +50,7 @@ const isAdmin = async (req: Request, res: Response, next: NextFunction): Promise
       };
     }
 
-    const granted = !!adminRecord;
-    console.log(`[Admin Middleware] Request: ${req.method} ${req.url} | User: ${userEmail} | DB Admin: ${!!adminRecord} | Env Match: ${isEnvAdmin} -> Access: ${granted}`);
-
-    if (!granted) {
+    if (!adminRecord) {
       res.status(403).json({ message: 'Forbidden: Admin access required' });
       return;
     }

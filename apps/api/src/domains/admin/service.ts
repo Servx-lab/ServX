@@ -6,6 +6,7 @@ import { Admin, AccessControl, User } from './model';
 import type {
   AdminDoc,
   AdminRecord,
+  AdminResource,
   DbResource,
   Permissions,
   RepoResource,
@@ -173,12 +174,8 @@ export async function updateAdminPermissions(
 
 export async function getAdminResources(
   adminRecord: AdminDoc
-): Promise<{
-  dbs: DbResource[];
-  databases: DbResource[];
-  servers: ServerResource[];
-  repos: RepoResource[];
-}> {
+): Promise<AdminResource> {
+  // 1. Fetch DB and Hosting Connections from Vault
   const [dbRes, hostingRes] = await Promise.all([
     supabaseAdmin.from('db_vault').select('id, name, provider'),
     supabaseAdmin.from('hosting_vault').select('id, name, provider'),
@@ -190,14 +187,44 @@ export async function getAdminResources(
     provider: d.provider,
   }));
 
-  const servers: ServerResource[] = (hostingRes.data || []).map(h => ({
-    id: h.id,
-    name: h.name,
-    provider: h.provider,
+  // 2. Fetch Services/Deployments for each Hosting Connection
+  const allDeployments: ServerResource[] = [];
+  const connections = hostingRes.data || [];
+  
+  // We use the hosting service to fetch the actual services inside each connection
+  const { getHostingProviderStatus } = require('../connections/service');
+  const { HOSTING_PROVIDERS: HP_CONFIG } = require('@servx/config');
+
+  await Promise.all(connections.map(async (conn) => {
+    try {
+      // Find the provider key (e.g. 'vercel') from the dbName (e.g. 'Vercel')
+      const providerKey = Object.keys(HP_CONFIG).find(
+        key => HP_CONFIG[key].dbName === conn.provider
+      );
+
+      if (providerKey) {
+        const status = await getHostingProviderStatus(adminRecord.id, providerKey);
+        if (status.connected) {
+          const services = status.services || [];
+          services.forEach((s: any) => {
+            allDeployments.push({
+              id: s.id,
+              name: s.name,
+              provider: conn.provider,
+              // We'll try to guess or use metadata if available in future
+              // For now, let's assume the service name or its linked repo info
+              repo_full_name: s.repo_full_name || s.metadata?.repo_full_name
+            });
+          });
+        }
+      }
+    } catch (err) {
+      console.error(`[Admin] Failed to fetch services for ${conn.name}:`, err);
+    }
   }));
 
+  // 3. Fetch GitHub Repos
   let repos: RepoResource[] = [];
-  // Fetch GitHub token from vault
   const { data: githubData } = await supabaseAdmin
     .from('github_vault')
     .select('*')
@@ -214,18 +241,35 @@ export async function getAdminResources(
       repos = (repoResponse.data as any[]).map((repo: any) => ({
         name: repo.name,
         full_name: repo.full_name,
+        deployments: [] // Will be populated below
       }));
     } catch (error) {
       console.error('Failed to fetch GitHub repos for resources:', (error as any)?.message || error);
-      repos = [];
     }
   }
 
+  // 4. Map Deployments to Repos and group Standalone
+  const standaloneDeployments: ServerResource[] = [];
+  
+  allDeployments.forEach(depl => {
+    // Try to find a matching repo. 
+    // Logic: Exact match on repo_full_name, OR name match (e.g. repo 'servx' matches vercel project 'servx')
+    const matchingRepo = repos.find(r => 
+      r.full_name === depl.repo_full_name || 
+      r.name.toLowerCase() === depl.name.toLowerCase()
+    );
+
+    if (matchingRepo) {
+      matchingRepo.deployments.push(depl);
+    } else {
+      standaloneDeployments.push(depl);
+    }
+  });
+
   return {
-    dbs: databases,
     databases,
-    servers,
     repos,
+    standaloneDeployments,
   };
 }
 

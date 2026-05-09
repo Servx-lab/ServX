@@ -57,11 +57,16 @@ export interface ServerResource {
   provider: string;
 }
 
+export interface RepoResource {
+  name: string;
+  full_name: string;
+  deployments: ServerResource[];
+}
+
 export interface AdminResource {
-  dbs: { id: string; name: string; provider: string }[];
   databases: { id: string; name: string; provider: string }[];
-  servers: ServerResource[];
-  repos: { name: string; full_name: string }[];
+  repos: RepoResource[];
+  standaloneDeployments: ServerResource[];
 }
 
 export interface InviteAdminBody {

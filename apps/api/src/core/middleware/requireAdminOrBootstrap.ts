@@ -26,7 +26,6 @@ const requireAdminOrBootstrap = async (
     const isEnvAdmin = userEmail && adminEmails.includes(userEmail);
     
     if (!adminRecord && isEnvAdmin) {
-      console.log(`[requireAdminOrBootstrap] Bootstrapping admin access for system owner: ${userEmail}`);
       adminRecord = {
         id,
         email: userEmail,
@@ -37,7 +36,6 @@ const requireAdminOrBootstrap = async (
     if (adminRecord) {
       req.admin = adminRecord as Record<string, unknown>;
       req.id = id;
-      console.log(`[AdminOrBootstrap] Access GRANTED via Admin Record | User: ${userEmail}`);
       next();
       return;
     }
@@ -45,13 +43,11 @@ const requireAdminOrBootstrap = async (
     // Fallback 2: Bootstrap mode if no admins exist at all
     const count = await AdminModel.countDocuments();
     if (count === 0) {
-      console.log(`[requireAdminOrBootstrap] System is in Bootstrap mode (0 admins). Granting access to: ${userEmail}`);
       req.id = id;
       next();
       return;
     }
 
-    console.warn(`[AdminOrBootstrap] Access DENIED | User: ${userEmail} | Admin Count: ${count} | Env Match: ${isEnvAdmin}`);
     res.status(403).json({ message: 'Forbidden: Admin access required' });
   } catch (error) {
     next(error);
