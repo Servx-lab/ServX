@@ -165,7 +165,7 @@ const ProfileSettings = () => {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-white text-black p-6 md:p-8 space-y-8 animate-in fade-in duration-500 no-scrollbar">
+    <div className="h-full overflow-y-auto bg-background text-black p-6 md:p-8 space-y-8 animate-in fade-in duration-500 no-scrollbar rounded-[2rem]">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-black">
           Profile Settings

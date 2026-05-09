@@ -4,7 +4,7 @@ import MetricCards from "@/components/MetricCards";
 
 const Index = () => {
   return (
-    <main className="flex-1 p-8 flex flex-col min-h-full">
+    <main className="flex-1 p-8 flex flex-col min-h-full rounded-[2rem]">
         {/* Breadcrumb */}
         <motion.div
           className="flex items-center gap-2 text-sm text-muted-foreground mb-2"
