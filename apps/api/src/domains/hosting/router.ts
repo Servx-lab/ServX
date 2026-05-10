@@ -8,6 +8,7 @@ import {
   startDigitalOceanOAuth,
   handleDigitalOceanCallback,
   startRailwayOAuth,
+  getFailuresHistory,
 } from './controller';
 
 const router = Router();
@@ -22,5 +23,8 @@ router.get('/digitalocean/callback', handleDigitalOceanCallback);
 
 // Railway
 router.get('/railway', startRailwayOAuth);
+
+// Failure History
+router.get('/failures/history', getFailuresHistory);
 
 export default router;

@@ -6,6 +6,7 @@ import {
   getVercelOAuthUrl,
   exchangeVercelCode,
   getDigitalOceanOAuthUrl,
+  getGlobalFailureHistory,
 } from './service';
 import { saveHostingToken } from '../connections/service';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
@@ -120,4 +121,14 @@ export function startRailwayOAuth(
 ): void {
   // Railway does not have a public OAuth flow — use API tokens via the connections domain.
   redirectSuccess(res, '/infrastructure', { railway_connected: 'true', mock: 'true' });
+}
+
+// GET /api/hosting/failures/history
+export async function getFailuresHistory(req: any, res: Response, next: NextFunction) {
+  try {
+    const history = await getGlobalFailureHistory(req.user?.uid || 'mock-user-123');
+    res.json({ history });
+  } catch (err) {
+    next(err);
+  }
 }
