@@ -8,10 +8,19 @@ const crypto = require('crypto');
 const OpenAI = require('openai');
 const { supabaseAdmin } = require('../src/utils/supabaseAdmin');
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Safe Initialization: Prevent crash if API Key is missing
+let openai = null;
+if (process.env.OPENAI_API_KEY) {
+  try {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  } catch (err) {
+    console.error('[Auto-Medic] Failed to initialize OpenAI client:', err.message);
+  }
+} else {
+  console.warn('[Auto-Medic] Warning: OPENAI_API_KEY is missing. AI diagnosis will be disabled.');
+}
 
 class ErrorAnalyzerService {
   /**
@@ -49,8 +58,8 @@ class ErrorAnalyzerService {
    * Enforces JSON output for automated processing.
    */
   async fetchAiDiagnosis(errorMessage, normalizedStack) {
-    if (!process.env.OPENAI_API_KEY) {
-      console.warn('[Auto-Medic] OPENAI_API_KEY is missing. Using fallback.');
+    if (!openai) {
+      console.warn('[Auto-Medic] LLM client not initialized. Using fallback.');
       return this.getFallbackAnalysis();
     }
 
@@ -109,7 +118,6 @@ class ErrorAnalyzerService {
    * Main entry point: Analyzes an error object, checking Supabase cache first.
    */
   async analyzeError(errorObject) {
-    // Basic verification of dependencies
     if (!supabaseAdmin) {
       console.error('[Auto-Medic] Supabase client is uninitialized.');
       return this.getFallbackAnalysis();
@@ -119,7 +127,6 @@ class ErrorAnalyzerService {
     const signature = this.generateSignature(normalizedStack);
 
     try {
-      // 1. Cache Lookup (Supabase)
       const { data: cachedError, error: fetchError } = await supabaseAdmin
         .from('error_cache')
         .select('*')
@@ -137,11 +144,9 @@ class ErrorAnalyzerService {
         };
       }
 
-      // 2. Cache MISS -> Call Real AI
       console.log(`[Auto-Medic] Cache MISS: ${signature.substring(0, 8)}. Calling LLM...`);
       const aiResult = await this.fetchAiDiagnosis(errorObject.message, normalizedStack);
 
-      // 3. Persist to Supabase
       const newEntry = {
         signature,
         original_error: errorObject.message,
