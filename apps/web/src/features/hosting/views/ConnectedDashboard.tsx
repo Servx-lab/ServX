@@ -6,6 +6,7 @@ import { ProviderConfig, ProviderUser, ServiceItem, DeploymentItem } from '../ty
 import { HostingCharts } from '../components/HostingCharts';
 import { ServicesTable } from '../components/ServicesTable';
 import { DeploymentsTable } from '../components/DeploymentsTable';
+import { CriticalFailuresSection } from '../components/CriticalFailuresSection';
 
 interface ConnectedDashboardProps {
   config: ProviderConfig;
@@ -135,19 +136,36 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
             totalResources={services.length + deployments.length}
           />
 
+          {/* Core Infrastructure & Failures Layout */}
           <div className="space-y-8">
-            <ServicesTable 
-                services={services}
-                providerKey={config.key}
-                supportsEnvManager={['vercel', 'render'].includes(config.key)}
-                timeAgo={timeAgo}
-                getStateColor={getStateColor}
-            />
-            <DeploymentsTable 
-                deployments={deployments}
-                timeAgo={timeAgo}
-                getStateColor={getStateColor}
-            />
+            {/* Top Row: Services (2/3) and Global Failure (1/3) */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+              <div className="lg:col-span-2">
+                <ServicesTable 
+                    services={services}
+                    providerKey={config.key}
+                    supportsEnvManager={['vercel', 'render'].includes(config.key)}
+                    timeAgo={timeAgo}
+                    getStateColor={getStateColor}
+                />
+              </div>
+              
+              <div className="lg:col-span-1">
+                <CriticalFailuresSection 
+                    timeAgo={timeAgo}
+                    getStateColor={getStateColor}
+                />
+              </div>
+            </div>
+
+            {/* Bottom Row: Recent Deployments (Full Width) */}
+            <div className="w-full">
+              <DeploymentsTable 
+                  deployments={deployments}
+                  timeAgo={timeAgo}
+                  getStateColor={getStateColor}
+              />
+            </div>
           </div>
         </div>
 

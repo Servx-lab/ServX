@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { connectHostingProvider, getHostingStatus } from './api';
+import { connectHostingProvider, getHostingStatus, getGlobalFailureHistory } from './api';
 import type { ConnectHostingBody } from './types';
 
 import { useLocalCache } from '@/hooks/useLocalCache';
@@ -45,5 +45,17 @@ export function useConnectHosting() {
         variant: 'destructive',
       });
     },
+  });
+}
+
+/**
+ * Hook to poll the global failure history across all connected hosting providers.
+ */
+export function useGlobalFailures() {
+  return useQuery({
+    queryKey: ['hosting', 'failures', 'history'],
+    queryFn: getGlobalFailureHistory,
+    refetchInterval: 10000, // Poll every 10 seconds
+    staleTime: 5000,
   });
 }

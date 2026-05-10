@@ -78,3 +78,24 @@ export function getDigitalOceanOAuthUrl(): string | null {
   if (!DO_CLIENT_ID) return null;
   return `https://cloud.digitalocean.com/v1/oauth/authorize?client_id=${DO_CLIENT_ID}&redirect_uri=${DO_REDIRECT_URI}&response_type=code&scope=read write`;
 }
+
+/**
+ * Fetches a unified history of critical failures across all hosting providers.
+ * Filters for HIGH/CRITICAL severity or explicit deployment failure messages.
+ */
+export async function getGlobalFailureHistory(userId: string) {
+  const { data, error } = await supabaseAdmin
+    .from('incidents')
+    .select('*')
+    // Filter for common failure indicators or high severity
+    .or('severity.eq.HIGH,severity.eq.CRITICAL,error_message.ilike.%failed%,error_message.ilike.%error%,error_message.ilike.%crash%')
+    .order('timestamp', { ascending: false })
+    .limit(30);
+
+  if (error) {
+    console.error('[HostingService] Failed to fetch failure history:', error.message);
+    throw error;
+  }
+
+  return data || [];
+}

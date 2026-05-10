@@ -30,3 +30,17 @@ export interface FinOpsData {
   threshold: number;
   currentSpend: number;
 }
+
+export interface Incident {
+  id: string;
+  timestamp: string;
+  path: string;
+  method: string;
+  error_message: string;
+  error_stack: string;
+  error_code: number;
+  diagnosis: string;
+  suggested_fix: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'UNKNOWN';
+  cached: boolean;
+}

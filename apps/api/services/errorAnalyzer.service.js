@@ -1,177 +1,183 @@
-const fs = require('fs').promises;
-const path = require('path');
-const crypto = require('crypto');
-
-// Path to our local JSON cache (simulating a DB)
-const CACHE_FILE_PATH = path.join(__dirname, '../data/errorCache.json');
-
-// Ensure the data directory exists
-const ensureCacheDir = async () => {
-  const dir = path.dirname(CACHE_FILE_PATH);
-  try {
-    await fs.access(dir);
-  } catch {
-    await fs.mkdir(dir, { recursive: true });
-  }
-};
-
 /**
- * Service to intercept, analyze, and cache server errors using AI (simulated).
- * This prevents hitting rate limits by returning cached solutions for known error signatures.
+ * ErrorAnalyzerService
+ * 
+ * Handles error interception, normalization, and intelligent diagnosis using LLMs.
+ * Uses Supabase as a persistent caching layer to optimize token usage.
  */
+const crypto = require('crypto');
+const OpenAI = require('openai');
+const { supabaseAdmin } = require('../src/utils/supabaseAdmin');
+
+// Safe Initialization: Prevent crash if API Key is missing
+let openai = null;
+if (process.env.OPENAI_API_KEY) {
+  try {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  } catch (err) {
+    console.error('[Auto-Medic] Failed to initialize OpenAI client:', err.message);
+  }
+} else {
+  console.warn('[Auto-Medic] Warning: OPENAI_API_KEY is missing. AI diagnosis will be disabled.');
+}
+
 class ErrorAnalyzerService {
-  constructor() {
-    this.cache = {};
-    this.isInitialized = false;
-  }
-
   /**
-   * Initialize the service by loading the cache from disk.
-   */
-  async init() {
-    if (this.isInitialized) return;
-    
-    await ensureCacheDir();
-    try {
-      const data = await fs.readFile(CACHE_FILE_PATH, 'utf-8');
-      this.cache = JSON.parse(data);
-    } catch (error) {
-      // If file doesn't exist or is invalid, start with empty cache
-      this.cache = {};
-    }
-    this.isInitialized = true;
-  }
-
-  /**
-   * Saves the current cache to disk.
-   */
-  async persistCache() {
-    try {
-      await fs.writeFile(CACHE_FILE_PATH, JSON.stringify(this.cache, null, 2));
-    } catch (error) {
-      console.error('Failed to persist error cache:', error);
-    }
-  }
-
-  /**
-   * Normalizes a stack trace to ignore timestamps, specific IDs, or memory addresses.
-   * This ensures that "same" errors produce the same hash.
-   * @param {string} stack - The raw stack trace
-   * @returns {string} - The normalized stack string
+   * Normalizes a stack trace to ignore environment-specific data.
+   * Strips: Absolute paths, Line numbers, Timestamps, Memory addresses, and UUIDs.
    */
   normalizeTrace(stack) {
     if (!stack) return '';
     return stack
-      // Remove timestamps (e.g., "2023-10-27T10:00:00.000Z")
+      // 1. Remove absolute file paths and line/column numbers 
+      // (e.g., "C:\Users\..." or "/home/user/..." and ":12:34")
+      .replace(/\(?([a-zA-Z]:)?[\\/][^:)\s]+(:\d+)?(:\d+)?\)?/g, '')
+      // 2. Remove timestamps (e.g., "2026-05-10T12:00:00.000Z")
       .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, '')
-      // Remove memory addresses (e.g., "0x000000000")
+      // 3. Remove memory addresses (e.g., "0x000000000")
       .replace(/0x[a-fA-F0-9]+/g, '0xMEM')
-      // Remove specific user IDs or UUIDs in error messages if they appear
-      // (Simplified regex for UUID)
+      // 4. Remove UUIDs
       .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '<UUID>')
-      // Standardize file paths (optional, depends on deployment)
-      .trim();
+      // 5. Cleanup whitespace and standardize format
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .join('\n');
   }
 
   /**
-   * Generates a unique SHA-256 signature for the error.
-   * @param {string} normalizedStack 
-   * @returns {string} - The hex hash
+   * Generates a stable SHA-256 signature for the normalized error.
    */
   generateSignature(normalizedStack) {
-    return crypto
-      .createHash('sha256')
-      .update(normalizedStack)
-      .digest('hex');
+    return crypto.createHash('sha256').update(normalizedStack).digest('hex');
   }
 
   /**
-   * Mock AI Service call.
-   * In production, this would call OpenAI/Anthropic API.
+   * Real LLM Analysis using OpenAI gpt-4o.
+   * Enforces JSON output for automated processing.
    */
   async fetchAiDiagnosis(errorMessage, normalizedStack) {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    // Simple keyword matching to simulate "Intelligence"
-    let diagnosis = "Unknown system error. Please check logs.";
-    let fix = "// Check server logs for details";
-
-    if (errorMessage.includes("ETIMEDOUT") || errorMessage.includes("ECONNREFUSED")) {
-      diagnosis = "Database Connection Failure. The server cannot reach the MongoDB instance.";
-      fix = `// Check your .env file
-// Ensure MONGODB_URI is correct and the database is running
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000
-});`;
-    } else if (errorMessage.includes("jwt expired")) {
-      diagnosis = "Authentication Token Expired. The user's session is no longer valid.";
-      fix = `// Client-side: Redirect to login
-// Server-side: Refresh token flow
-if (err.name === 'TokenExpiredError') {
-  return res.status(401).json({ message: 'Session expired', code: 'TOKEN_EXPIRED' });
-}`;
-    } else if (errorMessage.includes("Cannot read properties of undefined") || errorMessage.includes("null")) {
-      diagnosis = "Null Pointer Exception. Attempted to access a property on a null/undefined object.";
-      fix = `// Add optional chaining or existence check
-if (!user || !user.profile) {
-  throw new Error('User profile not found');
-}
-const email = user.profile.email;`;
+    if (!openai) {
+      console.warn('[Auto-Medic] LLM client not initialized. Using fallback.');
+      return this.getFallbackAnalysis();
     }
 
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are an Expert DevOps & Full-Stack Debugging Assistant. 
+            Your goal is to analyze server errors and provide a precise diagnosis and remediation path.
+            
+            You MUST return a valid JSON object with exactly these keys:
+            - "diagnosis": A concise 1-2 sentence explanation of why the error happened.
+            - "suggestedFix": A specific code snippet or terminal command to fix the issue.
+            - "severity": One of ["LOW", "MEDIUM", "HIGH", "CRITICAL"].`
+          },
+          {
+            role: "user",
+            content: `Analyze this error:
+            Error Message: ${errorMessage}
+            
+            Normalized Stack Trace:
+            ${normalizedStack}`
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+      });
+
+      const content = JSON.parse(response.choices[0].message.content);
+      return {
+        diagnosis: content.diagnosis,
+        suggestedFix: content.suggestedFix,
+        severity: content.severity || 'MEDIUM',
+      };
+
+    } catch (error) {
+      console.error('[Auto-Medic] LLM Analysis Failed:', error.message);
+      return this.getFallbackAnalysis();
+    }
+  }
+
+  /**
+   * Fallback object if the LLM provider is down or configuration is missing.
+   */
+  getFallbackAnalysis() {
     return {
-      diagnosis,
-      suggestedFix: fix,
-      severity: 'HIGH',
-      timestamp: new Date().toISOString()
+      diagnosis: "Automated analysis unavailable. Error signature captured.",
+      suggestedFix: "// Please review logs manually for this specific signature.",
+      severity: "UNKNOWN"
     };
   }
 
   /**
-   * Main entry point. Analyzes an error object, checking cache first.
-   * @param {Error} errorObject - The original error thrown
-   * @returns {Promise<Object>} - The analysis result
+   * Main entry point: Analyzes an error object, checking Supabase cache first.
    */
   async analyzeError(errorObject) {
-    if (!this.isInitialized) await this.init();
+    if (!supabaseAdmin) {
+      console.error('[Auto-Medic] Supabase client is uninitialized.');
+      return this.getFallbackAnalysis();
+    }
 
     const normalizedStack = this.normalizeTrace(errorObject.stack || errorObject.message);
     const signature = this.generateSignature(normalizedStack);
 
-    // 1. Cache HIT
-    if (this.cache[signature]) {
-      console.log(`[Auto-Medic] Cache HIT for error: ${signature.substring(0, 8)}`);
+    try {
+      const { data: cachedError, error: fetchError } = await supabaseAdmin
+        .from('error_cache')
+        .select('*')
+        .eq('signature', signature)
+        .single();
+
+      if (cachedError && !fetchError) {
+        console.log(`[Auto-Medic] Cache HIT: ${signature.substring(0, 8)}`);
+        return {
+          diagnosis: cachedError.diagnosis,
+          suggestedFix: cachedError.suggested_fix,
+          severity: cachedError.severity,
+          cached: true,
+          signature
+        };
+      }
+
+      console.log(`[Auto-Medic] Cache MISS: ${signature.substring(0, 8)}. Calling LLM...`);
+      const aiResult = await this.fetchAiDiagnosis(errorObject.message, normalizedStack);
+
+      const newEntry = {
+        signature,
+        original_error: errorObject.message,
+        diagnosis: aiResult.diagnosis,
+        suggested_fix: aiResult.suggestedFix,
+        severity: aiResult.severity,
+        metadata: {
+          normalized_stack: normalizedStack,
+          timestamp: new Date().toISOString()
+        }
+      };
+
+      const { error: insertError } = await supabaseAdmin
+        .from('error_cache')
+        .insert([newEntry]);
+
+      if (insertError) {
+        console.error('[Auto-Medic] Failed to cache error in Supabase:', insertError.message);
+      }
+
       return {
-        ...this.cache[signature],
-        cached: true,
+        ...aiResult,
+        cached: false,
         signature
       };
+
+    } catch (err) {
+      console.error('[Auto-Medic] Service Logic Failure:', err.message);
+      return this.getFallbackAnalysis();
     }
-
-    // 2. Cache MISS (Call AI)
-    console.log(`[Auto-Medic] Cache MISS for error: ${signature.substring(0, 8)}. Calling AI...`);
-    const aiResult = await this.fetchAiDiagnosis(errorObject.message, normalizedStack);
-
-    // 3. Update Cache
-    const analysis = {
-      originalError: errorObject.message,
-      check: this.cache[signature], // should be undefined
-      ...aiResult
-    };
-
-    this.cache[signature] = analysis;
-    await this.persistCache();
-
-    return {
-      ...analysis,
-      cached: false,
-      signature
-    };
   }
 }
 
-// Export singleton instance
 module.exports = new ErrorAnalyzerService();

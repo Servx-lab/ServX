@@ -40,3 +40,12 @@ export async function fetchHostingEnvVariables(
   );
   return res.data.variables ?? [];
 }
+
+/**
+ * Fetches the unified historical failure log across all providers.
+ * PHASE 2: Data Binding for Critical Failures column.
+ */
+export async function getGlobalFailureHistory(): Promise<{ history: any[] }> {
+  const res = await apiClient.get<{ history: any[] }>('/hosting/failures/history');
+  return res.data;
+}

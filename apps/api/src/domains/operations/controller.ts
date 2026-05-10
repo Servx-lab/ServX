@@ -1,7 +1,6 @@
-import type { Request, Response, NextFunction } from 'express';
-
+import type { Response, NextFunction } from 'express';
 import { ValidationError } from '@servx/errors';
-
+import { supabaseAdmin } from '../../utils/supabaseAdmin';
 import {
   getHostingProjects,
   toggleVercelMaintenance,
@@ -10,11 +9,9 @@ import {
   logTask,
 } from './service';
 
-interface AuthenticatedRequest extends Request {
-  user: { id: string; uid: string; email: string };
-}
-
-
+/**
+ * Fetches hosting projects from connected providers.
+ */
 export async function getProjects(
   req: any,
   res: Response,
@@ -28,6 +25,9 @@ export async function getProjects(
   }
 }
 
+/**
+ * Toggles maintenance mode on Vercel or Render.
+ */
 export async function toggleMaintenance(
   req: any,
   res: Response,
@@ -86,6 +86,9 @@ export async function toggleMaintenance(
   }
 }
 
+/**
+ * Logs a task execution to the operations stream.
+ */
 export async function executeTask(
   req: any,
   res: Response,
@@ -101,6 +104,34 @@ export async function executeTask(
     logTask(req.user.id, task, targetId);
 
     res.json({ success: true, task, targetId });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Fetches the most recent incident logged by the Auto-Medic middleware.
+ * PHASE 3: Real-time incident retrieval.
+ */
+export async function getLatestIncident(
+  req: any,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('incidents')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(1)
+      .single();
+
+    // PGRST116 is the code for "JSON object requested, but no rows returned"
+    if (error && error.code !== 'PGRST116') {
+       throw error;
+    }
+
+    res.json({ incident: data || null });
   } catch (err) {
     next(err);
   }

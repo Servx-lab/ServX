@@ -9,9 +9,9 @@ const AutoMedic = () => {
   const deploymentId = searchParams.get('deploymentId');
 
   return (
-    <main className="flex-1 flex flex-col h-full overflow-hidden bg-white text-black font-sans">
+    <main className="flex-1 flex flex-col h-full overflow-hidden bg-white text-black font-sans rounded-t-[2.5rem] border-l border-r border-t border-gray-200 shadow-2xl">
         {/* Header */}
-        <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md px-8 py-5 flex items-center justify-between z-10 shrink-0">
+        <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md px-8 py-5 flex items-center justify-between z-10 shrink-0 rounded-t-[2.5rem]">
           <div className="flex items-center gap-3">
              <div className="p-2 bg-red-50 rounded-lg border border-red-200 shadow-sm">
                 <Activity className="w-5 h-5 text-red-500 animate-pulse" />
