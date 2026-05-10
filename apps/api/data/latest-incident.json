@@ -1,17 +1,17 @@
 {
-  "id": "INC-1776532473343",
-  "timestamp": "2026-04-18T17:14:33.343Z",
-  "path": "/api/security/scan-target",
-  "method": "POST",
+  "id": "INC-1778395958234",
+  "timestamp": "2026-05-10T06:52:38.234Z",
+  "path": "/api/github/repos",
+  "method": "GET",
   "error": {
-    "message": "scanLiveDeployment is not defined",
-    "stack": "ReferenceError: scanLiveDeployment is not defined\n    at scanTarget (C:\\VS\\Servx\\apps\\api\\src\\domains\\security\\controller.ts:24:22)\n    at Layer.handleRequest (C:\\VS\\Servx\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\VS\\Servx\\node_modules\\router\\lib\\route.js:157:13)\n    at requireAuth (C:\\VS\\Servx\\apps\\api\\src\\core\\middleware\\requireAuth.ts:41:5)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)",
-    "code": 500
+    "message": "Request failed with status code 401",
+    "stack": "AxiosError: Request failed with status code 401\n    at settle (C:\\VS\\Servx\\node_modules\\axios\\lib\\core\\settle.js:19:12)\n    at IncomingMessage.handleStreamEnd (C:\\VS\\Servx\\node_modules\\axios\\lib\\adapters\\http.js:1029:13)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)\n    at Axios.request (C:\\VS\\Servx\\node_modules\\axios\\lib\\core\\Axios.js:46:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async fetchRepos (C:\\VS\\Servx\\apps\\api\\src\\domains\\github\\service.ts:109:20)\n    at async handleGithubRequest (C:\\VS\\Servx\\apps\\api\\src\\domains\\github\\controller.ts:39:12)\n    at async getRepos (C:\\VS\\Servx\\apps\\api\\src\\domains\\github\\controller.ts:78:19)",
+    "code": "ERR_BAD_REQUEST"
   },
   "analysis": {
     "diagnosis": "Unknown system error. Please check logs.",
     "fix": "// Check server logs for details",
     "severity": "HIGH",
-    "cached": false
+    "cached": true
   }
 }
