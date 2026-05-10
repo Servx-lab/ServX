@@ -6,6 +6,7 @@ import { ProviderConfig, ProviderUser, ServiceItem, DeploymentItem } from '../ty
 import { HostingCharts } from '../components/HostingCharts';
 import { ServicesTable } from '../components/ServicesTable';
 import { DeploymentsTable } from '../components/DeploymentsTable';
+import { FailedDeploymentsSection } from '../components/FailedDeploymentsSection';
 
 interface ConnectedDashboardProps {
   config: ProviderConfig;
@@ -135,19 +136,30 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
             totalResources={services.length + deployments.length}
           />
 
-          <div className="space-y-8">
-            <ServicesTable 
-                services={services}
-                providerKey={config.key}
-                supportsEnvManager={['vercel', 'render'].includes(config.key)}
-                timeAgo={timeAgo}
-                getStateColor={getStateColor}
-            />
-            <DeploymentsTable 
-                deployments={deployments}
-                timeAgo={timeAgo}
-                getStateColor={getStateColor}
-            />
+          {/* Core Infrastructure & Failures Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            <div className="lg:col-span-2 space-y-8">
+              <ServicesTable 
+                  services={services}
+                  providerKey={config.key}
+                  supportsEnvManager={['vercel', 'render'].includes(config.key)}
+                  timeAgo={timeAgo}
+                  getStateColor={getStateColor}
+              />
+              <DeploymentsTable 
+                  deployments={deployments}
+                  timeAgo={timeAgo}
+                  getStateColor={getStateColor}
+              />
+            </div>
+            
+            <div className="lg:col-span-1 h-full">
+              <FailedDeploymentsSection 
+                  deployments={deployments}
+                  timeAgo={timeAgo}
+                  getStateColor={getStateColor}
+              />
+            </div>
           </div>
         </div>
 
