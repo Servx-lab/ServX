@@ -3,6 +3,7 @@ import { NotFoundError } from '@servx/errors';
 import type { UserConnectionProvider } from '@servx/types';
 
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
+import { decrypt } from '@servx/crypto';
 
 export async function getConnectionString(connectionId: string, ownerUid: string): Promise<string> {
   const { data: connection, error } = await supabaseAdmin
@@ -15,7 +16,12 @@ export async function getConnectionString(connectionId: string, ownerUid: string
   if (!connection || error) {
     throw new NotFoundError('Connection not found or access denied');
   }
-  const config = JSON.parse(connection.encrypted_config) as { connectionUri?: string };
+  let rawConfig = connection.encrypted_config;
+  if (connection.iv && connection.iv !== '') {
+    rawConfig = decrypt({ iv: connection.iv, content: connection.encrypted_config });
+  }
+
+  const config = JSON.parse(rawConfig) as { connectionUri?: string };
   if (!config.connectionUri) {
     throw new NotFoundError('Invalid connection configuration - missing connectionUri');
   }
@@ -34,7 +40,12 @@ export async function getDecryptedConfig(connectionId: string, ownerUid: string)
     throw new NotFoundError('Connection not found or access denied');
   }
   
-  const config = JSON.parse(connection.encrypted_config) as Record<string, unknown>;
+  let rawConfig = connection.encrypted_config;
+  if (connection.iv && connection.iv !== '') {
+    rawConfig = decrypt({ iv: connection.iv, content: connection.encrypted_config });
+  }
+
+  const config = JSON.parse(rawConfig) as Record<string, unknown>;
   
   return {
     provider: connection.provider as UserConnectionProvider,

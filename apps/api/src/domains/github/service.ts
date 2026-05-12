@@ -7,6 +7,7 @@ import type { RepoDetails, RepoSummary } from '@servx/types';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 import { cacheDelPattern } from '../../core/services/redisCache';
+import { encrypt, decrypt } from '@servx/crypto';
 
 export async function getGithubToken(uid: string): Promise<{ accessToken: string; refreshToken?: string; expiry?: Date }> {
   const { data: vaultData, error } = await supabaseAdmin
@@ -24,8 +25,16 @@ export async function getGithubToken(uid: string): Promise<{ accessToken: string
   }
 
   try {
-      const accessToken = vaultData.encrypted_access_token;
-      const refreshToken = vaultData.encrypted_refresh_token || undefined;
+      let accessToken = vaultData.encrypted_access_token;
+      let refreshToken = vaultData.encrypted_refresh_token || undefined;
+
+      // Hybrid Decryption: Use IV if present
+      if (vaultData.iv && vaultData.iv !== '') {
+        accessToken = decrypt({ iv: vaultData.iv, content: vaultData.encrypted_access_token });
+        if (vaultData.encrypted_refresh_token) {
+          refreshToken = decrypt({ iv: vaultData.iv, content: vaultData.encrypted_refresh_token });
+        }
+      }
 
       return {
         accessToken,
@@ -78,15 +87,19 @@ export async function refreshGithubToken(uid: string, refreshToken: string): Pro
 
     const expiryDate = expires_in ? new Date(Date.now() + expires_in * 1000) : undefined;
 
-    const plainAccess = access_token;
-    const plainRefresh = refresh_token || null;
+    // Encrypting new tokens before storage
+    const { iv, content: encryptedAccess } = encrypt(access_token);
+    let encryptedRefresh = null;
+    if (refresh_token) {
+      encryptedRefresh = encrypt(refresh_token).content;
+    }
 
     const { error: vaultError } = await supabaseAdmin
       .from('github_vault')
       .update({
-        encrypted_access_token: plainAccess,
-        encrypted_refresh_token: plainRefresh,
-        iv: '',
+        encrypted_access_token: encryptedAccess,
+        encrypted_refresh_token: encryptedRefresh,
+        iv: iv,
         token_expiry: expiryDate,
       })
       .eq('user_id', uid);
