@@ -53,7 +53,7 @@ export function useIntegrationRepos(isAuthenticated: boolean, githubTokenValid?:
   const { data: cachedData, updateCache } = useLocalCache();
   const [repos, setRepos] = useState<RepoSummary[]>(cachedData?.githubRepos || []);
   const [error, setError] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(repos.length === 0 && isAuthenticated);
   const fetchIdRef = useRef(0);
   const reposRef = useRef(repos);
   reposRef.current = repos;

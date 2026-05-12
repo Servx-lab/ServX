@@ -33,7 +33,23 @@ const autoMedicMiddleware = async (err, req, res, next) => {
         .from('incidents')
         .insert([incidentReport]);
         
-      if (dbError) console.error('[Auto-Medic] Failed to log incident:', dbError.message);
+      if (dbError) {
+        console.error('[Auto-Medic] Failed to log incident:', dbError.message);
+      } else {
+        // --- ENFORCE 20-RECORD LIMIT (FIFO) ---
+        // Fetch IDs of records beyond the most recent 20
+        const { data: excess } = await supabaseAdmin
+          .from('incidents')
+          .select('id')
+          .order('timestamp', { ascending: false })
+          .range(20, 50); // Identify records starting from the 21st
+
+        if (excess && excess.length > 0) {
+          const idsToDelete = excess.map(e => e.id);
+          await supabaseAdmin.from('incidents').delete().in('id', idsToDelete);
+          console.log(`[Auto-Medic] Pruned ${idsToDelete.length} old incident records.`);
+        }
+      }
     }
     
     // 4. Send Response

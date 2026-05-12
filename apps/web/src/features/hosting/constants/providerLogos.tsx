@@ -7,11 +7,10 @@ export const VercelLogoSVG = ({ className = "w-7 h-7" }: { className?: string })
   </svg>
 );
 
+import { SiRender } from 'react-icons/si';
+
 export const RenderLogoSVG = ({ className = "w-7 h-7" }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M19.3333 13.3333H4.66667V20H19.3333V13.3333Z" fill="black" fillOpacity="0.9" />
-    <path d="M19.3333 4H4.66667V10.6667H19.3333V4Z" fill="black" fillOpacity="0.5" />
-  </svg>
+  <SiRender className={className} />
 );
 
 export const RailwayLogoSVG = ({ className = "w-7 h-7" }: { className?: string }) => (
