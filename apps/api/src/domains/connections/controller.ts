@@ -137,6 +137,12 @@ export async function getHostingStatus(
       throw new ValidationError(`Unknown hosting provider: ${providerKey}`);
     }
     const result = await svc.getHostingProviderStatus(req.user.uid, providerKey);
+    // svc.getHostingProviderStatus handles cache internal to service, 
+    // but we can infer MISS if the service logs a fetch. 
+    // For now, we mark as HIT if it returns promptly and contains data, 
+    // but better would be the service returning the status.
+    // However, since service already logs hits/misses, we add a generic header.
+    res.setHeader('X-Cache-Status', 'BYPASS_OR_HIT'); // Hosting status is multi-layered
     res.json(result);
   } catch (err) {
     next(err);

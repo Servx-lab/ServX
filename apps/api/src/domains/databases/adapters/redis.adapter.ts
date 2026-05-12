@@ -13,6 +13,7 @@ interface RedisConfig {
 
 export class RedisAdapter implements IDbAdapter {
   private readonly config: RedisConfig;
+  private client: ReturnType<typeof createClient> | null = null;
 
   constructor(config: Record<string, unknown>) {
     this.config = config as RedisConfig;
@@ -21,18 +22,32 @@ export class RedisAdapter implements IDbAdapter {
     }
   }
 
-  private async withClient<T>(fn: (client: ReturnType<typeof createClient>) => Promise<T>): Promise<T> {
-    const client = createClient({
+  private async getClient(): Promise<ReturnType<typeof createClient>> {
+    if (this.client?.isOpen) return this.client;
+    
+    this.client = createClient({
       url: this.config.url,
       password: this.config.password,
-      socket: { connectTimeout: 8000 },
+      socket: { 
+        connectTimeout: 5000,
+        reconnectStrategy: (retries) => Math.min(retries * 100, 3000),
+      },
     });
-    await client.connect();
-    try {
-      return await fn(client);
-    } finally {
-      await client.disconnect();
+
+    await this.client.connect();
+    return this.client;
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.client?.isOpen) {
+      await this.client.disconnect();
     }
+    this.client = null;
+  }
+
+  private async withClient<T>(fn: (client: ReturnType<typeof createClient>) => Promise<T>): Promise<T> {
+    const client = await this.getClient();
+    return await fn(client);
   }
 
   /**
