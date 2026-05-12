@@ -70,6 +70,7 @@ export async function getRepos(req: any, res: any, next: any): Promise<void> {
     // 2. Check Cache
     const cached = !forceRefresh ? await cacheGet<any[]>(reposCacheKey(uid)) : null;
     if (cached) {
+      res.setHeader('X-Cache-Status', 'HIT');
       res.json(cached);
       return;
     }
@@ -85,6 +86,7 @@ export async function getRepos(req: any, res: any, next: any): Promise<void> {
     }
 
     await cacheSet(reposCacheKey(uid), filtered, REPOS_TTL);
+    res.setHeader('X-Cache-Status', 'MISS');
     res.json(filtered);
   } catch (error) {
     next(error);
@@ -107,12 +109,14 @@ export async function getRepoDetails(req: any, res: any, next: any): Promise<voi
     const cacheKey = detailsCacheKey(uid, owner, repo);
     const cached = !forceRefresh ? await cacheGet<any>(cacheKey) : null;
     if (cached) {
+      res.setHeader('X-Cache-Status', 'HIT');
       res.json(cached);
       return;
     }
 
     const result = await handleGithubRequest(uid, (token) => fetchRepoDetails(token, owner, repo));
     await cacheSet(cacheKey, result, DETAILS_TTL);
+    res.setHeader('X-Cache-Status', 'MISS');
     res.json(result);
   } catch (error) {
     next(error);

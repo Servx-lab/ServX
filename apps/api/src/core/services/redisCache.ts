@@ -95,7 +95,8 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
   if (inRam && inRam.expires > now) {
     const end = performance.now();
     console.log(`[Redis] 🟢 L1 HIT (RAM) for ${key} (${(end - start).toFixed(2)}ms)`);
-    return inRam.data as T;
+    // Return a clone to prevent mutation of the cached entry
+    return JSON.parse(JSON.stringify(inRam.data)) as T;
   } else if (inRam) {
     ramCache.delete(key);
   }
@@ -136,7 +137,9 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
       console.warn(`[Redis] ⚠️ Heavy JSON.parse: ${(parseEnd - parseStart).toFixed(2)}ms for ${key} ${wasCompressed ? '(decompressed)' : ''}`);
     }
 
-    ramCache.set(key, { data: parsed, expires: now + DEFAULT_RAM_TTL });
+    // Backfill RAM cache with a clone to prevent mutation issues
+    const clone = JSON.parse(JSON.stringify(parsed));
+    ramCache.set(key, { data: clone, expires: now + DEFAULT_RAM_TTL });
     
     const end = performance.now();
     console.log(`[Redis] 🔵 L2 HIT (Redis) for ${key} (${(end - start).toFixed(2)}ms) ${wasCompressed ? '📦 COMPRESSED' : ''}`);
@@ -149,7 +152,9 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
 
 export async function cacheSet(key: string, data: unknown, ttlSeconds: number): Promise<void> {
   const expires = Date.now() + (ttlSeconds * 1000);
-  ramCache.set(key, { data, expires });
+  // Update RAM Cache with a clone to prevent mutation
+  const clone = JSON.parse(JSON.stringify(data));
+  ramCache.set(key, { data: clone, expires });
 
   const redis = await getRedisClient();
   if (!redis) return;

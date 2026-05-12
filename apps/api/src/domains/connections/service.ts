@@ -16,6 +16,7 @@ import type {
 import { NotFoundError, ValidationError } from '@servx/errors';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 import { cacheGet, cacheSet } from '../../core/services/redisCache';
+import { encrypt, decrypt } from '@servx/crypto';
 
 export { supabaseAdmin };
 
@@ -66,8 +67,9 @@ export async function saveConnection(
   await ensureUserProfile(ownerUid, email);
   const table = getVaultTable(provider);
   const configString = JSON.stringify(config);
-  // No manual encryption; relying on Supabase RLS for row-level access control
-  const configContent = configString;
+  
+  // Re-enabling manual encryption for all vault entries
+  const { iv, content: encryptedConfig } = encrypt(configString);
 
   const { data, error } = await supabaseAdmin
     .from(table)
@@ -75,8 +77,8 @@ export async function saveConnection(
       name,
       user_id: ownerUid,
       provider: provider,
-      encrypted_config: configContent,
-      iv: '', // Manual encryption removed; iv remains empty to satisfy schema constraints
+      encrypted_config: encryptedConfig,
+      iv: iv,
     })
     .select()
     .single();
@@ -197,10 +199,17 @@ async function performHostingStatusFetch(
   let parsedConfig: any;
   let token: string;
   try {
-    const rawConfig = connection.encrypted_config;
+    let rawConfig = connection.encrypted_config;
+    
+    // Hybrid Decryption: If IV exists, decrypt. Otherwise, assume plaintext (transitional).
+    if (connection.iv && connection.iv !== '') {
+      rawConfig = decrypt({ iv: connection.iv, content: connection.encrypted_config });
+    }
+    
     parsedConfig = JSON.parse(rawConfig) as { token?: string; apiKey?: string; instanceUrl?: string };
     token = (parsedConfig.token ?? parsedConfig.apiKey) as string;
-  } catch {
+  } catch (err: any) {
+    console.error('[Connections] Decryption failed:', err.message);
     return {
       connected: true,
       connectionId: connection.id,
@@ -310,22 +319,22 @@ export async function saveHostingToken(
     config.instanceUrl = (extras as any).instanceUrl;
   }
 
+  // Re-enabling encryption for stored credentials
+  const { iv, content } = encrypt(JSON.stringify(config));
 
-
-  const { data, error } = await supabaseAdmin
+  const { data: connData, error: dbError } = await supabaseAdmin
     .from('hosting_vault')
-    .upsert({
+    .insert([{
       user_id: ownerUid,
+      name,
       provider: providerInfo.dbName,
-      encrypted_config: JSON.stringify(config),
-      iv: '',
-      name: name,
-    })
+      encrypted_config: content,
+      iv: iv,
+    }])
     .select()
     .single();
 
-  if (error || !data) throw error || new Error('Failed to insert hosting connection');
-  const connData = data as any;
+  if (dbError || !connData) throw dbError || new Error('Failed to insert hosting connection');
 
   // Populating cache immediately in the background so the UI is instant
   getHostingProviderStatus(ownerUid, providerKey).catch(e => {

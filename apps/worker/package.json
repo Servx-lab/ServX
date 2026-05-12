@@ -9,6 +9,7 @@
   "dependencies": {
     "@servx/config": "*",
     "@servx/errors": "*",
-    "@servx/crypto": "*"
+    "@servx/crypto": "*",
+    "@supabase/supabase-js": "^2.103.0"
   }
 }
