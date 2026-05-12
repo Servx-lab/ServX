@@ -1,11 +1,20 @@
 import React from 'react';
-import { AlertCircle, Activity, Server, ExternalLink, ShieldAlert, Clock, Layout } from 'lucide-react';
+import { Activity, ExternalLink, ShieldAlert, Clock, Layout } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useGlobalFailures } from '../hooks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { 
+  VercelLogoSVG, 
+  RenderLogoSVG, 
+  RailwayLogoSVG, 
+  DOLogoSVG, 
+  FlyLogoSVG, 
+  CoolifyLogoSVG,
+  AWSLogo
+} from '../constants/providerLogos';
 
 interface CriticalFailuresSectionProps {
   timeAgo: (ts: number) => string;
@@ -19,6 +28,21 @@ export const CriticalFailuresSection: React.FC<CriticalFailuresSectionProps> = (
   const navigate = useNavigate();
   const { data, isLoading } = useGlobalFailures();
   const failures = data?.history || [];
+
+  const getProviderIcon = (provider: string) => {
+    const p = (provider || '').toLowerCase();
+    switch (p) {
+      case 'vercel': return <VercelLogoSVG className="w-3.5 h-3.5" />;
+      case 'render': return <RenderLogoSVG className="w-3.5 h-3.5" />;
+      case 'railway': return <RailwayLogoSVG className="w-3.5 h-3.5" />;
+      case 'digitalocean': return <DOLogoSVG className="w-3.5 h-3.5" />;
+      case 'fly':
+      case 'fly.io': return <FlyLogoSVG className="w-3.5 h-3.5" />;
+      case 'coolify': return <CoolifyLogoSVG className="w-3.5 h-3.5" />;
+      case 'aws': return <AWSLogo className="w-3.5 h-3.5" />;
+      default: return <Activity className="w-3.5 h-3.5 text-gray-400" />;
+    }
+  };
 
   return (
     <div className="bg-white border border-red-100 rounded-xl overflow-hidden flex flex-col shadow-sm h-full min-h-[500px]">
@@ -54,8 +78,8 @@ export const CriticalFailuresSection: React.FC<CriticalFailuresSectionProps> = (
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                   <div className="p-1.5 rounded bg-white border border-gray-100 shadow-sm group-hover:border-red-100 transition-colors">
-                      <Server className="w-3 h-3 text-gray-400 group-hover:text-red-400" />
+                   <div className="p-1.5 rounded bg-white border border-gray-100 shadow-sm group-hover:border-red-100 transition-colors flex items-center justify-center">
+                      {getProviderIcon(fail.provider)}
                    </div>
                    <div className="flex flex-col">
                       <span className="text-[10px] font-bold uppercase text-gray-400 tracking-wider leading-none">{fail.provider}</span>
@@ -80,7 +104,6 @@ export const CriticalFailuresSection: React.FC<CriticalFailuresSectionProps> = (
                 
                 <div className="flex items-center gap-1">
                   <TooltipProvider>
-                    {/* External Link Symbol */}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <a 
@@ -95,7 +118,6 @@ export const CriticalFailuresSection: React.FC<CriticalFailuresSectionProps> = (
                       <TooltipContent><p className="text-[10px]">Open Deployment URL</p></TooltipContent>
                     </Tooltip>
 
-                    {/* Auto-Medic Symbol */}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button 

@@ -13,13 +13,7 @@ import {
   type TransformedVulnerabilityResponse,
 } from '../../services/vulnerabilityTransform';
 
-type MemoryCacheEntry = {
-  expiresAt: number;
-  value: TransformedVulnerabilityResponse;
-};
-
-const MEMORY_CACHE_TTL_MS = 15 * 60 * 1000;
-const memoryCache = new Map<string, MemoryCacheEntry>();
+// Local memory cache removed in favor of redisCache.ts integrated RAM layer.
 
 function getSingleParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? '';
@@ -28,23 +22,6 @@ function getSingleParam(value: string | string[] | undefined): string {
 
 function securityCacheKey(uid: string, owner: string, repo: string): string {
   return `security:vuln:${uid.toLowerCase()}:${owner.toLowerCase()}/${repo.toLowerCase()}`;
-}
-
-function readMemoryCache(key: string): TransformedVulnerabilityResponse | null {
-  const hit = memoryCache.get(key);
-  if (!hit) return null;
-  if (Date.now() > hit.expiresAt) {
-    memoryCache.delete(key);
-    return null;
-  }
-  return hit.value;
-}
-
-function writeMemoryCache(key: string, value: TransformedVulnerabilityResponse): void {
-  memoryCache.set(key, {
-    value,
-    expiresAt: Date.now() + MEMORY_CACHE_TTL_MS,
-  });
 }
 
 /**
@@ -131,13 +108,8 @@ export async function getRepositoryVulnerabilities(
   try {
     const redisCached = await cacheGet<TransformedVulnerabilityResponse>(cacheKey);
     if (redisCached) {
+      res.setHeader('X-Cache-Status', 'HIT');
       res.json({ owner, repo, source: 'cache:redis', ...redisCached });
-      return;
-    }
-
-    const memoryCached = readMemoryCache(cacheKey);
-    if (memoryCached) {
-      res.json({ owner, repo, source: 'cache:memory', ...memoryCached });
       return;
     }
 
@@ -146,8 +118,8 @@ export async function getRepositoryVulnerabilities(
     const transformed = transformVulnerabilityAlerts(raw.nodes);
 
     await cacheSet(cacheKey, transformed, 15 * 60);
-    writeMemoryCache(cacheKey, transformed);
 
+    res.setHeader('X-Cache-Status', 'MISS');
     res.json({
       owner,
       repo,

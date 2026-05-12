@@ -54,7 +54,7 @@ const GitHubIntegration = () => {
   const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null);
   const [isAccessPanelOpen, setIsAccessPanelOpen] = useState(false);
 
-  const { repos, setRepos, error: reposError, setError: setReposError, refetch: refetchRepos } = useIntegrationRepos(isAuthenticated, githubTokenValid);
+  const { repos, setRepos, error: reposError, setError: setReposError, refetch: refetchRepos, isRefreshing } = useIntegrationRepos(isAuthenticated, githubTokenValid);
   const {
     repoDetails,
     setRepoDetails,
@@ -210,7 +210,19 @@ const GitHubIntegration = () => {
         
         <ScrollArea className="flex-1">
           <div className="p-2 space-y-1">
-            {filteredRepos.map((repo) => (
+            {isRefreshing && repos.length === 0 ? (
+                <div className="p-4 space-y-4">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="flex items-center gap-3 animate-pulse">
+                            <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+                            <div className="flex-1 space-y-2">
+                                <div className="h-3 bg-gray-200 rounded w-3/4" />
+                                <div className="h-2 bg-gray-200 rounded w-1/2" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : filteredRepos.map((repo) => (
               <button
                 key={repo.id}
                 onClick={() => {
@@ -251,9 +263,12 @@ const GitHubIntegration = () => {
 
       {/* Main Dashboard */}
       <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
-        {loadingDetails ? (
+        {loadingDetails || (isRefreshing && repos.length === 0) ? (
            <div className="flex-1 flex items-center justify-center">
-             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-500"></div>
+             <div className="flex flex-col items-center gap-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-500"></div>
+                <p className="text-sm text-gray-500 animate-pulse">Fetching repositories...</p>
+             </div>
            </div>
         ) : repoDetails ? (
           <ScrollArea className="flex-1">
