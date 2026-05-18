@@ -61,7 +61,7 @@ const requireAuth = async (req: Request, res: Response, next: NextFunction): Pro
     console.log('[Auth] Supabase token verified for ID:', user.id);
     req.user = {
         id: user.id,
-        uid: user.id, // For compatibility with legacy controllers
+        uid: user.id,
         email: (user.email ?? '') as string,
     };
     next();

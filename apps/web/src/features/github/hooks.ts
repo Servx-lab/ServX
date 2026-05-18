@@ -56,7 +56,9 @@ export function useIntegrationRepos(isAuthenticated: boolean, githubTokenValid?:
   const [isRefreshing, setIsRefreshing] = useState(repos.length === 0 && isAuthenticated);
   const fetchIdRef = useRef(0);
   const reposRef = useRef(repos);
+  const updateCacheRef = useRef(updateCache);
   reposRef.current = repos;
+  updateCacheRef.current = updateCache;
 
   const fetchRepos = useCallback(async (options?: { forceRefresh?: boolean }) => {
     if (!isAuthenticated) return;
@@ -70,7 +72,7 @@ export function useIntegrationRepos(isAuthenticated: boolean, githubTokenValid?:
       const data = await getRepos(Boolean(options?.forceRefresh));
       if (id !== fetchIdRef.current) return;
       setRepos(data);
-      updateCache({ githubRepos: data });
+      updateCacheRef.current({ githubRepos: data });
       setError(null);
     } catch (err: any) {
       if (id !== fetchIdRef.current) return;
@@ -99,7 +101,7 @@ export function useIntegrationRepos(isAuthenticated: boolean, githubTokenValid?:
     } finally {
       if (id === fetchIdRef.current) setIsRefreshing(false);
     }
-  }, [isAuthenticated, updateCache]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (githubTokenValid === false) {

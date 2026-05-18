@@ -285,7 +285,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'github',
                 options: {
-                    redirectTo: window.location.href,
+                    redirectTo: `${window.location.origin}/github?success=reconnected`,
                     scopes: 'repo'
                 }
             });
