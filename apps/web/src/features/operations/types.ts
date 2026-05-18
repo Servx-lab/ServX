@@ -18,11 +18,33 @@ export interface ToggleMaintenanceResponse {
   provider: string;
 }
 
-export type RemoteTask = 'force-db-backup' | 'clear-redis-cache' | 'sync-github-stats';
+export type RemoteTask = 'backup-db' | 'clear-redis' | 'sync-github' | string;
 
 export interface ExecuteTaskBody {
   task: RemoteTask;
   targetId: string;
+}
+
+export interface AssessTaskBody {
+  task: RemoteTask;
+  targetId: string;
+}
+
+export interface AssessTaskResponse {
+  success: boolean;
+  task: string;
+  targetId: string;
+  affectedComponents: number;
+  impactLevel: 'low' | 'medium' | 'high';
+  description: string;
+}
+
+export interface AuditLogPayload {
+  id: string;
+  timestamp: string;
+  user: string;
+  type: 'security' | 'task' | 'maintenance' | 'auth';
+  message: string;
 }
 
 export interface FinOpsData {
