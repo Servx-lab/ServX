@@ -12,6 +12,9 @@ const autoMedicMiddleware = async (err, req, res, next) => {
     // 1. Analyze the error (Check Cache or Call AI)
     const analysis = await errorAnalyzer.analyzeError(err);
 
+    const parsedErrorCode = parseInt(err.code || err.statusCode || err.status || err.response?.status || 500, 10);
+    const errorCode = isNaN(parsedErrorCode) ? 500 : parsedErrorCode;
+
     // 2. Structure the Incident Report
     const incidentReport = {
       id: `INC-${Date.now()}`,
@@ -20,7 +23,7 @@ const autoMedicMiddleware = async (err, req, res, next) => {
       method: req.method,
       error_message: err.message,
       error_stack: err.stack,
-      error_code: err.code || 500,
+      error_code: errorCode,
       diagnosis: analysis.diagnosis,
       suggested_fix: analysis.suggestedFix,
       severity: analysis.severity,

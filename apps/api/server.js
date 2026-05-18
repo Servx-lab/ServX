@@ -68,6 +68,14 @@ async function connectRedis() {
   const client = await getRedisClient();
   if (client) {
     console.log('✅ Redis connected');
+    
+    // Boot the DEFCON real-time state synchronization listener
+    try {
+      const { initDefconService } = require('./src/domains/operations/defconService');
+      await initDefconService();
+    } catch (err) {
+      console.error('❌ Failed to boot DEFCON service:', err.message);
+    }
   }
 }
 

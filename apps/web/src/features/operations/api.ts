@@ -5,6 +5,8 @@ import type {
   ToggleMaintenanceBody,
   ToggleMaintenanceResponse,
   Incident,
+  AssessTaskBody,
+  AssessTaskResponse,
 } from './types';
 
 /**
@@ -43,5 +45,32 @@ export async function executeTask(
  */
 export async function getLatestIncident(): Promise<{ incident: Incident | null }> {
   const res = await apiClient.get<{ incident: Incident | null }>('/operations/incidents/latest');
+  return res.data;
+}
+
+/**
+ * Assesses the blast radius of a task before execution.
+ */
+export async function assessTask(
+  body: AssessTaskBody,
+): Promise<AssessTaskResponse> {
+  const res = await apiClient.post<AssessTaskResponse>(
+    '/operations/tasks/assess',
+    body,
+  );
+  return res.data;
+}
+
+/**
+ * Log client-side actions to the operational audit log.
+ */
+export async function logClientEvent(
+  type: 'security' | 'auth' | 'task' | 'maintenance',
+  message: string,
+): Promise<{ success: boolean }> {
+  const res = await apiClient.post<{ success: boolean }>(
+    '/operations/audit/log',
+    { type, message },
+  );
   return res.data;
 }

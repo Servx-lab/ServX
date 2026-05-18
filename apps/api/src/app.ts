@@ -19,6 +19,7 @@ import profileRouter from './domains/profile/router';
 import securityRouter from './domains/security/router';
 import webhooksRouter from './domains/webhooks/router';
 import feedRouter from './domains/feed/router';
+import { defconMiddleware } from './domains/operations/defconMiddleware';
 
 export function createApp(): Express {
   const app = express();
@@ -107,6 +108,7 @@ export function createApp(): Express {
 }
 
 export function registerApiRoutes(app: Express): void {
+  app.use('/api', defconMiddleware);
   app.use('/api/auth', authRouter);
   app.use('/api/github', githubRouter);
   app.use('/api/db', databasesRouter);
@@ -122,6 +124,7 @@ export function registerApiRoutes(app: Express): void {
   app.use('/api/webhooks', webhooksRouter);
   app.use('/api/feed', feedRouter);
 }
+
 
 export function registerErrorHandler(app: Express): void {
   app.use(errorHandler);
