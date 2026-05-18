@@ -63,6 +63,15 @@ class ErrorAnalyzerService {
       return this.getFallbackAnalysis();
     }
 
+    // --- Outbound Circuit Breaker Check ---
+    try {
+      const { checkCircuit } = require('../src/core/services/circuitBreaker');
+      await checkCircuit('openai');
+    } catch (circuitErr) {
+      console.warn(`[Auto-Medic] 🛑 OpenAI Circuit Breaker is OPEN. Bypassing outbound LLM request: ${circuitErr.message}`);
+      return this.getFallbackAnalysis();
+    }
+
     try {
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
