@@ -24,6 +24,7 @@ import ExposureAnalysis from "./pages/ExposureAnalysis";
 import Emails from "./features/emails";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import SdkTest from "./pages/SdkTest";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "./features/auth/RequireAuth";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/auth/v1/callback" element={<AuthCallback />} />
+            <Route path="/sdk-test" element={<SdkTest />} />
 
             {/* Protected routes with persistent Sidebar (no blink on navigation) */}
             <Route
