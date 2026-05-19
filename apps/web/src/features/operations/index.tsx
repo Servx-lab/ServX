@@ -145,7 +145,7 @@ const RepositoryControl = () => {
                                 <ChevronDown className="w-4 h-4 text-slate-400" />
                             </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-[300px] bg-white border border-slate-200 shadow-xl p-1 rounded-xl">
+                        <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[240px] overflow-y-auto bg-white border border-slate-200 shadow-xl p-1.5 rounded-xl scrollbar-thin scrollbar-thumb-slate-100">
                             {repos.map(r => (
                                 <DropdownMenuRadioItem
                                     key={r.id}
