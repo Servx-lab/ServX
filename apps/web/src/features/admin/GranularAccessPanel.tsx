@@ -56,6 +56,31 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
   // Local UI state to track if "Deployment Access" master toggle is on for a repo
   const [deploymentsEnabledMap, setDeploymentsEnabledMap] = useState<Record<string, boolean>>({});
 
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Immediately scroll into view when expanded
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, []);
+
+  // Smooth scroll into view when finished loading and height increases
+  useEffect(() => {
+    if (!loading && containerRef.current) {
+      const timer = setTimeout(() => {
+        containerRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -180,7 +205,7 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
 
   if (loading || !resources || !ga) {
     return (
-      <div className="flex items-center justify-center gap-3 py-12 text-slate-500 bg-slate-50/40 rounded-2xl border border-slate-100 animate-pulse">
+      <div ref={containerRef} className="scroll-mt-28 flex items-center justify-center gap-3 py-12 text-slate-500 bg-slate-50/40 rounded-2xl border border-slate-100 animate-pulse">
         <Loader2 className="h-5 w-5 animate-spin text-cyan-600" />
         <span className="text-xs font-semibold tracking-wide">Loading granular permissions for {userEmail}…</span>
       </div>
@@ -188,7 +213,7 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
   }
 
   return (
-    <div className="bg-slate-50/50 rounded-2xl border border-slate-100 p-6 md:p-8 space-y-8 animate-[slideDown_0.2s_ease-out]">
+    <div ref={containerRef} className="scroll-mt-28 bg-slate-50/50 rounded-2xl border border-slate-100 p-6 md:p-8 space-y-8 animate-[slideDown_0.2s_ease-out]">
       {/* Panel Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
         <div>
