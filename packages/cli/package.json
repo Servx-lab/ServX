@@ -1,0 +1,17 @@
+{
+  "name": "@servx/cli",
+  "version": "1.0.0",
+  "description": "CLI to integrate the ServX Kill Switch SDK into modern web frameworks",
+  "bin": {
+    "servx": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "author": "ServX Labs",
+  "license": "MIT"
+}
