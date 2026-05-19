@@ -303,7 +303,8 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
             <h4 className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Infrastructure & Apps</h4>
           </div>
           
-          <Accordion type="multiple" className="space-y-2">
+          <div className="max-h-[620px] overflow-y-auto pr-1.5 custom-scrollbar space-y-2">
+            <Accordion type="multiple" className="space-y-2">
             {resources.repos.map((repo) => (
               <AccordionItem
                 key={repo.full_name}
@@ -372,6 +373,7 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
               </AccordionItem>
             ))}
           </Accordion>
+          </div>
         </div>
 
         {/* Right Column: Standalone Deployments & Databases (flex-[1.5]) */}
@@ -383,7 +385,7 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
                 <Globe className="h-4 w-4 text-cyan-600" />
                 <h4 className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Standalone Deployments</h4>
               </div>
-              <div className="rounded-xl border border-slate-200/80 bg-white p-3 space-y-2 shadow-sm">
+              <div className="rounded-xl border border-slate-200/80 bg-white p-3 space-y-2 shadow-sm max-h-[270px] overflow-y-auto pr-1.5 custom-scrollbar">
                 {resources.standaloneDeployments.map((depl) => (
                   <div key={depl.id} className="flex items-center justify-between rounded-lg border border-slate-50 bg-slate-50/50 px-3 py-2 hover:bg-slate-100/50 transition-colors">
                     <div className="flex flex-col">
@@ -407,7 +409,7 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
               <Database className="h-4 w-4 text-cyan-600" />
               <h4 className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Databases</h4>
             </div>
-            <div className="rounded-xl border border-slate-200/80 bg-white p-3 space-y-2 shadow-sm">
+            <div className="rounded-xl border border-slate-200/80 bg-white p-3 space-y-2 shadow-sm max-h-[270px] overflow-y-auto pr-1.5 custom-scrollbar">
               {resources.databases.length === 0 ? (
                 <p className="py-6 text-center text-xs text-slate-400 italic font-semibold">No databases connected.</p>
               ) : (
@@ -435,6 +437,20 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-8px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        /* Premium minimal custom scrollbars */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
         }
       `}</style>
     </div>
