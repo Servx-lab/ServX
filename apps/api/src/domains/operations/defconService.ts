@@ -22,13 +22,13 @@ export async function initDefconService(): Promise<void> {
     // 1. Initial State Sync
     const savedState = await redis.get('global:defcon:state');
     if (savedState) {
-      localDefconState = parseInt(savedState, 10);
+      localDefconState = parseInt(savedState as string, 10);
       console.log(`[DEFCON] Synchronized current state from Redis: ${localDefconState}`);
     }
 
     const savedValidAfter = await redis.get('global:jwt:valid_after');
     if (savedValidAfter) {
-      localJwtValidAfter = parseInt(savedValidAfter, 10);
+      localJwtValidAfter = parseInt(savedValidAfter as string, 10);
       console.log(`[DEFCON] Synchronized JWT valid-after timestamp from Redis: ${localJwtValidAfter}`);
     }
 

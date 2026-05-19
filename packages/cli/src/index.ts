@@ -2,10 +2,20 @@
 
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
+import ora from 'ora';
 
 const args = process.argv.slice(2);
 const command = args[0];
-const pin = args[1];
+
+// Support both `init <pin>` and `init --key=<pin>`
+let pin = '';
+if (args[1] && !args[1].startsWith('--')) {
+    pin = args[1];
+} else {
+    const keyArg = args.find(a => a.startsWith('--key='));
+    if (keyArg) pin = keyArg.split('=')[1];
+}
 
 const colors = {
     reset: "\x1b[0m",
@@ -21,10 +31,6 @@ function logInfo(msg: string) {
     console.log(`${colors.cyan}ℹ${colors.reset} ${msg}`);
 }
 
-function logSuccess(msg: string) {
-    console.log(`${colors.green}✔${colors.reset} ${colors.bold}${msg}${colors.reset}`);
-}
-
 function logError(msg: string) {
     console.error(`${colors.red}✖${colors.reset} ${msg}`);
 }
@@ -34,43 +40,91 @@ if (command !== 'init') {
 ${colors.blue}${colors.bold}ServX Command Line Interface${colors.reset}
 
 Usage:
-  npx @servx/cli init <SERVX_PIN>
+  npx @servx/cli init --key=<SERVX_PIN>
 `);
     process.exit(1);
 }
 
 if (!pin) {
-    logError('Missing required <SERVX_PIN> parameter.');
-    console.log(`Example: npx @servx/cli init svx_a1b2c3d4e5f6`);
+    logError('Missing required --key=<SERVX_PIN> parameter.');
+    console.log(`Example: npx @servx/cli init --key=svx_a1b2c3d4e5f6`);
     process.exit(1);
 }
 
-logInfo('Initializing ServX Remote Kill Switch integration...');
+const API_URL = process.env.SERVX_API_URL || 'http://localhost:5000';
 
-const envPath = path.join(process.cwd(), '.env');
-const envLocalPath = path.join(process.cwd(), '.env.local');
+async function performHandshake() {
+    console.log(`\n${colors.bold}Initializing ServX Remote Kill Switch integration...${colors.reset}\n`);
 
-// Determine which env file to write to (Next.js prefers .env.local, Vite prefers .env)
-const targetEnvFile = fs.existsSync(envLocalPath) ? envLocalPath : envPath;
-const targetEnvName = path.basename(targetEnvFile);
+    // --- TEST 1: Ping & Authentication ---
+    const spinner1 = ora('Test 1: Authenticating PIN and connecting to Control Plane...').start();
+    try {
+        await axios.post(`${API_URL}/api/verify/ping`, { pin });
+        spinner1.succeed('Test 1 Passed: Securely authenticated PIN.');
+    } catch (err: any) {
+        spinner1.fail('Test 1 Failed: ' + (err.response?.data?.message || err.message));
+        process.exit(1);
+    }
 
-let envContent = '';
-if (fs.existsSync(targetEnvFile)) {
-    envContent = fs.readFileSync(targetEnvFile, 'utf-8');
-}
+    // --- TEST 2: Environment Sync ---
+    const spinner2 = ora('Test 2: Validating local framework environment...').start();
+    try {
+        let packageJson = {};
+        const pkgPath = path.join(process.cwd(), 'package.json');
+        if (fs.existsSync(pkgPath)) {
+            packageJson = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+        }
 
-if (envContent.includes('NEXT_PUBLIC_SERVX_PIN=') || envContent.includes('VITE_SERVX_PIN=')) {
-    logError(`A ServX PIN is already configured in ${targetEnvName}.`);
-    process.exit(1);
-}
+        const frameworkData = {
+            name: (packageJson as any).name || 'unknown-project',
+            dependencies: (packageJson as any).dependencies || {},
+            nodeVersion: process.version
+        };
 
-// Automatically add for both Vite and Next.js environments so it works universally
-const appendStr = `\n# ServX Remote Maintenance Key\nNEXT_PUBLIC_SERVX_PIN=${pin}\nVITE_SERVX_PIN=${pin}\n`;
-fs.appendFileSync(targetEnvFile, appendStr);
+        await axios.post(`${API_URL}/api/verify/env`, { pin, frameworkData });
+        spinner2.succeed('Test 2 Passed: Framework environment synchronized.');
+    } catch (err: any) {
+        spinner2.fail('Test 2 Failed: ' + (err.response?.data?.message || err.message));
+        process.exit(1);
+    }
 
-logSuccess(`Successfully injected PIN into ${targetEnvName}.`);
+    // --- TEST 3: Persistent SSE Firewall Check ---
+    const spinner3 = ora('Test 3: Checking persistent SSE tunnel for remote signals...').start();
+    try {
+        // Axios waits for the entire stream to resolve (server ends connection after 3000ms)
+        const response = await axios.get(`${API_URL}/api/verify/sse-test?pin=${pin}`);
+        const responseData = response.data.toString();
+        
+        if (responseData.includes('VERIFIED')) {
+            spinner3.succeed('Test 3 Passed: Live Persistent Signal Handshake VERIFIED.');
+        } else {
+            throw new Error('Did not receive VERIFIED signal from server.');
+        }
+    } catch (err: any) {
+        spinner3.fail('Test 3 Failed: ' + (err.response?.data?.message || err.message));
+        process.exit(1);
+    }
 
-console.log(`
+    // --- FINAL: Inject Env Vars ---
+    const envPath = path.join(process.cwd(), '.env');
+    const envLocalPath = path.join(process.cwd(), '.env.local');
+    const targetEnvFile = fs.existsSync(envLocalPath) ? envLocalPath : envPath;
+    const targetEnvName = path.basename(targetEnvFile);
+
+    let envContent = '';
+    if (fs.existsSync(targetEnvFile)) {
+        envContent = fs.readFileSync(targetEnvFile, 'utf-8');
+    }
+
+    if (envContent.includes('NEXT_PUBLIC_SERVX_PIN=') || envContent.includes('VITE_SERVX_PIN=')) {
+        logInfo(`A ServX PIN is already configured in ${targetEnvName}. Skipped env write.`);
+    } else {
+        const appendStr = `\n# ServX Remote Maintenance Key\nNEXT_PUBLIC_SERVX_PIN=${pin}\nVITE_SERVX_PIN=${pin}\n`;
+        fs.appendFileSync(targetEnvFile, appendStr);
+        console.log(`\n${colors.green}✔${colors.reset} Successfully injected PIN into ${targetEnvName}.`);
+    }
+
+    console.log(`
 ${colors.bold}Next Steps:${colors.reset}
 1. Install the React SDK:
    ${colors.yellow}npm install @servx/react${colors.reset}
@@ -87,5 +141,8 @@ ${colors.bold}Next Steps:${colors.reset}
      );
    }
 
-${colors.green}Your codebase is now securely connected to the ServX Control Plane!${colors.reset}
+${colors.green}${colors.bold}Your codebase is now completely VERIFIED and securely connected to the ServX Control Plane!${colors.reset}
 `);
+}
+
+performHandshake();

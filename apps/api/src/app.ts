@@ -20,6 +20,7 @@ import securityRouter from './domains/security/router';
 import webhooksRouter from './domains/webhooks/router';
 import feedRouter from './domains/feed/router';
 import repositoriesRouter from './domains/repositories/router';
+import verifyRouter from './domains/verify/router';
 import { defconMiddleware } from './domains/operations/defconMiddleware';
 
 export function createApp(): Express {
@@ -125,6 +126,7 @@ export function registerApiRoutes(app: Express): void {
   app.use('/api/webhooks', webhooksRouter);
   app.use('/api/feed', feedRouter);
   app.use('/api/repositories', repositoriesRouter);
+  app.use('/api/verify', verifyRouter);
 }
 
 

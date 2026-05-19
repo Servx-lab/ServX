@@ -100,6 +100,31 @@ const RepositoryControl = () => {
         fetchData();
     }, [fetchData]);
 
+    const [verificationStatus, setVerificationStatus] = useState<string>('PENDING');
+
+    useEffect(() => {
+        const registeredData = registeredRepos.find(r => r.github_repo_full_name === selectedRepoFullName);
+        if (!registeredData?.servx_pin) return;
+        
+        setVerificationStatus(registeredData.verification_status || 'PENDING');
+        
+        const sseUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/verify/status/${registeredData.servx_pin}`;
+        const eventSource = new EventSource(sseUrl);
+        
+        eventSource.onmessage = (e) => {
+            try {
+                const data = JSON.parse(e.data);
+                if (data.status) {
+                    setVerificationStatus(data.status);
+                }
+            } catch(err) {
+                console.error("SSE parse error", err);
+            }
+        };
+        
+        return () => eventSource.close();
+    }, [registeredRepos, selectedRepoFullName]);
+
     const handleRegister = async () => {
         const repo = repos.find(r => r.full_name === selectedRepoFullName);
         if (!repo) return;
@@ -186,6 +211,33 @@ const RepositoryControl = () => {
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
+
+                    {registeredData && (
+                        <div className="mt-4 flex flex-col gap-3 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono mb-1">E2E Verification Status</h5>
+                            
+                            <div className="flex flex-col gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-5 h-5 rounded-full flex flex-shrink-0 items-center justify-center border-2 transition-colors duration-300 ${['TEST_1_PASSED', 'TEST_2_PASSED', 'VERIFIED'].includes(verificationStatus) ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-transparent bg-white'}`}>
+                                        <Check className="w-3 h-3" />
+                                    </div>
+                                    <span className={`text-xs font-semibold transition-colors duration-300 ${['TEST_1_PASSED', 'TEST_2_PASSED', 'VERIFIED'].includes(verificationStatus) ? 'text-slate-700' : 'text-slate-400'}`}>CLI Authenticated</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-5 h-5 rounded-full flex flex-shrink-0 items-center justify-center border-2 transition-colors duration-300 ${['TEST_2_PASSED', 'VERIFIED'].includes(verificationStatus) ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-transparent bg-white'}`}>
+                                        <Check className="w-3 h-3" />
+                                    </div>
+                                    <span className={`text-xs font-semibold transition-colors duration-300 ${['TEST_2_PASSED', 'VERIFIED'].includes(verificationStatus) ? 'text-slate-700' : 'text-slate-400'}`}>Environment Scanned</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-5 h-5 rounded-full flex flex-shrink-0 items-center justify-center border-2 transition-colors duration-300 ${verificationStatus === 'VERIFIED' ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-transparent bg-white'}`}>
+                                        <Check className="w-3 h-3" />
+                                    </div>
+                                    <span className={`text-xs font-semibold transition-colors duration-300 ${verificationStatus === 'VERIFIED' ? 'text-slate-700' : 'text-slate-400'}`}>Persistent Link Active</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Status & Actions */}
@@ -238,7 +290,7 @@ const RepositoryControl = () => {
                                     <Switch 
                                         checked={registeredData.is_maintenance}
                                         onCheckedChange={() => handleToggleMaintenance(registeredData.servx_pin, registeredData.is_maintenance)}
-                                        disabled={toggling}
+                                        disabled={toggling || verificationStatus !== 'VERIFIED'}
                                         className={`${registeredData.is_maintenance ? 'data-[state=checked]:bg-red-500' : 'data-[state=unchecked]:bg-emerald-400'}`}
                                     />
                                 </div>
