@@ -18,7 +18,8 @@ import {
   Server,
   ShieldX,
   Power,
-  Key
+  Key,
+  Copy
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
@@ -46,6 +47,33 @@ const RepositoryControl = () => {
     const [loading, setLoading] = useState(true);
     const [registering, setRegistering] = useState(false);
     const [toggling, setToggling] = useState(false);
+
+    const handleCopyToClipboard = (text: string, successMessage: string) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+                .then(() => toast.success(successMessage))
+                .catch(() => fallbackCopy(text, successMessage));
+        } else {
+            fallbackCopy(text, successMessage);
+        }
+    };
+
+    const fallbackCopy = (text: string, successMessage: string) => {
+        try {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            toast.success(successMessage);
+        } catch (err) {
+            toast.error("Failed to copy text automatically.");
+        }
+    };
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -145,7 +173,7 @@ const RepositoryControl = () => {
                                 <ChevronDown className="w-4 h-4 text-slate-400" />
                             </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-[300px] bg-white border border-slate-200 shadow-xl p-1 rounded-xl">
+                        <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[240px] overflow-y-auto bg-white border border-slate-200 shadow-xl p-1.5 rounded-xl scrollbar-thin scrollbar-thumb-slate-100">
                             {repos.map(r => (
                                 <DropdownMenuRadioItem
                                     key={r.id}
@@ -189,8 +217,9 @@ const RepositoryControl = () => {
                             </Button>
                         </div>
                     ) : (
-                        <div className={`h-full w-full rounded-xl border p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 transition-all duration-300 ${registeredData.is_maintenance ? 'bg-red-50 border-red-200' : 'bg-emerald-50/50 border-emerald-100'}`}>
-                            <div className="space-y-3">
+                        <div className={`h-full w-full rounded-xl border p-6 flex flex-col gap-5 transition-all duration-300 ${registeredData.is_maintenance ? 'bg-red-50 border-red-200' : 'bg-emerald-50/50 border-emerald-100'}`}>
+                            {/* Top row with status header text and toggle switch side-by-side */}
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
                                 <div>
                                     <h4 className={`font-extrabold text-sm flex items-center gap-2 ${registeredData.is_maintenance ? 'text-red-700' : 'text-emerald-700'}`}>
                                         <Power className="w-4 h-4" />
@@ -200,24 +229,63 @@ const RepositoryControl = () => {
                                         SDK instances running on client devices will {registeredData.is_maintenance ? 'be blocked entirely' : 'run normally'}.
                                     </p>
                                 </div>
-                                <div className="flex items-center gap-2 bg-white/60 px-3 py-1.5 rounded-lg border border-white/40 w-fit backdrop-blur-sm">
-                                    <Key className="w-3.5 h-3.5 text-slate-400" />
-                                    <span className="text-xs font-mono font-bold text-slate-700">PIN:</span>
-                                    <code className="text-xs font-mono font-extrabold text-indigo-600 select-all">{registeredData.servx_pin}</code>
+
+                                <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl border border-slate-200/60 shadow-sm flex-shrink-0">
+                                    <div className="flex flex-col items-start sm:items-end">
+                                        <span className="text-xs font-bold text-slate-800">Master Toggle</span>
+                                        <span className="text-[10px] text-slate-400 font-mono uppercase tracking-widest leading-none">Kill Switch</span>
+                                    </div>
+                                    <Switch 
+                                        checked={registeredData.is_maintenance}
+                                        onCheckedChange={() => handleToggleMaintenance(registeredData.servx_pin, registeredData.is_maintenance)}
+                                        disabled={toggling}
+                                        className={`${registeredData.is_maintenance ? 'data-[state=checked]:bg-red-500' : 'data-[state=unchecked]:bg-emerald-400'}`}
+                                    />
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-4 bg-white px-5 py-4 rounded-xl border border-slate-100 shadow-sm">
-                                <div className="flex flex-col items-end">
-                                    <span className="text-xs font-bold text-slate-800">Master Toggle</span>
-                                    <span className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">Kill Switch</span>
+                            {/* PIN Badge below the status */}
+                            <div className="flex items-center gap-2 bg-white/60 px-3 py-1.5 rounded-lg border border-white/40 w-fit backdrop-blur-sm">
+                                <Key className="w-3.5 h-3.5 text-slate-400" />
+                                <span className="text-xs font-mono font-bold text-slate-700">PIN:</span>
+                                <code className="text-xs font-mono font-extrabold text-indigo-600 select-all">{registeredData.servx_pin}</code>
+                            </div>
+
+                            {/* Stacked Code snippets widgets (above/below each other!) */}
+                            <div className="flex flex-col gap-3 w-full mt-1">
+                                {/* Raw Env Variable Widget */}
+                                <div className="flex items-center justify-between gap-3 bg-white/70 backdrop-blur-sm border border-slate-200/80 rounded-xl px-4 py-2.5 w-full shadow-sm hover:border-slate-300 transition-all duration-200 group">
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-[9px] font-bold text-slate-400 font-mono uppercase tracking-wider">Env Configuration</span>
+                                        <code className="text-xs font-mono font-bold text-slate-700 truncate select-all">
+                                            SERVX_GLOBAL={registeredData.servx_pin}
+                                        </code>
+                                    </div>
+                                    <button
+                                        onClick={() => handleCopyToClipboard(`SERVX_GLOBAL=${registeredData.servx_pin}`, "Copied environment variable string!")}
+                                        className="p-1.5 rounded-lg hover:bg-slate-100/80 active:bg-slate-200/80 text-slate-400 hover:text-slate-700 transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-400/20"
+                                        title="Copy Env String"
+                                    >
+                                        <Copy className="w-3.5 h-3.5" />
+                                    </button>
                                 </div>
-                                <Switch 
-                                    checked={registeredData.is_maintenance}
-                                    onCheckedChange={() => handleToggleMaintenance(registeredData.servx_pin, registeredData.is_maintenance)}
-                                    disabled={toggling}
-                                    className={`${registeredData.is_maintenance ? 'data-[state=checked]:bg-red-500' : 'data-[state=unchecked]:bg-emerald-400'}`}
-                                />
+
+                                {/* Local CLI Command Widget */}
+                                <div className="flex items-center justify-between gap-3 bg-white/70 backdrop-blur-sm border border-slate-200/80 rounded-xl px-4 py-2.5 w-full shadow-sm hover:border-slate-300 transition-all duration-200 group">
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-[9px] font-bold text-slate-400 font-mono uppercase tracking-wider">CLI Initialize</span>
+                                        <code className="text-xs font-mono font-bold text-slate-700 truncate select-all">
+                                            npx @servx/cli init --key={registeredData.servx_pin}
+                                        </code>
+                                    </div>
+                                    <button
+                                        onClick={() => handleCopyToClipboard(`npx @servx/cli init --key=${registeredData.servx_pin}`, "Copied CLI command string!")}
+                                        className="p-1.5 rounded-lg hover:bg-slate-100/80 active:bg-slate-200/80 text-slate-400 hover:text-slate-700 transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-400/20"
+                                        title="Copy CLI Command"
+                                    >
+                                        <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -254,7 +322,7 @@ const UserCRM = () => {
     };
 
     return (
-        <div className="bg-white border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition-all duration-300 relative overflow-hidden rounded-2xl p-0 h-fit flex flex-col flex-shrink-0">
+        <div className="bg-transparent relative overflow-hidden h-full flex flex-col w-full">
             <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                 <div className="flex items-center gap-3 text-slate-800">
                     <div className="p-2 rounded-xl bg-purple-50 text-purple-500 border border-purple-100/50">
@@ -270,7 +338,7 @@ const UserCRM = () => {
                 </span>
             </div>
             
-            <div className="p-4 flex-1">
+            <div className="p-4 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
                 {isLoading ? (
                     <div className="space-y-3 py-6 text-center animate-pulse">
                         <div className="h-4 bg-slate-100 rounded-full w-2/3 mx-auto"></div>
@@ -680,44 +748,45 @@ const TaskExecutor = () => {
 // --- PAGE LAYOUT & MAIN ENTRY ---
 const OperationsContent = () => {
     return (
-        <main className="flex-1 flex flex-col h-full overflow-hidden relative z-0 text-slate-800 font-sans rounded-t-[2.5rem] transition-colors duration-500 bg-slate-50/50">
-          {/* Page Header */}
-          <div className="px-8 py-6 border-b border-slate-100 bg-white/90 backdrop-blur-md z-10 rounded-t-[2.5rem] flex-shrink-0 flex items-center justify-between shadow-sm">
-            <div>
-              <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold font-mono mb-1 uppercase tracking-widest">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                </span>
-                <Activity className="w-3 h-3 text-blue-500 animate-pulse" />
-                System Operations Center
-              </div>
-              <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
-                Global Operations & Security
-              </h1>
-            </div>
-          </div>
-
-          {/* Dashboard Grid */}
-          <div className="flex-1 p-8 overflow-y-auto w-full max-w-[1600px] mx-auto flex flex-col gap-6 scrollbar-thin scrollbar-thumb-slate-200">
-            
-            {/* Top Row: Repository Control Plane */}
-            <div className="flex-shrink-0">
-                <RepositoryControl />
-            </div>
-
-            {/* Bottom Row: 50/50 Split */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 auto-rows-auto flex-shrink-0 mt-2">
-                <div className="flex flex-col">
-                    <UserCRM />
+        <div className="flex-1 flex flex-row h-full overflow-hidden bg-white rounded-t-[2.5rem] w-full">
+            {/* Center Area (Main Dashboard) */}
+            <main className="flex-1 flex flex-col h-full overflow-hidden relative z-0 text-slate-800 font-sans bg-white">
+                {/* Page Header */}
+                <div className="px-8 py-6 border-b border-slate-100 bg-white z-10 flex-shrink-0 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+                    <div>
+                        <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold font-mono mb-1 uppercase tracking-widest">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                            </span>
+                            <Activity className="w-3 h-3 text-blue-500 animate-pulse" />
+                            System Operations Center
+                        </div>
+                        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
+                            Global Operations & Security
+                        </h1>
+                    </div>
                 </div>
-                <div className="flex flex-col">
-                    <TaskExecutor />
-                </div>
-            </div>
 
-          </div>
-        </main>
+                {/* Dashboard Scroll Container */}
+                <div className="flex-1 p-8 overflow-y-auto w-full max-w-5xl mx-auto flex flex-col gap-6 scrollbar-thin scrollbar-thumb-slate-200">
+                    {/* Row 1: Repository Control Plane */}
+                    <div className="flex-shrink-0">
+                        <RepositoryControl />
+                    </div>
+
+                    {/* Row 2: Remote Tasks */}
+                    <div className="flex-shrink-0 mt-2">
+                        <TaskExecutor />
+                    </div>
+                </div>
+            </main>
+
+            {/* Right Sidebar (Light Grey) - Ghost Mode */}
+            <aside className="w-80 border-l border-slate-100 bg-slate-50/50 flex flex-col h-full overflow-hidden flex-shrink-0">
+                <UserCRM />
+            </aside>
+        </div>
     );
 };
 
