@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.servx_repositories (
     -- Encrypted GitHub token strictly bound to this repository
     encrypted_github_token TEXT,
     github_token_iv TEXT,
+    github_token_auth_tag TEXT,
     
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now(),
