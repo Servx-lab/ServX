@@ -41,11 +41,11 @@ export async function verifyPing(
     if (repo.verification_status === 'PENDING') {
       const { error: updateError } = await supabaseAdmin
         .from('servx_repositories')
-        .update({ verification_status: 'TEST_1_PASSED' })
+        .update({ verification_status: 'AUTH_OK' })
         .eq('servx_pin', pin);
 
       if (updateError) throw new Error('Database update failed.');
-      broadcastStatusChange(pin, 'TEST_1_PASSED');
+      broadcastStatusChange(pin, 'AUTH_OK');
     }
 
     res.json({ success: true, message: 'Ping successful. Database updated.' });
@@ -56,7 +56,7 @@ export async function verifyPing(
 
 /**
  * Test 2: Environment Sync
- * Validates framework metadata and updates status to TEST_2_PASSED.
+ * Validates framework metadata and updates status to META_OK.
  */
 export async function verifyEnv(
   req: Request,
@@ -75,17 +75,17 @@ export async function verifyEnv(
 
     if (error || !repo) throw new NotFoundError('Invalid PIN or repository not found.');
 
-    if (repo.verification_status === 'TEST_1_PASSED') {
+    if (repo.verification_status === 'AUTH_OK') {
       const { error: updateError } = await supabaseAdmin
         .from('servx_repositories')
         .update({ 
-          verification_status: 'TEST_2_PASSED',
+          verification_status: 'META_OK',
           framework_meta: frameworkData
         })
         .eq('servx_pin', pin);
 
       if (updateError) throw new Error('Database update failed.');
-      broadcastStatusChange(pin, 'TEST_2_PASSED');
+      broadcastStatusChange(pin, 'META_OK');
     }
 
     res.json({ success: true, message: 'Environment data synchronized.' });
@@ -127,7 +127,7 @@ export async function verifySseTest(
     // Simulate 3 seconds of persistence checking (bypassing basic proxy buffers)
     setTimeout(async () => {
       try {
-        if (repo.verification_status === 'TEST_2_PASSED') {
+        if (repo.verification_status === 'META_OK') {
           await supabaseAdmin
             .from('servx_repositories')
             .update({ verification_status: 'VERIFIED' })

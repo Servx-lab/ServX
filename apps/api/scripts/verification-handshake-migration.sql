@@ -12,15 +12,15 @@ ADD COLUMN IF NOT EXISTS framework_meta JSONB DEFAULT '{}'::jsonb NOT NULL;
 -- 2. ADD CHECK CONSTRAINT
 -- Enforces valid states for the verification state machine:
 -- - PENDING: Initial state upon PIN generation
--- - TEST_1_PASSED: Authenticated successfully by the CLI ping test
--- - TEST_2_PASSED: Environment scanned and framework info synced
+-- - AUTH_OK: Authenticated successfully by the CLI ping test
+-- - META_OK: Environment scanned and framework info synced
 -- - VERIFIED: Live persistent connection handshake verified
 ALTER TABLE servx_repositories
 DROP CONSTRAINT IF EXISTS check_verification_status;
 
 ALTER TABLE servx_repositories
 ADD CONSTRAINT check_verification_status 
-CHECK (verification_status IN ('PENDING', 'TEST_1_PASSED', 'TEST_2_PASSED', 'VERIFIED'));
+CHECK (verification_status IN ('PENDING', 'AUTH_OK', 'META_OK', 'VERIFIED'));
 
 -- 3. MIGRATE EXISTING PRODUCTION RECORDS
 -- Set existing active records to 'VERIFIED' to prevent service interruption
@@ -36,7 +36,7 @@ CREATE OR REPLACE FUNCTION cleanup_stale_pending_repositories()
 RETURNS void AS $$
 BEGIN
   DELETE FROM servx_repositories
-  WHERE verification_status IN ('PENDING', 'TEST_1_PASSED', 'TEST_2_PASSED')
+  WHERE verification_status IN ('PENDING', 'AUTH_OK', 'META_OK')
     AND created_at < NOW() - INTERVAL '1 hour';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

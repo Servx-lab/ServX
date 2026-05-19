@@ -19,7 +19,8 @@ import {
   ShieldX,
   Power,
   Key,
-  Copy
+  Copy,
+  Circle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ import apiClient from '@/lib/apiClient';
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAdminList } from '../admin/hooks';
 import { logClientEvent } from './api';
@@ -218,22 +220,34 @@ const RepositoryControl = () => {
                             
                             <div className="flex flex-col gap-3">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-5 h-5 rounded-full flex flex-shrink-0 items-center justify-center border-2 transition-colors duration-300 ${['TEST_1_PASSED', 'TEST_2_PASSED', 'VERIFIED'].includes(verificationStatus) ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-transparent bg-white'}`}>
-                                        <Check className="w-3 h-3" />
-                                    </div>
-                                    <span className={`text-xs font-semibold transition-colors duration-300 ${['TEST_1_PASSED', 'TEST_2_PASSED', 'VERIFIED'].includes(verificationStatus) ? 'text-slate-700' : 'text-slate-400'}`}>CLI Authenticated</span>
+                                    {['AUTH_OK', 'META_OK', 'VERIFIED'].includes(verificationStatus) ? (
+                                        <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                                    ) : verificationStatus === 'PENDING' ? (
+                                        <Loader2 className="w-5 h-5 text-indigo-500 animate-spin flex-shrink-0" />
+                                    ) : (
+                                        <Circle className="w-5 h-5 text-slate-300 flex-shrink-0" />
+                                    )}
+                                    <span className={`text-xs font-semibold transition-colors duration-300 ${['AUTH_OK', 'META_OK', 'VERIFIED'].includes(verificationStatus) ? 'text-slate-700' : verificationStatus === 'PENDING' ? 'text-indigo-600' : 'text-slate-400'}`}>CLI Authenticated</span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-5 h-5 rounded-full flex flex-shrink-0 items-center justify-center border-2 transition-colors duration-300 ${['TEST_2_PASSED', 'VERIFIED'].includes(verificationStatus) ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-transparent bg-white'}`}>
-                                        <Check className="w-3 h-3" />
-                                    </div>
-                                    <span className={`text-xs font-semibold transition-colors duration-300 ${['TEST_2_PASSED', 'VERIFIED'].includes(verificationStatus) ? 'text-slate-700' : 'text-slate-400'}`}>Environment Scanned</span>
+                                    {['META_OK', 'VERIFIED'].includes(verificationStatus) ? (
+                                        <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                                    ) : verificationStatus === 'AUTH_OK' ? (
+                                        <Loader2 className="w-5 h-5 text-indigo-500 animate-spin flex-shrink-0" />
+                                    ) : (
+                                        <Circle className="w-5 h-5 text-slate-300 flex-shrink-0" />
+                                    )}
+                                    <span className={`text-xs font-semibold transition-colors duration-300 ${['META_OK', 'VERIFIED'].includes(verificationStatus) ? 'text-slate-700' : verificationStatus === 'AUTH_OK' ? 'text-indigo-600' : 'text-slate-400'}`}>Environment Scanned</span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-5 h-5 rounded-full flex flex-shrink-0 items-center justify-center border-2 transition-colors duration-300 ${verificationStatus === 'VERIFIED' ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-transparent bg-white'}`}>
-                                        <Check className="w-3 h-3" />
-                                    </div>
-                                    <span className={`text-xs font-semibold transition-colors duration-300 ${verificationStatus === 'VERIFIED' ? 'text-slate-700' : 'text-slate-400'}`}>Persistent Link Active</span>
+                                    {verificationStatus === 'VERIFIED' ? (
+                                        <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                                    ) : verificationStatus === 'META_OK' ? (
+                                        <Loader2 className="w-5 h-5 text-indigo-500 animate-spin flex-shrink-0" />
+                                    ) : (
+                                        <Circle className="w-5 h-5 text-slate-300 flex-shrink-0" />
+                                    )}
+                                    <span className={`text-xs font-semibold transition-colors duration-300 ${verificationStatus === 'VERIFIED' ? 'text-slate-700' : verificationStatus === 'META_OK' ? 'text-indigo-600' : 'text-slate-400'}`}>Persistent Link Active</span>
                                 </div>
                             </div>
                         </div>
@@ -287,12 +301,25 @@ const RepositoryControl = () => {
                                         <span className="text-xs font-bold text-slate-800">Master Toggle</span>
                                         <span className="text-[10px] text-slate-400 font-mono uppercase tracking-widest leading-none">Kill Switch</span>
                                     </div>
-                                    <Switch 
-                                        checked={registeredData.is_maintenance}
-                                        onCheckedChange={() => handleToggleMaintenance(registeredData.servx_pin, registeredData.is_maintenance)}
-                                        disabled={toggling || verificationStatus !== 'VERIFIED'}
-                                        className={`${registeredData.is_maintenance ? 'data-[state=checked]:bg-red-500' : 'data-[state=unchecked]:bg-emerald-400'}`}
-                                    />
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <div className="inline-flex">
+                                                    <Switch 
+                                                        checked={registeredData.is_maintenance}
+                                                        onCheckedChange={() => handleToggleMaintenance(registeredData.servx_pin, registeredData.is_maintenance)}
+                                                        disabled={toggling || verificationStatus !== 'VERIFIED'}
+                                                        className={`${registeredData.is_maintenance ? 'data-[state=checked]:bg-red-500' : 'data-[state=unchecked]:bg-emerald-400'}`}
+                                                    />
+                                                </div>
+                                            </TooltipTrigger>
+                                            {verificationStatus !== 'VERIFIED' && (
+                                                <TooltipContent>
+                                                    <p>Pending E2E Verification Handshake</p>
+                                                </TooltipContent>
+                                            )}
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </div>
                             </div>
 
