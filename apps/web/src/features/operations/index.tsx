@@ -19,7 +19,8 @@ import {
   ShieldX,
   Power,
   Key,
-  Copy
+  Copy,
+  Circle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ import apiClient from '@/lib/apiClient';
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAdminList } from '../admin/hooks';
 import { logClientEvent } from './api';
@@ -99,6 +101,31 @@ const RepositoryControl = () => {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const [verificationStatus, setVerificationStatus] = useState<string>('PENDING');
+
+    useEffect(() => {
+        const registeredData = registeredRepos.find(r => r.github_repo_full_name === selectedRepoFullName);
+        if (!registeredData?.servx_pin) return;
+        
+        setVerificationStatus(registeredData.verification_status || 'PENDING');
+        
+        const sseUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/verify/status/${registeredData.servx_pin}`;
+        const eventSource = new EventSource(sseUrl);
+        
+        eventSource.onmessage = (e) => {
+            try {
+                const data = JSON.parse(e.data);
+                if (data.status) {
+                    setVerificationStatus(data.status);
+                }
+            } catch(err) {
+                console.error("SSE parse error", err);
+            }
+        };
+        
+        return () => eventSource.close();
+    }, [registeredRepos, selectedRepoFullName]);
 
     const handleRegister = async () => {
         const repo = repos.find(r => r.full_name === selectedRepoFullName);
@@ -186,6 +213,45 @@ const RepositoryControl = () => {
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
+
+                    {registeredData && (
+                        <div className="mt-4 flex flex-col gap-3 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono mb-1">E2E Verification Status</h5>
+                            
+                            <div className="flex flex-col gap-3">
+                                <div className="flex items-center gap-3">
+                                    {['AUTH_OK', 'META_OK', 'VERIFIED'].includes(verificationStatus) ? (
+                                        <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                                    ) : verificationStatus === 'PENDING' ? (
+                                        <Loader2 className="w-5 h-5 text-indigo-500 animate-spin flex-shrink-0" />
+                                    ) : (
+                                        <Circle className="w-5 h-5 text-slate-300 flex-shrink-0" />
+                                    )}
+                                    <span className={`text-xs font-semibold transition-colors duration-300 ${['AUTH_OK', 'META_OK', 'VERIFIED'].includes(verificationStatus) ? 'text-slate-700' : verificationStatus === 'PENDING' ? 'text-indigo-600' : 'text-slate-400'}`}>CLI Authenticated</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    {['META_OK', 'VERIFIED'].includes(verificationStatus) ? (
+                                        <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                                    ) : verificationStatus === 'AUTH_OK' ? (
+                                        <Loader2 className="w-5 h-5 text-indigo-500 animate-spin flex-shrink-0" />
+                                    ) : (
+                                        <Circle className="w-5 h-5 text-slate-300 flex-shrink-0" />
+                                    )}
+                                    <span className={`text-xs font-semibold transition-colors duration-300 ${['META_OK', 'VERIFIED'].includes(verificationStatus) ? 'text-slate-700' : verificationStatus === 'AUTH_OK' ? 'text-indigo-600' : 'text-slate-400'}`}>Environment Scanned</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    {verificationStatus === 'VERIFIED' ? (
+                                        <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                                    ) : verificationStatus === 'META_OK' ? (
+                                        <Loader2 className="w-5 h-5 text-indigo-500 animate-spin flex-shrink-0" />
+                                    ) : (
+                                        <Circle className="w-5 h-5 text-slate-300 flex-shrink-0" />
+                                    )}
+                                    <span className={`text-xs font-semibold transition-colors duration-300 ${verificationStatus === 'VERIFIED' ? 'text-slate-700' : verificationStatus === 'META_OK' ? 'text-indigo-600' : 'text-slate-400'}`}>Persistent Link Active</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Status & Actions */}
@@ -235,12 +301,25 @@ const RepositoryControl = () => {
                                         <span className="text-xs font-bold text-slate-800">Master Toggle</span>
                                         <span className="text-[10px] text-slate-400 font-mono uppercase tracking-widest leading-none">Kill Switch</span>
                                     </div>
-                                    <Switch 
-                                        checked={registeredData.is_maintenance}
-                                        onCheckedChange={() => handleToggleMaintenance(registeredData.servx_pin, registeredData.is_maintenance)}
-                                        disabled={toggling}
-                                        className={`${registeredData.is_maintenance ? 'data-[state=checked]:bg-red-500' : 'data-[state=unchecked]:bg-emerald-400'}`}
-                                    />
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <div className="inline-flex">
+                                                    <Switch 
+                                                        checked={registeredData.is_maintenance}
+                                                        onCheckedChange={() => handleToggleMaintenance(registeredData.servx_pin, registeredData.is_maintenance)}
+                                                        disabled={toggling || verificationStatus !== 'VERIFIED'}
+                                                        className={`${registeredData.is_maintenance ? 'data-[state=checked]:bg-red-500' : 'data-[state=unchecked]:bg-emerald-400'}`}
+                                                    />
+                                                </div>
+                                            </TooltipTrigger>
+                                            {verificationStatus !== 'VERIFIED' && (
+                                                <TooltipContent>
+                                                    <p>Pending E2E Verification Handshake</p>
+                                                </TooltipContent>
+                                            )}
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </div>
                             </div>
 

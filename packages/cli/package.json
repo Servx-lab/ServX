@@ -13,5 +13,9 @@
     "typescript": "^5.0.0"
   },
   "author": "ServX Labs",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.16.1",
+    "ora": "^5.4.1"
+  }
 }
