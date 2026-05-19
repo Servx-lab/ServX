@@ -520,9 +520,9 @@ const TargetSelect = ({ options, value, onChange, placeholder, disabled }: any) 
                             {options.length === 0 ? 'No options available' : 'No matches found'}
                         </div>
                     ) : (
-                        filteredOptions.map((opt: any) => (
+                        filteredOptions.map((opt: any, index: number) => (
                             <button
-                                key={opt.id}
+                                key={opt.id ? `${opt.id}-${index}` : index}
                                 type="button"
                                 onClick={() => { onChange(opt.id); onOpenChange(false); setSearchQuery(''); }}
                                 className={`w-full px-4 py-3 text-left text-base hover:bg-gray-50 transition-colors flex items-center gap-3 ${value === opt.id ? 'bg-blue-50 text-blue-600' : 'text-black'}`}
