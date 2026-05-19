@@ -974,7 +974,7 @@ const IntegrationHelpCenter = () => {
                                 <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center font-mono font-extrabold text-[10px] text-indigo-600">4</span>
                                 <div className="space-y-1">
                                     <strong className="text-slate-800 block text-[11px]">Wrap your application</strong>
-                                    <p>Wrap your root component in `<ServXProvider projectKey="YOUR_PIN" />`. The SDK will now block standard operations instantly whenever maintenance mode is toggled on.</p>
+                                    <p>Wrap your root component in <code className="text-indigo-600 font-mono font-bold">&lt;ServXProvider projectKey="YOUR_PIN" /&gt;</code>. The SDK will now block standard operations instantly whenever maintenance mode is toggled on.</p>
                                 </div>
                             </div>
                         </div>
