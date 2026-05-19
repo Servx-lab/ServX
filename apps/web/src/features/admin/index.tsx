@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAdminList, useInviteAdmin, useRevokeAdmin } from "./hooks";
 import type { AdminRecord, AdminRole } from "./types";
 import UserSearchInviteBar from "./UserSearchInviteBar";
-import GranularAccessModal from "./GranularAccessModal";
+import GranularAccessPanel from "./GranularAccessPanel";
 
 function roleBadgeClass(role: string): string {
   if (role === "viewer") {
@@ -27,7 +27,7 @@ function roleBadgeClass(role: string): string {
 }
 
 const Administrator = () => {
-  const [accessUser, setAccessUser] = useState<AdminRecord | null>(null);
+  const [expandedUserUid, setExpandedUserUid] = useState<string | null>(null);
 
   const { data: admins = [], isLoading: isLoadingAdmins } = useAdminList();
   const inviteMutation = useInviteAdmin();
@@ -99,56 +99,69 @@ const Administrator = () => {
                   </TableRow>
                 ) : (
                   admins.map((admin) => (
-                    <TableRow key={admin.id} className="border-gray-200 hover:bg-gray-50/80">
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <ProfilePhoto
-                            src={admin.avatarUrl}
-                            alt=""
-                            label={admin.email}
-                            className="h-10 w-10 border border-gray-200"
-                            fallbackClassName="border-cyan-200 bg-cyan-100 text-cyan-700 font-bold"
-                          />
-                          <div className="min-w-0">
-                            <div className="truncate font-medium text-gray-900">{admin.email}</div>
-                            <code className="text-[10px] text-gray-500">{admin.id}</code>
+                    <React.Fragment key={admin.id}>
+                      <TableRow className="border-gray-200 hover:bg-gray-50/80">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <ProfilePhoto
+                              src={admin.avatarUrl}
+                              alt=""
+                              label={admin.email}
+                              className="h-10 w-10 border border-gray-200"
+                              fallbackClassName="border-cyan-200 bg-cyan-100 text-cyan-700 font-bold"
+                            />
+                            <div className="min-w-0">
+                              <div className="truncate font-medium text-gray-900">{admin.email}</div>
+                              <code className="text-[10px] text-gray-500">{admin.id}</code>
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={`capitalize ${roleBadgeClass(admin.role)}`}>
-                          {admin.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                        {new Date(admin.addedAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 text-gray-600 hover:bg-gray-100 hover:text-cyan-600"
-                            title="Edit access"
-                            onClick={() => setAccessUser(admin)}
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 text-red-600 hover:bg-red-50 hover:text-red-700"
-                            title="Revoke access"
-                            onClick={() => handleRevoke(admin.id)}
-                            disabled={revokeMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`capitalize ${roleBadgeClass(admin.role)}`}>
+                            {admin.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-600">
+                          {new Date(admin.addedAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className={`h-9 w-9 transition-colors ${expandedUserUid === admin.id ? 'bg-cyan-50 text-cyan-600 hover:bg-cyan-100' : 'text-gray-600 hover:bg-gray-100 hover:text-cyan-600'}`}
+                              title="Edit access"
+                              onClick={() => setExpandedUserUid(expandedUserUid === admin.id ? null : admin.id)}
+                            >
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 text-red-600 hover:bg-red-50 hover:text-red-700"
+                              title="Revoke access"
+                              onClick={() => handleRevoke(admin.id)}
+                              disabled={revokeMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {expandedUserUid === admin.id && (
+                        <TableRow key={`${admin.id}-expanded`} className="bg-slate-50/20 hover:bg-transparent">
+                          <TableCell colSpan={4} className="p-4 md:p-6 border-b border-gray-200">
+                            <GranularAccessPanel
+                              userUid={admin.id}
+                              userEmail={admin.email}
+                              onClose={() => setExpandedUserUid(null)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </TableBody>
@@ -156,13 +169,6 @@ const Administrator = () => {
           </div>
         </section>
       </div>
-
-      <GranularAccessModal
-        open={accessUser !== null}
-        onOpenChange={(o) => !o && setAccessUser(null)}
-        userUid={accessUser?.id ?? ""}
-        userEmail={accessUser?.email ?? ""}
-      />
     </main>
   );
 };
