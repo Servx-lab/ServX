@@ -1015,14 +1015,14 @@ const OperationsContent = () => {
                         <RepositoryControl />
                     </div>
 
-                    {/* Row 2: Remote Tasks */}
-                    <div className="flex-shrink-0 mt-2">
-                        <TaskExecutor />
-                    </div>
-
-                    {/* Row 3: Help Center & Quick Start Guide */}
+                    {/* Row 2: Help Center & Quick Start Guide */}
                     <div className="flex-shrink-0 mt-2">
                         <IntegrationHelpCenter />
+                    </div>
+
+                    {/* Row 3: Remote Tasks */}
+                    <div className="flex-shrink-0 mt-2">
+                        <TaskExecutor />
                     </div>
                 </div>
             </main>
