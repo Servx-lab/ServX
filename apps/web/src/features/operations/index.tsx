@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   ShieldAlert, 
@@ -43,13 +43,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // --- 1. Repository Control & Maintenance ---
-const RepositoryControl = () => {
+interface RepositoryControlProps {
+    impersonatingUser: { id: string; email: string; name: string } | null;
+    onStopImpersonating: () => void;
+}
+
+const RepositoryControl: React.FC<RepositoryControlProps> = ({
+    impersonatingUser,
+    onStopImpersonating
+}) => {
     const [repos, setRepos] = useState<any[]>([]);
     const [registeredRepos, setRegisteredRepos] = useState<any[]>([]);
     const [selectedRepoFullName, setSelectedRepoFullName] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [registering, setRegistering] = useState(false);
     const [toggling, setToggling] = useState(false);
+    const [impersonatedPermissions, setImpersonatedPermissions] = useState<any | null>(null);
 
     const handleCopyToClipboard = (text: string, successMessage: string) => {
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -103,10 +112,43 @@ const RepositoryControl = () => {
         fetchData();
     }, [fetchData]);
 
+    useEffect(() => {
+        if (!impersonatingUser) {
+            setImpersonatedPermissions(null);
+            return;
+        }
+        
+        (async () => {
+            try {
+                const res = await apiClient.get(`/admin/permissions/${impersonatingUser.id}`);
+                setImpersonatedPermissions(res.data?.permissions || null);
+            } catch (err) {
+                console.error("Failed to fetch impersonated user permissions:", err);
+            }
+        })();
+    }, [impersonatingUser]);
+
+    const filteredRegisteredRepos = useMemo(() => {
+        if (!impersonatingUser) return registeredRepos;
+        if (!impersonatedPermissions) return [];
+        
+        const allowedPins = impersonatedPermissions.granularAllow?.maintenancePins || [];
+        return registeredRepos.filter(r => allowedPins.includes(r.servx_pin));
+    }, [registeredRepos, impersonatingUser, impersonatedPermissions]);
+
+    useEffect(() => {
+        if (impersonatingUser && filteredRegisteredRepos.length > 0) {
+            const hasSelected = filteredRegisteredRepos.some(r => r.github_repo_full_name === selectedRepoFullName);
+            if (!hasSelected) {
+                setSelectedRepoFullName(filteredRegisteredRepos[0].github_repo_full_name);
+            }
+        }
+    }, [impersonatingUser, filteredRegisteredRepos, selectedRepoFullName]);
+
     const [verificationStatus, setVerificationStatus] = useState<string>('PENDING');
 
     useEffect(() => {
-        const registeredData = registeredRepos.find(r => r.github_repo_full_name === selectedRepoFullName);
+        const registeredData = filteredRegisteredRepos.find(r => r.github_repo_full_name === selectedRepoFullName);
         if (!registeredData?.servx_pin) return;
         
         setVerificationStatus(registeredData.verification_status || 'PENDING');
@@ -126,7 +168,7 @@ const RepositoryControl = () => {
         };
         
         return () => eventSource.close();
-    }, [registeredRepos, selectedRepoFullName]);
+    }, [filteredRegisteredRepos, selectedRepoFullName]);
 
     const handleRegister = async () => {
         const repo = repos.find(r => r.full_name === selectedRepoFullName);
@@ -163,10 +205,30 @@ const RepositoryControl = () => {
     };
 
     const activeRepo = repos.find(r => r.full_name === selectedRepoFullName);
-    const registeredData = registeredRepos.find(r => r.github_repo_full_name === selectedRepoFullName);
+    const registeredData = filteredRegisteredRepos.find(r => r.github_repo_full_name === selectedRepoFullName);
 
     return (
         <div className="bg-white border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] rounded-2xl p-6 md:p-8 flex flex-col w-full h-fit flex-shrink-0">
+             {impersonatingUser && (
+                <div className="mb-6 flex items-center justify-between gap-4 rounded-xl bg-purple-50 border border-purple-100/60 px-4 py-3 text-purple-700 animate-pulse">
+                    <div className="flex items-center gap-3">
+                        <Fingerprint className="h-5 w-5 text-purple-600" />
+                        <div className="flex flex-col">
+                            <span className="text-xs font-extrabold text-slate-700">Simulating Session: {impersonatingUser.name}</span>
+                            <span className="text-[9px] text-purple-500 font-bold uppercase tracking-wider">Restricted Workspace View ({filteredRegisteredRepos.length} Repositories Allowed)</span>
+                        </div>
+                    </div>
+                    <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={onStopImpersonating}
+                        className="h-8 text-xs font-bold text-purple-600 bg-white hover:bg-purple-50 border-purple-200"
+                    >
+                        Exit Simulation
+                    </Button>
+                </div>
+             )}
+
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                 <div>
                     <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold font-mono uppercase tracking-widest mb-1.5">
@@ -202,7 +264,7 @@ const RepositoryControl = () => {
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[240px] overflow-y-auto bg-white border border-slate-200 shadow-xl p-1.5 rounded-xl scrollbar-thin scrollbar-thumb-slate-100">
-                            {repos.map(r => (
+                            {(!impersonatingUser ? repos : repos.filter(r => filteredRegisteredRepos.some(fr => fr.github_repo_full_name === r.full_name))).map(r => (
                                 <DropdownMenuRadioItem
                                     key={r.id}
                                     value={r.full_name}
@@ -393,29 +455,31 @@ const RepositoryControl = () => {
 };
 
 // --- 2. Ghost Mode (UserCRM) ---
+interface UserCRMProps {
+    impersonatingUser: { id: string; email: string; name: string } | null;
+    onStartImpersonate: (user: { id: string; email: string; name: string }) => void;
+    onStopImpersonate: () => void;
+}
+
 const formatNameFromEmail = (email: string) => {
     const parts = email.split('@')[0].split('.');
     return parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
 };
 
-const UserCRM = () => {
+const UserCRM: React.FC<UserCRMProps> = ({
+    impersonatingUser,
+    onStartImpersonate,
+    onStopImpersonate
+}) => {
     const { data: admins = [], isLoading } = useAdminList();
-    const [impersonating, setImpersonating] = useState<string | null>(null);
 
-    const handleImpersonate = (userId: string, name: string) => {
-        setImpersonating(userId);
-        setTimeout(async () => {
-            setImpersonating(null);
-            toast.success(`Impersonation Session Started`, {
-                description: 'Restricted Ghost Session Active (Audit Logged)',
-                icon: <Fingerprint className="w-4 h-4 text-purple-400" />,
-            });
-            try {
-                await logClientEvent('auth', `Admin simulated restricted session impersonation for team member '${name}'`);
-            } catch (err) {
-                console.warn('Failed to submit client event logging:', err);
-            }
-        }, 1500);
+    const handleImpersonate = (userId: string, email: string, name: string) => {
+        onStartImpersonate({ id: userId, email, name });
+        toast.success(`Impersonation Session Started`, {
+            description: `Restricted Ghost Session Active for ${name} (Audit Logged)`,
+            icon: <Fingerprint className="w-4 h-4 text-purple-400 font-bold" />,
+        });
+        logClientEvent('auth', `Admin simulated restricted session impersonation for team member '${name}'`).catch(() => {});
     };
 
     return (
@@ -459,6 +523,7 @@ const UserCRM = () => {
                         {admins.map((u) => {
                             const name = formatNameFromEmail(u.email);
                             const roleDisplay = u.role.charAt(0).toUpperCase() + u.role.slice(1);
+                            const isCurrentImpersonating = impersonatingUser?.id === u.id;
                             return (
                                 <div key={u.id} className="group flex items-center justify-between p-3.5 rounded-xl hover:bg-slate-50/50 border border-transparent hover:border-slate-100 transition-all duration-200">
                                     <div className="flex items-center gap-3 min-w-0">
@@ -482,12 +547,20 @@ const UserCRM = () => {
                                     </div>
                                     <Button 
                                         size="sm" 
-                                        variant="outline" 
-                                        onClick={() => handleImpersonate(u.id, name)}
-                                        disabled={impersonating === u.id}
-                                        className="h-8 text-xs font-semibold hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-all ml-2 flex-shrink-0"
+                                        variant={isCurrentImpersonating ? "default" : "outline"} 
+                                        onClick={() => {
+                                            if (isCurrentImpersonating) {
+                                                onStopImpersonate();
+                                                toast.success("Impersonation Session Ended");
+                                            } else {
+                                                handleImpersonate(u.id, u.email, name);
+                                            }
+                                        }}
+                                        className={`h-8 text-xs font-semibold transition-all ml-2 flex-shrink-0 ${
+                                            isCurrentImpersonating ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600 shadow-md shadow-purple-600/20 animate-pulse" : "hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200"
+                                        }`}
                                     >
-                                        {impersonating === u.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Impersonate"}
+                                        {isCurrentImpersonating ? "Active" : "Impersonate"}
                                     </Button>
                                 </div>
                             );
@@ -987,6 +1060,8 @@ const IntegrationHelpCenter = () => {
 
 // --- PAGE LAYOUT & MAIN ENTRY ---
 const OperationsContent = () => {
+    const [impersonatingUser, setImpersonatingUser] = useState<{ id: string; email: string; name: string } | null>(null);
+
     return (
         <div className="flex-1 flex flex-row h-full overflow-hidden bg-white rounded-t-[2.5rem] w-full">
             {/* Center Area (Main Dashboard) */}
@@ -1012,7 +1087,10 @@ const OperationsContent = () => {
                 <div className="flex-1 p-8 overflow-y-auto w-full max-w-5xl mx-auto flex flex-col gap-6 scrollbar-thin scrollbar-thumb-slate-200">
                     {/* Row 1: Repository Control Plane */}
                     <div className="flex-shrink-0">
-                        <RepositoryControl />
+                        <RepositoryControl 
+                            impersonatingUser={impersonatingUser} 
+                            onStopImpersonating={() => setImpersonatingUser(null)}
+                        />
                     </div>
 
                     {/* Row 2: Help Center & Quick Start Guide */}
@@ -1029,7 +1107,11 @@ const OperationsContent = () => {
 
             {/* Right Sidebar (Light Grey) - Ghost Mode */}
             <aside className="w-80 border-l border-slate-100 bg-slate-50/50 flex flex-col h-full overflow-hidden flex-shrink-0">
-                <UserCRM />
+                <UserCRM 
+                    impersonatingUser={impersonatingUser}
+                    onStartImpersonate={(u) => setImpersonatingUser(u)}
+                    onStopImpersonate={() => setImpersonatingUser(null)}
+                />
             </aside>
         </div>
     );
