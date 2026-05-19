@@ -43,6 +43,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProjectProvider, useProject } from "./ProjectContext";
 import { useAuditStream } from './hooks';
+import { useAdminList } from '../admin/hooks';
 import { logClientEvent } from './api';
 import {
   DropdownMenu,
@@ -54,7 +55,6 @@ import {
 
 // Default fallbacks
 const DEFAULT_KILL_SWITCHES = { maintenance: false, flags: { imageUploads: true, aiFeatures: true, newSignups: true } };
-const DEFAULT_FINOPS = { currentCost: 0.84, projected: 1.28, threshold: 1.00 };
 const DEFAULT_API_IPS = [
   { ip: '185.220.101.5', location: 'Frankfurt, DE', reqs: 14023, status: 'active' as const },
   { ip: '45.138.89.201', location: 'Moscow, RU', reqs: 9231, status: 'active' as const },
@@ -112,32 +112,32 @@ const DefconMatrix = ({ currentState, onStateChange }: DefconMatrixProps) => {
 
   return (
     <div className={`
-      relative overflow-hidden rounded-2xl border bg-white p-8 shadow-lg transition-colors transition-shadow duration-500
+      relative overflow-hidden rounded-2xl border bg-white p-6 md:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-all duration-500 flex-shrink-0
       ${isLockdown 
-        ? 'border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.2)] animate-[pulse_2s_infinite]' 
-        : 'border-gray-200'}
+        ? 'border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.15)] animate-[pulse_2s_infinite]' 
+        : 'border-slate-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)]'}
     `}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-2 text-black font-mono uppercase tracking-widest text-xs font-bold mb-1">
-            <ShieldAlert className={`w-4 h-4 ${isLockdown ? 'text-red-500 animate-bounce' : 'text-gray-500'}`} />
+          <div className="flex items-center gap-2 text-slate-400 font-mono uppercase tracking-widest text-[10px] font-extrabold mb-1">
+            <ShieldAlert className={`w-4 h-4 ${isLockdown ? 'text-red-500 animate-bounce' : 'text-slate-400'}`} />
             System Control Panel
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">DEFCON Threat Matrix</h2>
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-800">DEFCON Threat Matrix</h2>
         </div>
         <div className="flex items-center gap-2">
           {isLockdown ? (
-            <Badge variant="destructive" className="bg-red-500 text-white font-mono text-xs px-3 py-1 animate-pulse border-none">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-red-500 text-white animate-pulse border-none font-mono uppercase tracking-wider">
               🚨 LOCKDOWN ENGAGED
-            </Badge>
+            </span>
           ) : currentState === 3 ? (
-            <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 font-mono text-xs px-3 py-1">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-amber-50 text-amber-600 border border-amber-200 font-mono uppercase tracking-wider">
               ⚠️ ELEVATED THREAT LEVEL
-            </Badge>
+            </span>
           ) : (
-            <Badge variant="outline" className="border-emerald-500 text-emerald-600 bg-emerald-50 font-mono text-xs px-3 py-1">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-600 border border-emerald-200 font-mono uppercase tracking-wider">
               🟢 baseline operations
-            </Badge>
+            </span>
           )}
         </div>
       </div>
@@ -151,21 +151,21 @@ const DefconMatrix = ({ currentState, onStateChange }: DefconMatrixProps) => {
           onClick={() => handleZoneClick(5)}
           disabled={loading}
           className={`
-            relative p-6 rounded-xl border text-left transition-all duration-300 flex flex-col justify-between h-40
+            relative p-6 rounded-xl border text-left transition-all duration-300 flex flex-col justify-between h-40 group
             ${currentState === 5
-              ? 'bg-emerald-50 border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400'
-              : 'bg-slate-50 border-gray-100 hover:border-emerald-300 hover:bg-emerald-50/20'}
+              ? 'bg-emerald-50/30 border-emerald-500/30 shadow-[0_4px_20px_rgba(16,185,129,0.06)] ring-1 ring-emerald-400 text-emerald-950'
+              : 'bg-slate-50/50 border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/10'}
           `}
         >
           <div className="flex justify-between items-start w-full">
-            <div className={`p-2.5 rounded-lg ${currentState === 5 ? 'bg-emerald-500 text-white' : 'bg-white border border-gray-200 text-emerald-500'}`}>
+            <div className={`p-2.5 rounded-lg transition-all duration-300 ${currentState === 5 ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/10' : 'bg-white border border-slate-100 text-emerald-500 group-hover:scale-105'}`}>
               <CheckCircle2 className="w-5 h-5" />
             </div>
-            <span className="font-mono text-xs text-gray-400 font-bold">DEFCON 5 / 4</span>
+            <span className="font-mono text-xs text-slate-400 font-bold">DEFCON 5 / 4</span>
           </div>
           <div>
-            <h4 className="font-bold text-slate-800 text-lg mb-1">Normal Baseline</h4>
-            <p className="text-xs text-gray-500">All standard traffic allowed. Standard verification pipelines active.</p>
+            <h4 className="font-bold text-slate-800 text-base mb-1">Normal Baseline</h4>
+            <p className="text-xs text-slate-500 font-medium">All standard traffic allowed. Standard verification pipelines active.</p>
           </div>
         </button>
 
@@ -175,21 +175,21 @@ const DefconMatrix = ({ currentState, onStateChange }: DefconMatrixProps) => {
           onClick={() => handleZoneClick(3)}
           disabled={loading}
           className={`
-            relative p-6 rounded-xl border text-left transition-all duration-300 flex flex-col justify-between h-40
+            relative p-6 rounded-xl border text-left transition-all duration-300 flex flex-col justify-between h-40 group
             ${currentState === 3
-              ? 'bg-amber-50 border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.15)] ring-1 ring-amber-400'
-              : 'bg-slate-50 border-gray-100 hover:border-amber-300 hover:bg-amber-50/20'}
+              ? 'bg-amber-50/30 border-amber-500/30 shadow-[0_4px_20px_rgba(245,158,11,0.06)] ring-1 ring-amber-400 text-amber-950'
+              : 'bg-slate-50/50 border-slate-100 hover:border-amber-200 hover:bg-amber-50/10'}
           `}
         >
           <div className="flex justify-between items-start w-full">
-            <div className={`p-2.5 rounded-lg ${currentState === 3 ? 'bg-amber-500 text-white' : 'bg-white border border-gray-200 text-amber-500'}`}>
+            <div className={`p-2.5 rounded-lg transition-all duration-300 ${currentState === 3 ? 'bg-amber-500 text-white shadow-md shadow-amber-500/10' : 'bg-white border border-slate-100 text-amber-500 group-hover:scale-105'}`}>
               <AlertTriangle className="w-5 h-5" />
             </div>
-            <span className="font-mono text-xs text-gray-400 font-bold">DEFCON 3 / 2</span>
+            <span className="font-mono text-xs text-slate-400 font-bold">DEFCON 3 / 2</span>
           </div>
           <div>
-            <h4 className="font-bold text-slate-800 text-lg mb-1">Elevated Threat</h4>
-            <p className="text-xs text-gray-500">Dashboard warning indicators active. Security filters highly sensitive.</p>
+            <h4 className="font-bold text-slate-800 text-base mb-1">Elevated Threat</h4>
+            <p className="text-xs text-slate-500 font-medium">Dashboard warning indicators active. Security filters highly sensitive.</p>
           </div>
         </button>
 
@@ -199,21 +199,21 @@ const DefconMatrix = ({ currentState, onStateChange }: DefconMatrixProps) => {
           onClick={() => handleZoneClick(1)}
           disabled={loading}
           className={`
-            relative p-6 rounded-xl border text-left transition-all duration-300 flex flex-col justify-between h-40
+            relative p-6 rounded-xl border text-left transition-all duration-300 flex flex-col justify-between h-40 group
             ${currentState === 1
-              ? 'bg-red-50 border-red-300 shadow-[0_0_25px_rgba(239,68,68,0.2)] ring-1 ring-red-400 animate-pulse'
-              : 'bg-slate-50 border-gray-100 hover:border-red-300 hover:bg-red-50/20'}
+              ? 'bg-red-50/30 border-red-500/30 shadow-[0_4px_20px_rgba(239,68,68,0.08)] ring-1 ring-red-400 text-red-950 animate-pulse'
+              : 'bg-slate-50/50 border-slate-100 hover:border-red-200 hover:bg-red-50/10'}
           `}
         >
           <div className="flex justify-between items-start w-full">
-            <div className={`p-2.5 rounded-lg ${currentState === 1 ? 'bg-red-500 text-white' : 'bg-white border border-gray-200 text-red-500'}`}>
+            <div className={`p-2.5 rounded-lg transition-all duration-300 ${currentState === 1 ? 'bg-red-500 text-white shadow-md shadow-red-500/10' : 'bg-white border border-slate-100 text-red-500 group-hover:scale-105'}`}>
               <Lock className="w-5 h-5" />
             </div>
-            <span className="font-mono text-xs text-gray-400 font-bold">DEFCON 1</span>
+            <span className="font-mono text-xs text-slate-400 font-bold">DEFCON 1</span>
           </div>
           <div>
-            <h4 className="font-bold text-slate-800 text-lg mb-1">System Lockdown</h4>
-            <p className="text-xs text-gray-500">POST/PUT/DELETE rejected. All sessions invalidated. Maximum firewall active.</p>
+            <h4 className="font-bold text-slate-800 text-base mb-1">System Lockdown</h4>
+            <p className="text-xs text-slate-500 font-medium">POST/PUT/DELETE rejected. All sessions invalidated. Maximum firewall active.</p>
           </div>
         </button>
 
@@ -227,7 +227,7 @@ const DefconMatrix = ({ currentState, onStateChange }: DefconMatrixProps) => {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white border border-gray-200 rounded-2xl p-6 shadow-2xl max-w-md w-full flex flex-col gap-5 text-black"
+              className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl max-w-md w-full flex flex-col gap-5 text-black"
             >
               <div className="flex items-center gap-3 text-red-500">
                 <div className="p-3 bg-red-50 rounded-full">
@@ -346,10 +346,15 @@ const CircuitBreakers = () => {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2 text-slate-800 mb-1">
-        <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
-        <h3 className="text-xl font-bold tracking-tight">Active Circuit Breakers</h3>
+    <div className="flex flex-col gap-4 flex-shrink-0">
+      <div className="flex items-center gap-2.5 text-slate-800 mb-1">
+        <div className="p-2 rounded-lg bg-amber-50 text-amber-500">
+          <Zap className="w-5 h-5 fill-amber-500" />
+        </div>
+        <div>
+          <h3 className="text-xl font-bold tracking-tight text-slate-800">Active Circuit Breakers</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Manually override automated routing fail-safes</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -363,11 +368,11 @@ const CircuitBreakers = () => {
             return (
               <div 
                 key={srv.key} 
-                className="bg-white shadow-sm border border-slate-200 rounded-2xl p-5 h-44 flex flex-col justify-between animate-pulse"
+                className="bg-white shadow-sm border border-slate-100 rounded-2xl p-5 h-44 flex flex-col justify-between animate-pulse flex-shrink-0"
               >
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100">
                       <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
                     </div>
                     <div className="space-y-1">
@@ -376,7 +381,7 @@ const CircuitBreakers = () => {
                     </div>
                   </div>
                 </div>
-                <div className="text-xs font-mono italic text-slate-400 flex items-center gap-1.5 bg-slate-50 p-2.5 rounded-lg border border-dashed border-slate-200">
+                <div className="text-xs font-mono italic text-slate-400 flex items-center gap-1.5 bg-slate-50/50 p-2.5 rounded-lg border border-dashed border-slate-200">
                   <Activity className="w-3.5 h-3.5 animate-pulse text-amber-500" />
                   Calculating impact...
                 </div>
@@ -389,33 +394,37 @@ const CircuitBreakers = () => {
             <div
               key={srv.key}
               className={`
-                bg-white shadow-sm border rounded-2xl p-5 h-44 flex flex-col justify-between transition-all duration-300
-                hover:-translate-y-1 hover:shadow-md
-                ${isOpen ? 'border-red-200 bg-red-50/10' : 'border-slate-200'}
+                bg-white border rounded-2xl p-6 h-44 flex flex-col justify-between transition-all duration-300 flex-shrink-0
+                hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)]
+                ${isOpen 
+                  ? 'border-red-200 bg-red-50/10 shadow-[0_4px_20px_rgba(239,68,68,0.02)]' 
+                  : 'border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)]'}
               `}
             >
               <div className="flex justify-between items-start gap-4">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2.5 rounded-lg border ${isOpen ? 'bg-red-100 text-red-600 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-100'}`}>
+                  <div className={`p-2.5 rounded-lg border transition-all duration-300 ${isOpen ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-50 text-slate-600 border-slate-100/50'}`}>
                     <srv.icon className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-800 text-sm leading-tight">{srv.name}</h4>
-                    <p className="text-[10px] text-gray-400 leading-normal mt-0.5">{srv.desc}</p>
+                    <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-0.5">{srv.desc}</p>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center justify-between mt-2">
-                <span className="text-xs text-gray-500">Status:</span>
+                <span className="text-xs text-slate-400 font-medium">Breaker Status</span>
                 {isOpen ? (
-                  <Badge className="bg-red-50 text-red-600 border border-red-200 text-[10px] uppercase font-mono px-2 py-0.5 rounded">
-                    🔴 Circuit Open (Tripped)
-                  </Badge>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-50 text-red-600 border border-red-100 uppercase tracking-wider font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                    🔴 Open (Tripped)
+                  </span>
                 ) : (
-                  <Badge className="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] uppercase font-mono px-2 py-0.5 rounded">
-                    🟢 Circuit Closed (Healthy)
-                  </Badge>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-wider font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    🟢 Closed (Healthy)
+                  </span>
                 )}
               </div>
 
@@ -423,10 +432,10 @@ const CircuitBreakers = () => {
                 size="sm"
                 onClick={() => handleToggle(srv.key)}
                 className={`
-                  w-full h-9 text-xs font-semibold rounded-lg transition-all
+                  w-full h-10 text-xs font-bold rounded-xl transition-all duration-200 border
                   ${isOpen 
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm' 
-                    : 'bg-red-50 border border-red-200 hover:bg-red-100 text-red-600'}
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent shadow-sm shadow-emerald-500/10' 
+                    : 'bg-white border-slate-100 hover:bg-red-50 hover:text-red-600 hover:border-red-100 text-slate-600'}
                 `}
               >
                 {isOpen ? "Reset Circuit (Restore)" : "Trip Circuit (Override)"}
@@ -474,30 +483,35 @@ const FeatureFlags = () => {
     };
 
     return (
-        <div className="glass-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm h-full flex flex-col">
-            <div className="flex items-center gap-2 mb-6 text-black">
-                <Power className="w-5 h-5 text-red-500" />
-                <h3 className="text-lg font-semibold tracking-tight">Kill Switches & Features</h3>
+        <div className="bg-white border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition-all duration-300 relative overflow-hidden rounded-2xl p-6 h-fit flex flex-col flex-shrink-0">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-red-50 text-red-500 border border-red-100/50">
+                    <Power className="w-5 h-5 fill-red-50" />
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold tracking-tight text-slate-800">Kill Switches & Features</h3>
+                    <p className="text-xs text-slate-400">Control real-time application overrides</p>
+                </div>
             </div>
 
             <div className="space-y-6">
-                <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-                    <p className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Project</p>
+                <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50">
+                    <p className="text-[10px] text-slate-400 mb-2 uppercase tracking-widest font-extrabold">Active Project</p>
                     <ProjectSelectDropdown />
                 </div>
 
                 <div className={`
-                    relative p-5 rounded-lg border transition-all duration-300
+                    relative p-4 rounded-xl border transition-all duration-300
                     ${maintenance 
-                        ? 'bg-red-50 border-red-200 shadow-[0_0_30px_-5px_rgba(239,68,68,0.1)]' 
-                        : 'bg-gray-50 border-gray-200 hover:border-gray-300'}
+                        ? 'bg-red-50/30 border-red-200 shadow-[0_4px_20px_-5px_rgba(239,68,68,0.1)]' 
+                        : 'bg-slate-50/50 border-slate-100 hover:border-slate-200'}
                 `}>
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                            <h4 className={`font-bold transition-colors ${maintenance ? 'text-red-500' : 'text-black'}`}>
+                            <h4 className={`font-bold transition-colors text-sm ${maintenance ? 'text-red-500' : 'text-slate-800'}`}>
                                 Global Maintenance Mode
                             </h4>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-[11px] text-slate-400 font-medium">
                                 Immediately blocks all non-admin traffic.
                             </p>
                         </div>
@@ -517,10 +531,10 @@ const FeatureFlags = () => {
                     )}
                 </div>
 
-                <div className="space-y-4">
-                  <FlagItem icon={ImageIcon} label="Image Uploads" active={flags.imageUploads} color="text-blue-500" />
-                  <FlagItem icon={Sparkles} label="Beta AI Features" active={flags.aiFeatures} color="text-purple-500" />
-                  <FlagItem icon={UserPlus} label="New User Signups" active={flags.newSignups} color="text-green-500" />
+                <div className="space-y-3">
+                  <FlagItem icon={ImageIcon} label="Image Uploads" active={flags.imageUploads} color="text-blue-500 animate-[pulse_3s_infinite]" />
+                  <FlagItem icon={Sparkles} label="Beta AI Features" active={flags.aiFeatures} color="text-purple-500 animate-[pulse_3s_infinite]" />
+                  <FlagItem icon={UserPlus} label="New User Signups" active={flags.newSignups} color="text-green-500 animate-[pulse_3s_infinite]" />
                 </div>
             </div>
         </div>
@@ -528,39 +542,46 @@ const FeatureFlags = () => {
 };
 
 const FlagItem = ({ icon: Icon, label, active, color }: any) => (
-    <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-200 transition-colors">
+    <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/50 border border-slate-100/80 transition-all hover:bg-slate-50 hover:border-slate-200">
         <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-md bg-white border border-gray-200 ${active ? color : 'text-gray-400'}`}>
+            <div className={`p-2 rounded-lg bg-white border border-slate-100 shadow-sm ${active ? color : 'text-slate-400'}`}>
                 <Icon className="w-4 h-4" />
             </div>
-            <span className={`text-sm font-medium ${active ? 'text-black' : 'text-gray-400 line-through'}`}>
+            <span className={`text-sm font-semibold transition-colors ${active ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
                 {label}
             </span>
         </div>
-        <div className={`w-2 h-2 rounded-full ${active ? 'bg-green-500' : 'bg-gray-300'}`} />
+        <span className="relative flex h-2.5 w-2.5">
+            {active && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
+            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${active ? 'bg-green-500' : 'bg-slate-300'}`} />
+        </span>
     </div>
 );
 
 
 // --- 4. Ghost Mode / User CRM ---
 const UserCRM = () => {
-    const users = [
-        { name: 'Prem Sai', role: 'Admin', email: 'prem@syntro.com', status: 'Active' },
-        { name: 'Eeshitha', role: 'Editor', email: 'eeshitha@syntro.com', status: 'Away' },
-        { name: 'Chitkul', role: 'Viewer', email: 'chitkul@syntro.com', status: 'Active' },
-    ];
+    const { data: admins = [], isLoading } = useAdminList();
 
-    const handleImpersonate = async (user: string) => {
-        toast.message(`Generating Session Token...`, {
-            description: `Signing in as ${user}`,
+    const formatNameFromEmail = (email: string) => {
+        const part = email.split('@')[0] || '';
+        return part
+            .split(/[\._\-]/)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    };
+
+    const handleImpersonate = async (name: string) => {
+        toast.message(`Generating Impersonation Session...`, {
+            description: `Generating token to sign in as ${name}`,
         });
         setTimeout(async () => {
-            toast.success(`Logged in as ${user}`, {
-                description: 'Restricted Session Active (Audit Logged)',
+            toast.success(`Logged in as ${name}`, {
+                description: 'Restricted Ghost Session Active (Audit Logged)',
                 icon: <Fingerprint className="w-4 h-4 text-purple-400" />,
             });
             try {
-                await logClientEvent('auth', `Admin simulated restricted session impersonation for user '${user}'`);
+                await logClientEvent('auth', `Admin simulated restricted session impersonation for team member '${name}'`);
             } catch (err) {
                 console.warn('Failed to submit client event logging:', err);
             }
@@ -568,44 +589,80 @@ const UserCRM = () => {
     };
 
     return (
-        <div className="glass-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-0 shadow-sm h-full flex flex-col">
-            <div className="p-6 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-black">
-                    <Fingerprint className="w-5 h-5 text-purple-500" />
-                    <h3 className="text-lg font-semibold tracking-tight">Ghost Mode</h3>
+        <div className="bg-white border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition-all duration-300 relative overflow-hidden rounded-2xl p-0 h-fit flex flex-col flex-shrink-0">
+            <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <div className="flex items-center gap-3 text-slate-800">
+                    <div className="p-2 rounded-xl bg-purple-50 text-purple-500 border border-purple-100/50">
+                        <Fingerprint className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold tracking-tight">Ghost Mode</h3>
+                        <p className="text-xs text-slate-400">Simulate administrative accounts</p>
+                    </div>
                 </div>
-                <Badge variant="outline" className="border-purple-500/30 text-purple-600 bg-purple-50">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-50 text-purple-600 border border-purple-100 uppercase tracking-widest font-mono">
                     ADMIN ONLY
-                </Badge>
+                </span>
             </div>
             
-            <div className="p-4">
-                <div className="space-y-3">
-                    {users.map((u, i) => (
-                        <div key={i} className="group flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all">
-                            <div className="flex items-center gap-3">
-                                <Avatar className="h-9 w-9 border border-gray-200">
-                                    <AvatarFallback className="bg-gray-100 text-black text-xs">{u.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <p className="text-sm font-medium text-black group-hover:text-purple-600 transition-colors">{u.name}</p>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-500">{u.email}</span>
-                                        <span className="text-[10px] text-gray-400">• {u.role}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleImpersonate(u.name)}
-                                className="h-8 border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 transition-all opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0"
-                            >
-                                Impersonate
-                            </Button>
+            <div className="p-4 flex-1">
+                {isLoading ? (
+                    <div className="space-y-3 py-6 text-center animate-pulse">
+                        <div className="h-4 bg-slate-100 rounded-full w-2/3 mx-auto"></div>
+                        <div className="h-4 bg-slate-100 rounded-full w-1/2 mx-auto"></div>
+                        <p className="text-xs text-slate-400 font-semibold">Fetching active team list...</p>
+                    </div>
+                ) : admins.length === 0 ? (
+                    <div className="py-10 text-center flex flex-col items-center justify-center gap-2.5">
+                        <div className="p-2.5 rounded-full bg-slate-50 border border-slate-100 text-slate-400">
+                            <ShieldX className="w-5 h-5" />
                         </div>
-                    ))}
-                </div>
+                        <div className="space-y-1">
+                            <h4 className="text-xs font-bold text-slate-700">No Simulation Target</h4>
+                            <p className="text-[11px] text-slate-400 max-w-[200px] leading-normal font-medium mx-auto">
+                                Invite teammates under Team &amp; Access Management first.
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {admins.map((u) => {
+                            const name = formatNameFromEmail(u.email);
+                            const roleDisplay = u.role.charAt(0).toUpperCase() + u.role.slice(1);
+                            return (
+                                <div key={u.id} className="group flex items-center justify-between p-3.5 rounded-xl hover:bg-slate-50/50 border border-transparent hover:border-slate-100 transition-all duration-200">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <Avatar className="h-10 w-10 border border-slate-100 shadow-sm flex-shrink-0">
+                                            <AvatarFallback className="bg-purple-50 text-purple-600 text-xs font-bold font-mono">
+                                                {name.substring(0, 2).toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-slate-800 group-hover:text-purple-600 transition-colors truncate">{name}</p>
+                                            <div className="flex items-center gap-2 truncate">
+                                                <span className="text-xs text-slate-400 font-medium truncate">{u.email}</span>
+                                                <span className="text-[10px] text-slate-300 font-bold">•</span>
+                                                <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                                    u.role === 'owner' ? 'bg-red-50 text-red-600' : u.role === 'editor' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-600'
+                                                }`}>
+                                                    {roleDisplay}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => handleImpersonate(name)}
+                                        className="h-8 rounded-lg border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 transition-all duration-200 opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 font-semibold text-xs"
+                                    >
+                                        Impersonate
+                                    </Button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -730,9 +787,9 @@ const TargetSelect = ({
 const TaskExecutor = () => {
     const navigate = useNavigate();
     const [tasks, setTasks] = useState([
-        { id: 1, taskKey: 'backup-db', name: 'Force DB Backup', desc: 'Trigger full backup of selected database', icon: Database, running: false, done: false },
-        { id: 2, taskKey: 'clear-redis', name: 'Clear Redis Cache', desc: 'Flush cache for selected environment', icon: Trash2, running: false, done: false },
-        { id: 3, taskKey: 'sync-github', name: 'Sync GitHub Stats', desc: 'Refresh analytics for selected repo', icon: RefreshCw, running: false, done: false },
+        { id: 1, taskKey: 'backup-db', name: 'Database Backup', desc: 'Trigger full backup of selected database to S3 storage', icon: Database, running: false, done: false },
+        { id: 2, taskKey: 'clear-redis', name: 'Clear Redis Cache', desc: 'Flush cache for selected hosting server environment', icon: Trash2, running: false, done: false },
+        { id: 3, taskKey: 'sync-github', name: 'Sync GitHub Stats', desc: 'Refresh local environment variables and GitHub repository tokens', icon: RefreshCw, running: false, done: false },
     ]);
 
     const [selections, setSelections] = useState<Record<number, string>>({ 1: '', 2: '', 3: '' });
@@ -807,9 +864,9 @@ const TaskExecutor = () => {
     };
 
     const getPlaceholderForTask = (taskId: number) => {
-        if (taskId === 1) return 'Select Database...';
-        if (taskId === 2) return 'Select Environment...';
-        return 'Select Repository...';
+        if (taskId === 1) return 'Select Database target';
+        if (taskId === 2) return 'Select Hosting environment';
+        return 'Select GitHub repository';
     };
 
     const handlePreflightCheck = async (taskId: number) => {
@@ -829,6 +886,12 @@ const TaskExecutor = () => {
         }
     };
 
+    const handleAbort = (taskId: number) => {
+        setPreflightStates(prev => ({ ...prev, [taskId]: 'idle' }));
+        setPreflightData(prev => ({ ...prev, [taskId]: null }));
+        toast.success("Task execution aborted safely.");
+    };
+
     const executeTask = async (taskId: number) => {
         const task = tasks.find(t => t.id === taskId);
         const targetId = selections[taskId];
@@ -842,6 +905,12 @@ const TaskExecutor = () => {
             setTasks(prev => prev.map(t => t.id === taskId ? { ...t, running: false, done: true } : t));
             setPreflightStates(prev => ({ ...prev, [taskId]: 'done' }));
             toast.success('Task completed successfully');
+
+            try {
+                await logClientEvent('task', `Admin triggered production task execution for '${task.taskKey}' against target connection`);
+            } catch (err) {
+                console.warn('Failed to submit client event logging:', err);
+            }
         } catch {
             setTasks(prev => prev.map(t => t.id === taskId ? { ...t, running: false } : t));
             setPreflightStates(prev => ({ ...prev, [taskId]: 'preflight' }));
@@ -849,55 +918,57 @@ const TaskExecutor = () => {
         }
     };
 
-    const handleAbort = (taskId: number) => {
-        setPreflightStates(prev => ({ ...prev, [taskId]: 'idle' }));
-        setPreflightData(prev => ({ ...prev, [taskId]: null }));
-    };
-
     return (
-        <div className="glass-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center gap-2 text-black mb-2">
-                <Zap className="w-5 h-5 text-yellow-500" />
-                <h3 className="text-lg font-semibold tracking-tight">Remote Tasks</h3>
+        <div className="bg-white border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition-all duration-300 relative overflow-hidden rounded-2xl p-6 flex flex-col gap-4 flex-shrink-0 h-fit">
+            <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-xl bg-amber-50 text-amber-500 border border-amber-100/50">
+                    <Zap className="w-5 h-5 fill-amber-50" />
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold tracking-tight text-slate-800">Remote Tasks</h3>
+                    <p className="text-xs text-slate-400">Execute verified system automation pipelines</p>
+                </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1">
                 {tasks.map(task => {
                     const selected = selections[task.id];
                     const hasSelection = !!selected;
                     const options = getOptionsForTask(task.id);
                     const placeholder = getPlaceholderForTask(task.id);
+                    const preflightState = preflightStates[task.id];
+                    const taskPreflight = preflightData[task.id];
 
                     return (
-                        <div key={task.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4 relative overflow-visible flex flex-col gap-4">
+                        <div key={task.id} className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 relative overflow-visible flex flex-col gap-3 transition-all hover:bg-slate-55 hover:border-slate-200">
                             <div className="flex items-center justify-between w-full relative z-10">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-1.5 rounded bg-white border border-gray-200">
-                                        <task.icon className="w-4 h-4 text-gray-500" />
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-2 rounded-lg bg-white border border-slate-100 shadow-sm text-slate-500">
+                                        <task.icon className="w-4 h-4" />
                                     </div>
-                                    <span className="text-sm font-semibold text-black">{task.name}</span>
+                                    <span className="text-sm font-bold text-slate-800">{task.name}</span>
                                 </div>
                                 
                                 {task.done ? (
-                                    <Badge variant="outline" className="border-green-500/30 text-green-600 bg-green-50">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-green-50 text-green-600 border border-green-100 uppercase tracking-widest font-mono">
                                         <CheckCircle2 className="w-3 h-3 mr-1" /> Done
-                                    </Badge>
-                                ) : preflightStates[task.id] !== 'idle' ? (
-                                    <Badge variant="outline" className="border-yellow-500/30 text-yellow-600 bg-yellow-50 animate-pulse capitalize text-[10px]">
-                                        {preflightStates[task.id]}
-                                    </Badge>
+                                    </span>
+                                ) : preflightState !== 'idle' ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-600 border border-amber-100 uppercase tracking-widest font-mono animate-pulse">
+                                        {preflightState}
+                                    </span>
                                 ) : null}
                             </div>
 
-                            <p className="text-xs text-gray-500 leading-relaxed -mt-2">
+                            <p className="text-xs text-slate-400 leading-relaxed font-medium">
                                 {task.desc}
                             </p>
 
-                            <div className="flex flex-col sm:flex-row items-center gap-2 w-full mt-1 relative z-10">
+                            <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full mt-1 relative z-10">
                                 <div className="flex-1 w-full min-w-0">
                                     {loadingOptions ? (
-                                        <div className="w-full h-[46px] rounded-lg border border-gray-200 bg-white flex items-center justify-center gap-2 text-gray-400 text-sm">
-                                            <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+                                        <div className="w-full h-11 rounded-xl border border-slate-100 bg-white flex items-center justify-center gap-2 text-slate-400 text-xs font-semibold">
+                                            <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> Loading targets...
                                         </div>
                                     ) : (
                                         <TargetSelect
@@ -905,20 +976,20 @@ const TaskExecutor = () => {
                                             onChange={(id) => setSelections(prev => ({ ...prev, [task.id]: id }))}
                                             placeholder={placeholder}
                                             options={options}
-                                            disabled={task.running || task.done || preflightStates[task.id] !== 'idle'}
+                                            disabled={task.running || task.done || preflightState !== 'idle'}
                                             open={!!dropdownOpen[task.id]}
                                             onOpenChange={(v) => setDropdownOpen(prev => ({ ...prev, [task.id]: v }))}
                                         />
                                     )}
                                 </div>
 
-                                {!task.done && preflightStates[task.id] === 'idle' && (
+                                {!task.done && preflightState === 'idle' && (
                                     <Button
                                         size="default"
-                                        className={`h-[46px] text-xs font-semibold px-4 transition-all w-full sm:w-auto ${
+                                        className={`h-11 text-xs font-bold px-4 transition-all w-full sm:w-auto rounded-xl border ${
                                             hasSelection
-                                                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                                : 'opacity-50 bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300'
+                                                ? 'bg-blue-600 text-white border-transparent hover:bg-blue-700 shadow-sm shadow-blue-500/10'
+                                                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
                                         }`}
                                         onClick={() => handlePreflightCheck(task.id)}
                                         disabled={!hasSelection}
@@ -929,52 +1000,52 @@ const TaskExecutor = () => {
                             </div>
 
                             <AnimatePresence>
-                                {preflightStates[task.id] !== 'idle' && (
+                                {preflightState !== 'idle' && (
                                     <motion.div
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: 'auto', opacity: 1 }}
                                         exit={{ height: 0, opacity: 0 }}
                                         transition={{ duration: 0.3 }}
-                                        className="overflow-hidden w-full border-t border-gray-200 pt-3 mt-1"
+                                        className="overflow-hidden w-full border-t border-slate-200/60 pt-3 mt-1"
                                     >
-                                        {preflightStates[task.id] === 'assessing' && (
-                                            <div className="flex flex-col gap-2 p-3 rounded-lg border border-blue-100 bg-blue-50/50 animate-pulse">
-                                                <div className="flex items-center gap-2 text-xs font-semibold text-blue-600">
+                                        {preflightState === 'assessing' && (
+                                            <div className="flex flex-col gap-2.5 p-3.5 rounded-xl border border-blue-100 bg-blue-50/40 animate-pulse">
+                                                <div className="flex items-center gap-2 text-xs font-bold text-blue-600">
                                                     <Loader2 className="w-4 h-4 animate-spin" />
                                                     <span>Calculating Blast Radius Pre-Flight...</span>
                                                 </div>
-                                                <div className="h-2 w-full bg-blue-100 rounded overflow-hidden relative">
-                                                    <div className="absolute top-0 left-0 h-full w-1/3 bg-blue-500 animate-[loading-bar_1.5s_infinite_ease-in-out]" />
+                                                <div className="h-1.5 w-full bg-blue-100/60 rounded-full overflow-hidden relative">
+                                                    <div className="absolute top-0 left-0 h-full w-1/3 bg-blue-500 animate-[loading-bar_1.5s_infinite_ease-in-out] rounded-full" />
                                                 </div>
                                             </div>
                                         )}
 
-                                        {preflightStates[task.id] === 'preflight' && preflightData[task.id] && (
-                                            <div className={`p-4 rounded-lg border flex flex-col gap-3 transition-colors ${
-                                                preflightData[task.id]?.impactLevel === 'high' 
-                                                    ? 'border-red-200 bg-red-50/50 text-red-900' 
-                                                    : preflightData[task.id]?.impactLevel === 'medium'
-                                                    ? 'border-orange-200 bg-orange-50/50 text-orange-900'
-                                                    : 'border-blue-200 bg-blue-50/50 text-blue-900'
+                                        {preflightState === 'preflight' && taskPreflight && (
+                                            <div className={`p-4 rounded-xl border flex flex-col gap-3.5 transition-colors ${
+                                                taskPreflight.impactLevel === 'high' 
+                                                    ? 'border-red-200 bg-red-50/30 text-red-950 shadow-[0_4px_12px_rgba(239,68,68,0.02)]' 
+                                                    : taskPreflight.impactLevel === 'medium'
+                                                    ? 'border-orange-200 bg-orange-50/30 text-orange-950 shadow-[0_4px_12px_rgba(245,158,11,0.02)]'
+                                                    : 'border-blue-200 bg-blue-50/30 text-blue-950 shadow-[0_4px_12px_rgba(59,130,246,0.02)]'
                                             }`}>
                                                 <div className="flex items-center justify-between w-full">
                                                     <div className="flex items-center gap-2 font-bold text-xs">
                                                         <AlertTriangle className={`w-4 h-4 ${
-                                                            preflightData[task.id]?.impactLevel === 'high' ? 'text-red-500 animate-bounce' : 'text-orange-500'
+                                                            taskPreflight.impactLevel === 'high' ? 'text-red-500 animate-bounce' : 'text-orange-500'
                                                         }`} />
-                                                        <span>IMPACT RATING: {preflightData[task.id]?.impactLevel?.toUpperCase()}</span>
+                                                        <span className="font-mono tracking-wider">IMPACT RATING: {taskPreflight.impactLevel.toUpperCase()}</span>
                                                     </div>
-                                                    <Badge variant="outline" className={`text-[10px] ${
-                                                        preflightData[task.id]?.impactLevel === 'high' 
-                                                            ? 'border-red-300 text-red-700 bg-white' 
-                                                            : 'border-orange-300 text-orange-700 bg-white'
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider font-mono ${
+                                                        taskPreflight.impactLevel === 'high' 
+                                                            ? 'bg-red-100 text-red-700' 
+                                                            : 'bg-orange-100 text-orange-700'
                                                     }`}>
-                                                        {preflightData[task.id]?.affectedComponents} components affected
-                                                    </Badge>
+                                                        {taskPreflight.affectedComponents} components affected
+                                                    </span>
                                                 </div>
 
-                                                <p className="text-xs leading-relaxed font-mono bg-white/70 p-2.5 rounded border border-gray-200 text-gray-700">
-                                                    {preflightData[task.id]?.description}
+                                                <p className="text-xs leading-relaxed font-mono bg-white/80 p-3 rounded-lg border border-slate-100 text-slate-700 font-medium">
+                                                    {taskPreflight.description}
                                                 </p>
 
                                                 <div className="flex items-center justify-end gap-2 mt-1">
@@ -982,17 +1053,17 @@ const TaskExecutor = () => {
                                                         size="sm" 
                                                         variant="ghost" 
                                                         onClick={() => handleAbort(task.id)}
-                                                        className="h-8 text-xs border border-transparent hover:border-gray-200 text-gray-500"
+                                                        className="h-8 text-xs font-bold border border-slate-200 hover:bg-slate-100 text-slate-505 rounded-lg"
                                                     >
                                                         Abort Action
                                                     </Button>
                                                     <Button 
                                                         size="sm" 
                                                         onClick={() => executeTask(task.id)}
-                                                        className={`h-8 text-xs font-semibold text-white ${
-                                                            preflightData[task.id]?.impactLevel === 'high'
-                                                                ? 'bg-red-500 hover:bg-red-600 border border-red-600'
-                                                                : 'bg-blue-600 hover:bg-blue-700 border border-blue-700'
+                                                        className={`h-8 text-xs font-bold text-white rounded-lg shadow-sm border-transparent ${
+                                                            taskPreflight.impactLevel === 'high'
+                                                                ? 'bg-red-600 hover:bg-red-700 shadow-red-500/10'
+                                                                : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/10'
                                                         }`}
                                                     >
                                                         Confirm & Run Task
@@ -1001,13 +1072,13 @@ const TaskExecutor = () => {
                                             </div>
                                         )}
 
-                                        {preflightStates[task.id] === 'executing' && (
-                                            <div className="flex flex-col gap-2 p-3 rounded-lg border border-yellow-200 bg-yellow-50/50">
-                                                <div className="flex items-center gap-2 text-xs font-semibold text-yellow-600">
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                        {preflightState === 'executing' && (
+                                            <div className="flex flex-col gap-2 p-3.5 rounded-xl border border-amber-200 bg-amber-50/40">
+                                                <div className="flex items-center gap-2 text-xs font-bold text-amber-600">
+                                                    <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
                                                     <span>Firing Task Action...</span>
                                                 </div>
-                                                <div className="h-1 bg-yellow-400 w-full animate-pulse rounded" />
+                                                <div className="h-1 bg-amber-400 w-full animate-pulse rounded" />
                                             </div>
                                         )}
                                     </motion.div>
@@ -1015,7 +1086,7 @@ const TaskExecutor = () => {
                             </AnimatePresence>
 
                             {task.running && (
-                                <div className="absolute bottom-0 left-0 h-1 bg-blue-500 animate-[width-grow_2s_ease-in-out_forwards] w-full origin-left" />
+                                <div className="absolute bottom-0 left-0 h-1 bg-blue-500 animate-[width-grow_2s_ease-in-out_forwards] w-full origin-left rounded-b-2xl" />
                             )}
                         </div>
                     );
@@ -1031,49 +1102,7 @@ const TaskExecutor = () => {
                     100% { left: 100%; }
                 }
             `}</style>
-        </div>
-    );
-};
-
-
-// --- 6. Unified FinOps ---
-const FinOps = () => {
-    const { currentCost, projected, threshold } = DEFAULT_FINOPS;
-    const isWarning = projected > threshold;
-
-    return (
-         <div className="glass-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-black">
-                    <DollarSign className="w-5 h-5 text-green-500" />
-                    <h3 className="text-lg font-semibold tracking-tight">FinOps</h3>
-                </div>
-                {isWarning && (
-                     <div className="animate-pulse flex items-center gap-1 text-xs font-bold text-yellow-500">
-                        <AlertTriangle className="w-3 h-3" />
-                        OVER LIMIT
-                     </div>
-                )}
-            </div>
-
-            <div className="text-center py-4">
-                <span className="text-4xl font-bold tracking-tighter text-green-500 drop-shadow-sm">
-                    ${currentCost.toFixed(2)}
-                </span>
-                <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">Current Month to Date</p>
-            </div>
-
-            <div className="mt-4 space-y-2">
-                <div className="flex justify-between text-xs text-gray-500">
-                    <span>Projected: ${projected.toFixed(2)}</span>
-                    <span>Limit: ${threshold.toFixed(2)}</span>
-                </div>
-                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden relative">
-                     <div className={`absolute top-0 left-0 h-full rounded-full ${isWarning ? 'bg-yellow-500 shadow-sm' : 'bg-green-500'}`} style={{ width: '80%' }}></div>
-                     <div className="absolute top-0 bottom-0 w-0.5 bg-red-500/80 z-10" style={{ left: '70%' }}></div>
-                </div>
-            </div>
-         </div>
+          </div>
     );
 };
 
@@ -1102,44 +1131,54 @@ const ApiBouncer = () => {
     };
 
     return (
-        <div className="glass-card relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm h-full flex flex-col">
-             <div className="flex items-center gap-2 text-black mb-6">
-                <ShieldAlert className="w-5 h-5 text-orange-500" />
-                <h3 className="text-lg font-semibold tracking-tight">API Security Radar</h3>
+        <div className="bg-white border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition-all duration-300 relative overflow-hidden rounded-2xl p-6 h-fit flex flex-col flex-shrink-0">
+             <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-orange-50 text-orange-500 border border-orange-100/50">
+                    <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold tracking-tight text-slate-800">API Security Radar</h3>
+                    <p className="text-xs text-slate-400">Monitor and block malicious IPs</p>
+                </div>
             </div>
 
-            <ScrollArea className="flex-1 -mx-2 px-2">
-                 <div className="space-y-3">
+            <ScrollArea className="flex-1 -mx-2 px-2 max-h-[220px]">
+                 <div className="space-y-2">
                     {ips.sort((a,b) => b.reqs - a.reqs).map((item, i) => (
-                         <div key={item.ip} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100 group hover:border-gray-200 transition-all">
-                             <div className="flex items-center gap-3">
-                                <div className={`w-2 h-2 rounded-full ${item.status === 'banned' ? 'bg-gray-300' : i === 0 ? 'bg-red-500 animate-pulse' : 'bg-orange-500'}`} />
-                                <div>
-                                    <p className={`text-sm font-mono ${item.status === 'banned' ? 'text-gray-400 line-through decoration-gray-400' : 'text-black'}`}>
+                         <div key={item.ip} className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/50 border border-slate-100 group hover:border-slate-200 hover:bg-slate-55 transition-all duration-200">
+                             <div className="flex items-center gap-3 min-w-0">
+                                <span className="relative flex h-2 w-2 flex-shrink-0">
+                                    {item.status !== 'banned' && i === 0 && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>}
+                                    <span className={`relative inline-flex rounded-full h-2 w-2 ${item.status === 'banned' ? 'bg-slate-300' : i === 0 ? 'bg-red-500' : 'bg-orange-500'}`} />
+                                </span>
+                                <div className="min-w-0">
+                                    <p className={`text-sm font-bold font-mono truncate ${item.status === 'banned' ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-800'}`}>
                                         {item.ip}
                                     </p>
-                                    <div className="flex items-center gap-2 text-[10px] text-gray-500">
-                                        <Globe className="w-3 h-3" />
-                                        {item.location}
-                                        <span className="text-gray-300">|</span>
-                                        {item.reqs.toLocaleString()} reqs
+                                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-semibold truncate mt-0.5">
+                                        <span className="flex items-center gap-0.5">
+                                            <Globe className="w-3 h-3 text-slate-400" />
+                                            {item.location}
+                                        </span>
+                                        <span>•</span>
+                                        <span>{item.reqs.toLocaleString()} requests</span>
                                     </div>
                                 </div>
                              </div>
 
                              {item.status === 'banned' ? (
-                                  <Badge variant="destructive" className="bg-red-50 text-red-500 border-red-200 text-[10px]">BANNED</Badge>
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-red-50 text-red-500 border border-red-100 uppercase tracking-widest font-mono">Banned</span>
                              ) : (
                                   <Button 
                                      size="sm" 
                                      variant="ghost" 
                                      onClick={() => handleBan(item.ip)}
-                                     className="h-7 w-7 p-0 rounded-full hover:bg-red-50 hover:text-red-500 text-gray-400"
+                                     className="h-8 w-8 p-0 rounded-lg hover:bg-red-50 hover:text-red-500 text-slate-400 hover:border hover:border-red-100 transition-all duration-200"
                                  >
                                      <Ban className="w-4 h-4" />
                                   </Button>
                              )}
-                        </div>
+                         </div>
                     ))}
                  </div>
             </ScrollArea>
@@ -1175,38 +1214,46 @@ const LiveAuditStream = () => {
     };
 
     return (
-        <div className="glass-card relative overflow-hidden rounded-xl border border-gray-200 bg-slate-50 p-6 shadow-sm flex flex-col min-h-[350px]">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-4 mb-4">
+        <div className="relative overflow-hidden rounded-2xl border border-slate-900 bg-slate-950 p-6 shadow-2xl flex flex-col min-h-[360px] flex-shrink-0 w-full">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-900 pb-4 mb-4">
                 <div className="flex items-center gap-3">
-                    <Terminal className="w-5 h-5 text-slate-700 animate-pulse" />
+                    {/* Window dots controls */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0 mr-1 select-none">
+                        <span className="w-3 h-3 rounded-full bg-[#ff5f56]" />
+                        <span className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
+                        <span className="w-3 h-3 rounded-full bg-[#27c93f]" />
+                    </div>
+                    <Terminal className="w-4 h-4 text-emerald-400 animate-pulse" />
                     <div>
-                        <h3 className="text-sm font-semibold font-mono text-slate-800">Live Audit Stream</h3>
-                        <p className="text-[10px] text-gray-500 font-mono">Real-time administrator activity stream</p>
+                        <h3 className="text-sm font-bold font-mono text-slate-100 flex items-center gap-2">
+                            Live Audit Stream
+                        </h3>
+                        <p className="text-[10px] text-slate-500 font-mono">Real-time administrator security activity logs</p>
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                <div className="flex flex-wrap items-center gap-4 sm:gap-5">
                     <div className="flex items-center gap-2">
                         <span className="relative flex h-2 w-2">
                             {status === 'connected' && (
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             )}
                             <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                                status === 'connected' ? 'bg-green-500' : status === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'
+                                status === 'connected' ? 'bg-emerald-500' : status === 'connecting' ? 'bg-amber-500 animate-pulse' : 'bg-red-500'
                             }`} />
                         </span>
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-slate-600 font-semibold">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
                             {status === 'connected' ? 'Streaming' : status === 'connecting' ? 'Connecting' : 'Disconnected'}
                         </span>
                     </div>
 
-                    <div className="flex items-center bg-white p-1 rounded-md border border-gray-200 text-[10px] font-mono">
+                    <div className="flex items-center bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-[10px] font-mono">
                         {(['all', 'security', 'task', 'maintenance'] as const).map(f => (
                             <button
                                 key={f}
                                 onClick={() => setActiveFilter(f)}
-                                className={`px-2.5 py-1 rounded transition-colors uppercase ${
-                                    activeFilter === f ? 'bg-slate-200 text-slate-800 font-bold border border-slate-300' : 'text-gray-500 hover:text-gray-800'
+                                className={`px-2.5 py-1 rounded-md transition-all duration-200 uppercase font-bold text-[9px] tracking-wider ${
+                                    activeFilter === f ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-300'
                                 }`}
                             >
                                 {f}
@@ -1219,9 +1266,9 @@ const LiveAuditStream = () => {
                             size="sm"
                             variant="ghost"
                             onClick={() => setPaused(!paused)}
-                            className="h-7 px-2 bg-white border border-gray-200 text-gray-600 text-[10px] font-mono hover:bg-gray-50 hover:text-black"
+                            className="h-7 px-2.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 text-[10px] font-mono hover:bg-slate-800 hover:text-slate-100 rounded-lg"
                         >
-                            {paused ? <Play className="w-3 h-3 mr-1 text-green-600" /> : <Pause className="w-3 h-3 mr-1 text-yellow-600" />}
+                            {paused ? <Play className="w-3 h-3 mr-1 text-emerald-400" /> : <Pause className="w-3 h-3 mr-1 text-amber-400" />}
                             {paused ? 'Resume' : 'Pause'}
                         </Button>
                         <Button
@@ -1229,7 +1276,7 @@ const LiveAuditStream = () => {
                             variant="ghost"
                             onClick={handleCopy}
                             disabled={filteredLogs.length === 0}
-                            className="h-7 px-2 bg-white border border-gray-200 text-gray-600 text-[10px] font-mono hover:bg-gray-50 hover:text-black"
+                            className="h-7 px-2.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 text-[10px] font-mono hover:bg-slate-800 hover:text-slate-100 rounded-lg"
                         >
                             <Copy className="w-3 h-3 mr-1" /> Copy
                         </Button>
@@ -1238,7 +1285,7 @@ const LiveAuditStream = () => {
                             variant="ghost"
                             onClick={clearLogs}
                             disabled={filteredLogs.length === 0}
-                            className="h-7 px-2 bg-white border border-gray-200 text-red-500 text-[10px] font-mono hover:bg-red-50 hover:text-red-600"
+                            className="h-7 px-2.5 bg-slate-900/50 border border-slate-800/80 text-red-400 text-[10px] font-mono hover:bg-red-950/20 hover:text-red-300 hover:border-red-900/50 rounded-lg"
                         >
                             Clear
                         </Button>
@@ -1246,34 +1293,34 @@ const LiveAuditStream = () => {
                 </div>
             </div>
 
-            <div className="flex-1 min-h-[200px] overflow-y-auto font-mono text-xs leading-relaxed max-h-[300px] pr-2 scrollbar-thin scrollbar-thumb-gray-200 bg-white border border-gray-200 rounded-lg p-4 shadow-inner">
-                <div className="space-y-1.5">
+            <div className="flex-1 min-h-[220px] overflow-y-auto font-mono text-xs leading-relaxed max-h-[260px] pr-2 scrollbar-thin scrollbar-thumb-slate-800 bg-slate-950 border border-slate-900 rounded-xl p-4 shadow-inner">
+                <div className="space-y-2">
                     {filteredLogs.length === 0 ? (
-                        <div className="text-gray-400 text-center py-12 italic">
-                            {paused ? 'Live connection paused. Resume streaming to record audits.' : 'Waiting for incoming logs...'}
+                        <div className="text-slate-600 text-center py-16 italic">
+                            {paused ? 'Live connection paused. Resume streaming to record audits.' : 'Waiting for incoming operations logs...'}
                         </div>
                     ) : (
                         filteredLogs.map(log => {
                             return (
-                                <div key={log.id} className="flex gap-2 items-start py-0.5 hover:bg-slate-50 px-1 rounded transition-colors group text-slate-800">
-                                    <span className="text-gray-400 select-none flex-shrink-0">
+                                <div key={log.id} className="flex gap-2 items-start py-0.5 hover:bg-slate-900/40 px-1 rounded transition-colors group text-slate-300">
+                                    <span className="text-slate-600 select-none flex-shrink-0 font-medium">
                                         [{new Date(log.timestamp).toLocaleTimeString()}]
                                     </span>
-                                    <span className={`font-semibold uppercase text-[9px] px-1.5 py-0.5 rounded border flex-shrink-0 tracking-wider leading-none text-center ${
+                                    <span className={`font-semibold uppercase text-[8px] px-1.5 py-0.5 rounded border flex-shrink-0 tracking-widest leading-none text-center font-mono ${
                                         log.type === 'security' 
-                                            ? 'bg-red-50 border-red-200 text-red-600' 
+                                            ? 'bg-red-950/40 border-red-900/50 text-red-400' 
                                             : log.type === 'maintenance'
-                                            ? 'bg-purple-50 border-purple-200 text-purple-600'
+                                            ? 'bg-purple-950/40 border-purple-900/50 text-purple-400'
                                             : log.type === 'task'
-                                            ? 'bg-yellow-50 border-yellow-200 text-yellow-600'
-                                            : 'bg-blue-50 border-blue-200 text-blue-600'
+                                            ? 'bg-amber-950/40 border-amber-900/50 text-amber-400'
+                                            : 'bg-blue-950/40 border-blue-900/50 text-blue-400'
                                     }`}>
                                         {log.type}
                                     </span>
-                                    <span className="text-slate-600 truncate max-w-[150px] font-semibold flex-shrink-0" title={log.user}>
+                                    <span className="text-slate-400 truncate max-w-[150px] font-bold flex-shrink-0" title={log.user}>
                                         {log.user}:
                                     </span>
-                                    <span className="text-slate-700 select-text font-medium">
+                                    <span className="text-slate-200 select-text font-medium">
                                         {log.message}
                                     </span>
                                 </div>
@@ -1284,10 +1331,10 @@ const LiveAuditStream = () => {
                 </div>
             </div>
 
-            <div className="mt-4 pt-2 border-t border-gray-200 flex items-center justify-between text-[9px] text-gray-500 font-mono">
+            <div className="mt-4 pt-3 border-t border-slate-900 flex items-center justify-between text-[9px] text-slate-500 font-mono">
                 <span>BUFFER: {filteredLogs.length}/150 ACTIONS HELD</span>
-                <span className="flex items-center gap-1 select-none font-bold text-slate-600">
-                    TERMINAL ACTIVE <span className="animate-[pulse_1s_infinite] bg-slate-800 w-1 h-2 inline-block">_</span>
+                <span className="flex items-center gap-1 select-none font-bold text-slate-400">
+                    TERMINAL ACTIVE <span className="animate-[pulse_1s_infinite] bg-emerald-400 w-1.5 h-3 inline-block">_</span>
                 </span>
             </div>
         </div>
@@ -1415,92 +1462,87 @@ const OperationsContent = () => {
 
     return (
         <main className={`
-          flex-1 flex flex-col h-full overflow-hidden relative z-0 text-black font-sans rounded-t-[2rem] transition-colors duration-500
-          ${isLockdown ? 'bg-red-50/20' : 'bg-slate-50/30'}
+          flex-1 flex flex-col h-full overflow-hidden relative z-0 text-slate-800 font-sans rounded-t-[2.5rem] transition-colors duration-500
+          ${isLockdown ? 'bg-red-50/30' : 'bg-slate-50/50'}
         `}>
           {/* Page Header */}
-          <div className="p-8 pb-4 border-b border-gray-200 bg-white/80 backdrop-blur-md z-1 rounded-t-[2rem]">
-            <div className="flex items-center gap-2 text-gray-500 text-xs font-mono mb-2 uppercase tracking-widest">
-              <Activity className="w-3 h-3 text-slate-400" />
-              System Operations Center
+          <div className="px-8 py-6 border-b border-slate-100 bg-white/90 backdrop-blur-md z-10 rounded-t-[2.5rem] flex-shrink-0 flex items-center justify-between shadow-sm">
+            <div>
+              <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold font-mono mb-1 uppercase tracking-widest">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+                <Activity className="w-3 h-3 text-blue-500 animate-pulse" />
+                System Operations Center
+              </div>
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
+                Global Operations & Security
+              </h1>
             </div>
-            <div className="flex justify-between items-end">
-              <div className="flex items-center gap-4">
-                <h1 className="text-3xl font-extrabold tracking-tight text-black">
-                  Global Operations & Security
-                </h1>
-              </div>
-              <div className="flex gap-2">
-                {isLockdown ? (
-                  <Badge variant="destructive" className="bg-red-500 text-white animate-pulse border-none">
-                    🚨 LOCKDOWN ACTIVE
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="border-green-500/30 bg-green-50 text-green-600">
-                    <CheckCircle2 className="w-3 h-3 mr-1" /> ALL SYSTEMS NORMAL
-                  </Badge>
-                )}
-              </div>
+            <div>
+              {isLockdown ? (
+                <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-extrabold bg-red-500 text-white animate-pulse shadow-md shadow-red-500/20 uppercase tracking-widest font-mono">
+                  🚨 LOCKDOWN ACTIVE
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm uppercase tracking-widest font-mono">
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-emerald-500 fill-emerald-50" /> ALL SYSTEMS NORMAL
+                </span>
+              )}
             </div>
           </div>
 
           {/* Dashboard Grid */}
-          <div className="flex-1 p-8 overflow-y-auto w-full max-w-[1600px] mx-auto flex flex-col gap-6">
+          <div className="flex-1 p-8 overflow-y-auto w-full max-w-[1600px] mx-auto flex flex-col gap-6 scrollbar-thin scrollbar-thumb-slate-200">
             
             {/* DEFCON Threat Matrix Hero Row (Top Level) */}
             {loadingDefcon ? (
-              <div className="bg-white border border-gray-200 rounded-2xl p-8 h-56 flex flex-col justify-between animate-pulse">
+              <div className="bg-white border border-slate-100 rounded-2xl p-8 h-56 flex flex-col justify-between animate-pulse">
                 <div className="space-y-2">
-                  <div className="h-4 w-32 bg-slate-200 rounded" />
-                  <div className="h-7 w-48 bg-slate-200 rounded" />
+                  <div className="h-4 w-32 bg-slate-100 rounded" />
+                  <div className="h-7 w-48 bg-slate-100 rounded" />
                 </div>
                 <div className="grid grid-cols-3 gap-6">
-                  <div className="h-24 bg-slate-100 rounded-xl" />
-                  <div className="h-24 bg-slate-100 rounded-xl" />
-                  <div className="h-24 bg-slate-100 rounded-xl" />
+                  <div className="h-24 bg-slate-50 rounded-xl" />
+                  <div className="h-24 bg-slate-50 rounded-xl" />
+                  <div className="h-24 bg-slate-50 rounded-xl" />
                 </div>
               </div>
             ) : (
-              <DefconMatrix currentState={defconState} onStateChange={handleDefconChange} />
+              <div className="flex-shrink-0">
+                <DefconMatrix currentState={defconState} onStateChange={handleDefconChange} />
+              </div>
             )}
 
             {/* Granular Breakers Grid (Row 2) */}
-            <CircuitBreakers />
+            <div className="flex-shrink-0">
+              <CircuitBreakers />
+            </div>
 
             {/* Standard Dashboard Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 auto-rows-[minmax(180px,auto)] mt-2">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 auto-rows-auto mt-2 flex-shrink-0">
                 
                 {/* Column 1 */}
                 <div className="space-y-6 flex flex-col lg:col-span-1">
-                    <div className="flex-[2]"> 
-                        <FeatureFlags />
-                    </div>
-                    <div className="flex-1">
-                        <FinOps />
-                    </div>
+                    <FeatureFlags />
                 </div>
 
                 {/* Column 2 */}
                 <div className="space-y-6 flex flex-col lg:col-span-1">
-                     <div className="flex-[1.5]">
-                        <UserCRM />
-                     </div>
-                     <div className="flex-1">
-                         <ApiBouncer />
-                     </div>
+                    <UserCRM />
+                    <ApiBouncer />
                 </div>
 
                 {/* Column 3 */}
-                <div className="space-y-6 flex flex-col lg:col-span-1 h-full">
-                    <div className="h-full">
-                        <TaskExecutor />
-                    </div>
+                <div className="space-y-6 flex flex-col lg:col-span-1">
+                    <TaskExecutor />
                 </div>
 
             </div>
 
             {/* Live Audit Stream Terminal Widget (Full-Width Row) */}
-            <div className="w-full mt-2">
+            <div className="w-full mt-2 flex-shrink-0">
                 <LiveAuditStream />
             </div>
           </div>
