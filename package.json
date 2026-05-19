@@ -13,7 +13,7 @@
     "dev:web": "vite apps/web --config apps/web/vite.config.ts",
     "dev:full": "npx concurrently -n \"api,web,worker\" -c \"cyan,magenta,yellow\" \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:worker\"",
     "dev:worker": "npm run dev --workspace servx-worker",
-    "build": "vite build apps/web --config apps/web/vite.config.ts",
+    "build": "npm run build --workspace @servx/react && npm run build --workspace @servx/cli && vite build apps/web --config apps/web/vite.config.ts",
     "render-build": "npm install && npm run build",
     "start": "cross-env NODE_ENV=production NODE_OPTIONS='--max-old-space-size=400' tsx apps/api/server.js",
     "lint": "eslint .",
@@ -81,7 +81,8 @@
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.160.0",
     "vaul": "^0.9.9",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "@servx/react": "*"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",

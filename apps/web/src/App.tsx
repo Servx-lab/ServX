@@ -27,15 +27,17 @@ import Terms from "./pages/Terms";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "./features/auth/RequireAuth";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ServXProvider } from "@servx/react";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <ServXProvider projectKey="svx_test_pin_123" baseUrl="http://localhost:5000" pollingIntervalMs={3000}>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <Routes>
             {/* Public Routes */}
@@ -101,6 +103,7 @@ const App = () => (
           </Routes>
         </AuthProvider>
       </BrowserRouter>
+      </ServXProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
