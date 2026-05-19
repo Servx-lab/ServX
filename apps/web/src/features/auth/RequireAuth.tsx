@@ -11,7 +11,14 @@ export const RequireAuth = ({ children, requireGitHub = true }: RequireAuthProps
     const { user, loading, isGitHubLinked } = useAuth();
     const location = useLocation();
 
-    if (loading) {
+    // Check if Supabase is currently processing an OAuth hash token in the URL.
+    // If so, we must keep rendering the loading state and block immediate routing redirects.
+    const isProcessingCallback = window.location.hash && (
+        window.location.hash.includes('access_token=') || 
+        window.location.hash.includes('error=')
+    );
+
+    if (loading || isProcessingCallback) {
         return <div className="h-screen w-full flex items-center justify-center bg-orizons-void"><LoadingSpinner /></div>;
     }
 

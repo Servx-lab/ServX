@@ -167,6 +167,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const initAuth = async () => {
             try {
+                const hasHash = window.location.hash && (
+                    window.location.hash.includes('access_token=') ||
+                    window.location.hash.includes('error=')
+                );
+
                 const { data: { session } } = await supabase.auth.getSession();
                 if (!mounted) return;
 
@@ -185,9 +190,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     // Background sync (don't block loading)
                     handlePostLoginTasks(session, mappedUser);
                 }
+
+                if (!hasHash && mounted) {
+                    setLoading(false);
+                }
             } catch (err) {
                 console.error('[Auth] Initial session check failed:', err);
-            } finally {
                 if (mounted) setLoading(false);
             }
         };
