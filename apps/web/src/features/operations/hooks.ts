@@ -6,9 +6,6 @@ import apiClient from '@/lib/apiClient';
 import { executeTask, getProjects, toggleMaintenance, getLatestIncident, assessTask, logClientEvent } from './api';
 import type { ExecuteTaskBody, ToggleMaintenanceBody, AssessTaskBody, AuditLogPayload } from './types';
 
-/**
- * Hook to fetch hosting projects.
- */
 export function useProjects() {
   return useQuery({
     queryKey: ['operations', 'projects'],

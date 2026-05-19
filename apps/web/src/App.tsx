@@ -35,12 +35,12 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <ServXProvider projectKey="svx_test_pin_123" baseUrl="http://localhost:5000" pollingIntervalMs={3000}>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <AuthProvider>
-          <Routes>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <ServXProvider projectKey="svx_test_pin_123" baseUrl="http://localhost:5000" pollingIntervalMs={3000}>
+          <Toaster />
+          <Sonner />
+          <AuthProvider>
+            <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<AuthPage />} />
@@ -104,8 +104,8 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
+        </ServXProvider>
       </BrowserRouter>
-      </ServXProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
