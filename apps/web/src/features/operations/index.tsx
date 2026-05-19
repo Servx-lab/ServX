@@ -20,7 +20,8 @@ import {
   Power,
   Key,
   Copy,
-  Circle
+  Circle,
+  HelpCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
@@ -365,6 +366,23 @@ const RepositoryControl = () => {
                                         <Copy className="w-3.5 h-3.5" />
                                     </button>
                                 </div>
+
+                                {/* React SDK Package Widget */}
+                                <div className="flex items-center justify-between gap-3 bg-white/70 backdrop-blur-sm border border-slate-200/80 rounded-xl px-4 py-2.5 w-full shadow-sm hover:border-slate-300 transition-all duration-200 group">
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-[9px] font-bold text-slate-400 font-mono uppercase tracking-wider">React SDK Install</span>
+                                        <code className="text-xs font-mono font-bold text-slate-700 truncate select-all">
+                                            npm install @servx/react
+                                        </code>
+                                    </div>
+                                    <button
+                                        onClick={() => handleCopyToClipboard(`npm install @servx/react`, "Copied React SDK install command!")}
+                                        className="p-1.5 rounded-lg hover:bg-slate-100/80 active:bg-slate-200/80 text-slate-400 hover:text-slate-700 transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-400/20"
+                                        title="Copy React SDK Install Command"
+                                    >
+                                        <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -520,9 +538,9 @@ const TargetSelect = ({ options, value, onChange, placeholder, disabled }: any) 
                             {options.length === 0 ? 'No options available' : 'No matches found'}
                         </div>
                     ) : (
-                        filteredOptions.map((opt: any) => (
+                        filteredOptions.map((opt: any, index: number) => (
                             <button
-                                key={opt.id}
+                                key={opt.id ? `${opt.id}-${index}` : index}
                                 type="button"
                                 onClick={() => { onChange(opt.id); onOpenChange(false); setSearchQuery(''); }}
                                 className={`w-full px-4 py-3 text-left text-base hover:bg-gray-50 transition-colors flex items-center gap-3 ${value === opt.id ? 'bg-blue-50 text-blue-600' : 'text-black'}`}
@@ -824,6 +842,149 @@ const TaskExecutor = () => {
     );
 };
 
+// --- E2E Help Center & Quick Start Guide ---
+const IntegrationHelpCenter = () => {
+    const [activeTab, setActiveTab] = useState<'what' | 'can' | 'do'>('what');
+
+    const handleCopyToClipboard = (text: string, toastMessage: string) => {
+        navigator.clipboard.writeText(text);
+        toast.success(toastMessage);
+    };
+
+    return (
+        <div className="bg-white border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition-all duration-300 relative overflow-hidden rounded-2xl p-6 flex flex-col gap-5 flex-shrink-0 h-fit">
+            <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-indigo-50 text-indigo-500 border border-indigo-100/50">
+                    <HelpCircle className="w-5 h-5" />
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold tracking-tight text-slate-800">E2E Help Center & Quick Start</h3>
+                    <p className="text-xs text-slate-400">Master the remote kill switch and E2E integration sequence</p>
+                </div>
+            </div>
+
+            {/* Tab Selectors */}
+            <div className="flex border-b border-slate-100 gap-2">
+                <button
+                    onClick={() => setActiveTab('what')}
+                    className={`pb-2.5 px-2 text-xs font-bold transition-all relative ${activeTab === 'what' ? 'text-indigo-600 border-b-2 border-indigo-500 font-extrabold' : 'text-slate-400 hover:text-slate-700'}`}
+                >
+                    1. What is this?
+                </button>
+                <button
+                    onClick={() => setActiveTab('can')}
+                    className={`pb-2.5 px-2 text-xs font-bold transition-all relative ${activeTab === 'can' ? 'text-indigo-600 border-b-2 border-indigo-500 font-extrabold' : 'text-slate-400 hover:text-slate-700'}`}
+                >
+                    2. What can it do?
+                </button>
+                <button
+                    onClick={() => setActiveTab('do')}
+                    className={`pb-2.5 px-2 text-xs font-bold transition-all relative ${activeTab === 'do' ? 'text-indigo-600 border-b-2 border-indigo-500 font-extrabold' : 'text-slate-400 hover:text-slate-700'}`}
+                >
+                    3. What do I do? (Step-by-Step)
+                </button>
+            </div>
+
+            {/* Tab Contents */}
+            <div className="text-xs text-slate-600 leading-relaxed font-medium space-y-4">
+                {activeTab === 'what' && (
+                    <div className="space-y-3">
+                        <p>
+                            The **ServX Control Plane** is a centralized remote management system designed to monitor and control distributed applications (repositories) in real-time.
+                        </p>
+                        <p>
+                            Through the use of **cryptographically secure PINs**, external applications can establish a trusted relationship with this dashboard without sharing access tokens, GitHub passwords, or server credentials.
+                        </p>
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100/50 flex flex-col gap-2">
+                            <span className="font-bold text-slate-700 block">Core Architecture Model:</span>
+                            <span className="text-[11px] text-slate-500 font-mono">
+                                Centralized Dashboard (Hub) ➔ Real-time HTTP/SSE Handshake ➔ Connected Client (Spoke)
+                            </span>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'can' && (
+                    <div className="space-y-3">
+                        <p>
+                            By integrating the `@servx/cli` and `@servx/react` SDK into your repository, you gain advanced system-level powers:
+                        </p>
+                        <ul className="list-disc pl-5 space-y-2">
+                            <li>
+                                <strong className="text-slate-700">Remote Kill Switch:</strong> Instantly take down or restore your client-facing application from this operations dashboard with zero delays.
+                            </li>
+                            <li>
+                                <strong className="text-slate-700">Dynamic Tooltip Lockouts:</strong> Prevent accidental toggling or deployment operations on repositories that haven't successfully proven their connectivity.
+                            </li>
+                            <li>
+                                <strong className="text-slate-700">Framework Profiling:</strong> Automatically scan your local repository for framework configuration data (e.g. Vite, Next.js) and report package metrics back to the central hub.
+                            </li>
+                        </ul>
+                    </div>
+                )}
+
+                {activeTab === 'do' && (
+                    <div className="space-y-4">
+                        <p>Follow these 4 simple steps to connect an external project to this dashboard:</p>
+                        
+                        <div className="space-y-3">
+                            <div className="flex gap-3 items-start">
+                                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center font-mono font-extrabold text-[10px] text-indigo-600">1</span>
+                                <div className="space-y-1">
+                                    <strong className="text-slate-800 block text-[11px]">Generate a PIN</strong>
+                                    <p>Select your repository in the dropdown above, and click <strong className="text-amber-600">Initialize Kill Switch</strong> to securely create a new PIN in our database.</p>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 items-start">
+                                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center font-mono font-extrabold text-[10px] text-indigo-600">2</span>
+                                <div className="space-y-1 w-full">
+                                    <strong className="text-slate-800 block text-[11px]">Run the CLI initialization command</strong>
+                                    <p>Open your external repository's terminal and run the local initialization script with your generated PIN. This fires our 3-step E2E handshake:</p>
+                                    <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-4 py-2 mt-1.5 flex items-center justify-between gap-3 group">
+                                        <code className="text-[10px] font-mono font-bold text-slate-600 truncate">npx @servx/cli init --key=svx_YOUR_PIN</code>
+                                        <button
+                                            onClick={() => handleCopyToClipboard(`npx @servx/cli init`, "Copied CLI command base!")}
+                                            className="p-1 rounded-lg hover:bg-slate-100 active:bg-slate-200 text-slate-400 hover:text-indigo-600 transition-all flex-shrink-0"
+                                        >
+                                            <Copy className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 items-start">
+                                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center font-mono font-extrabold text-[10px] text-indigo-600">3</span>
+                                <div className="space-y-1 w-full">
+                                    <strong className="text-slate-800 block text-[11px]">Install the React SDK package</strong>
+                                    <p>Install the React hooks in your web project to listen to active control plane signals:</p>
+                                    <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-4 py-2 mt-1.5 flex items-center justify-between gap-3 group">
+                                        <code className="text-[10px] font-mono font-bold text-slate-600">npm install @servx/react</code>
+                                        <button
+                                            onClick={() => handleCopyToClipboard("npm install @servx/react", "Copied React SDK install command!")}
+                                            className="p-1 rounded-lg hover:bg-slate-100 active:bg-slate-200 text-slate-400 hover:text-indigo-600 transition-all flex-shrink-0"
+                                        >
+                                            <Copy className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 items-start">
+                                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center font-mono font-extrabold text-[10px] text-indigo-600">4</span>
+                                <div className="space-y-1">
+                                    <strong className="text-slate-800 block text-[11px]">Wrap your application</strong>
+                                    <p>Wrap your root component in <code className="text-indigo-600 font-mono font-bold">&lt;ServXProvider projectKey="YOUR_PIN" /&gt;</code>. The SDK will now block standard operations instantly whenever maintenance mode is toggled on.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 // --- PAGE LAYOUT & MAIN ENTRY ---
 const OperationsContent = () => {
     return (
@@ -854,7 +1015,12 @@ const OperationsContent = () => {
                         <RepositoryControl />
                     </div>
 
-                    {/* Row 2: Remote Tasks */}
+                    {/* Row 2: Help Center & Quick Start Guide */}
+                    <div className="flex-shrink-0 mt-2">
+                        <IntegrationHelpCenter />
+                    </div>
+
+                    {/* Row 3: Remote Tasks */}
                     <div className="flex-shrink-0 mt-2">
                         <TaskExecutor />
                     </div>
