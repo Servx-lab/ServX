@@ -915,13 +915,34 @@ const TaskExecutor = () => {
     );
 };
 
-// --- E2E Help Center & Quick Start Guide ---
 const IntegrationHelpCenter = () => {
     const [activeTab, setActiveTab] = useState<'what' | 'can' | 'do'>('what');
 
-    const handleCopyToClipboard = (text: string, toastMessage: string) => {
-        navigator.clipboard.writeText(text);
-        toast.success(toastMessage);
+    const fallbackCopy = (text: string, successMessage: string) => {
+        try {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            toast.success(successMessage);
+        } catch (err) {
+            toast.error("Failed to copy text automatically.");
+        }
+    };
+
+    const handleCopyToClipboard = (text: string, successMessage: string) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+                .then(() => toast.success(successMessage))
+                .catch(() => fallbackCopy(text, successMessage));
+        } else {
+            fallbackCopy(text, successMessage);
+        }
     };
 
     return (
@@ -1017,10 +1038,10 @@ const IntegrationHelpCenter = () => {
                                     <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-4 py-2 mt-1.5 flex items-center justify-between gap-3 group">
                                         <code className="text-[10px] font-mono font-bold text-slate-600 truncate">npx @servx/cli init --key=svx_YOUR_PIN</code>
                                         <button
-                                            onClick={() => handleCopyToClipboard(`npx @servx/cli init`, "Copied CLI command base!")}
+                                            onClick={() => handleCopyToClipboard(`npx @servx/cli init --key=svx_YOUR_PIN`, "Copied CLI initialization command!")}
                                             className="p-1 rounded-lg hover:bg-slate-100 active:bg-slate-200 text-slate-400 hover:text-indigo-600 transition-all flex-shrink-0"
                                         >
-                                            <Copy className="w-3 h-3" />
+                                            <Copy className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
                                 </div>
