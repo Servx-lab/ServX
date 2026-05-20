@@ -7,8 +7,10 @@ import {
 } from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Github, Server, Database, Loader2, Globe, Box, Shield, Save, X } from "lucide-react";
+import { Github, Server, Database, Loader2, Globe, Box, Shield, Save, X, Activity, ShieldAlert, Fingerprint, Lock } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import apiClient from "@/lib/apiClient";
 import { getPermissions, updatePermissions, getAdminResources } from "./api";
 import type { AccessPermissions, AdminResource, GranularAllow, GlobalPermissions } from "./types";
 
@@ -24,6 +26,7 @@ function buildFullAllow(resources: AdminResource): GranularAllow {
     repoKeys: allRepoKeys,
     serverIds: allServerIds,
     databaseIds: allDbIds,
+    maintenancePins: [],
   };
 }
 
@@ -51,6 +54,7 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
   const [saving, setSaving] = useState(false);
   const [permissions, setPermissions] = useState<AccessPermissions | null>(null);
   const [resources, setResources] = useState<AdminResource | null>(null);
+  const [registeredRepos, setRegisteredRepos] = useState<any[]>([]);
   const [ga, setGa] = useState<GranularAllow | null>(null);
   
   // Local UI state to track if "Deployment Access" master toggle is on for a repo
@@ -86,15 +90,17 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
     (async () => {
       setLoading(true);
       try {
-        const [permRes, resData] = await Promise.all([
+        const [permRes, resData, reposRes] = await Promise.all([
           getPermissions(userUid),
           getAdminResources(),
+          apiClient.get('/repositories').catch(() => ({ data: { repositories: [] } })),
         ]);
         if (cancelled) return;
         
         const perm = permRes.permissions;
         setPermissions(perm);
         setResources(resData);
+        setRegisteredRepos(reposRes.data?.repositories || []);
         
         const initial =
           perm.granularAllow != null
@@ -102,8 +108,12 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
                 repoKeys: [...(perm.granularAllow.repoKeys ?? [])],
                 serverIds: [...(perm.granularAllow.serverIds ?? [])],
                 databaseIds: [...(perm.granularAllow.databaseIds ?? [])],
+                maintenancePins: [...((perm.granularAllow as any).maintenancePins ?? [])],
               }
-            : buildFullAllow(resData);
+            : {
+                ...buildFullAllow(resData),
+                maintenancePins: reposRes.data?.repositories?.map((r: any) => r.servx_pin) || [],
+              };
         setGa(initial);
 
         // Initialize deploymentsEnabledMap based on if any deployment for a repo is already allowed
@@ -161,17 +171,34 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
     });
   };
 
+  const toggleMaintenancePin = (pin: string, on: boolean) => {
+    setGa((prev) => {
+      if (!prev) return prev;
+      const next = new Set((prev as any).maintenancePins ?? []);
+      if (on) next.add(pin);
+      else next.delete(pin);
+      return { ...prev, maintenancePins: Array.from(next) };
+    });
+  };
+
   const handleSave = async () => {
     if (!permissions || !ga) return;
     setSaving(true);
     try {
+      // Cryptographically filter and save only repositories that have passed 3/3 verification tests
+      const verifiedMaintenancePins = ((ga as any).maintenancePins ?? []).filter((pin: string) => {
+        const repo = registeredRepos.find(r => r.servx_pin === pin);
+        return repo?.verification_status === 'VERIFIED';
+      });
+
       const next: AccessPermissions = {
         ...permissions,
         granularAllow: {
           repoKeys: [...(ga.repoKeys ?? [])],
           serverIds: [...(ga.serverIds ?? [])],
           databaseIds: [...(ga.databaseIds ?? [])],
-        },
+          maintenancePins: verifiedMaintenancePins,
+        } as any,
       };
       await updatePermissions({ userId: userUid, permissions: next });
       toast.success("Access updated successfully");
@@ -183,12 +210,14 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
     }
   };
 
-  const repoAllowed = (full: string) =>
-    isAllowed(full, ga?.repoKeys ?? null, fallbackFull);
+  const repoAllowed = (fullName: string) =>
+    isAllowed(fullName, ga?.repoKeys ?? null, fallbackFull);
   const serverAllowed = (id: string) =>
     isAllowed(id, ga?.serverIds ?? null, fallbackFull);
   const dbAllowed = (id: string) =>
     isAllowed(id, ga?.databaseIds ?? null, fallbackFull);
+  const maintenanceAllowed = (pin: string) =>
+    isAllowed(pin, (ga as any)?.maintenancePins ?? null, fallbackFull);
 
   const toggleGlobalArea = (area: keyof Pick<GlobalPermissions, 'canAccessHosting' | 'canAccessGithub' | 'canAccessDatabases'>, on: boolean) => {
     setPermissions(prev => {
@@ -426,6 +455,68 @@ const GranularAccessPanel: React.FC<GranularAccessPanelProps> = ({
                     />
                   </div>
                 ))
+              )}
+            </div>
+          </div>
+
+          {/* Right Column Section 3: Global Operations & Maintenance */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Activity className="h-4 w-4 text-cyan-600 animate-pulse" />
+              <h4 className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Global Operations & Maintenance</h4>
+            </div>
+            
+            <div className="rounded-xl border border-slate-200/80 bg-white p-4 space-y-3 shadow-sm">
+              <p className="text-[10px] text-slate-400 font-semibold leading-normal">
+                Grant permission to control and impersonate maintenance status for repositories that have been set up in Supabase.
+              </p>
+              {registeredRepos.length === 0 ? (
+                <p className="py-6 text-center text-xs text-slate-400 italic font-semibold">No registered repositories found in Supabase.</p>
+              ) : (
+                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1.5 custom-scrollbar">
+                  {registeredRepos.map((repo) => {
+                    const isVerified = repo.verification_status === 'VERIFIED';
+                    const passedTests = repo.verification_status === 'VERIFIED' ? 3 : repo.verification_status === 'META_OK' ? 2 : repo.verification_status === 'AUTH_OK' ? 1 : 0;
+                    
+                    return (
+                      <div key={repo.servx_pin} className={`flex items-center justify-between rounded-lg border px-3 py-2 transition-all duration-200 ${
+                        isVerified ? 'border-slate-50 bg-slate-50/50 hover:bg-slate-100/50' : 'border-slate-200/50 bg-slate-50/20 opacity-70'
+                      }`}>
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-xs font-bold text-slate-700 truncate">{repo.github_repo_full_name}</span>
+                            <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[8px] font-extrabold tracking-wide uppercase flex-shrink-0 ${
+                              passedTests === 3 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/60' : passedTests === 2 ? 'bg-amber-50 text-amber-600 border border-amber-100/60' : 'bg-rose-50 text-rose-600 border border-rose-100/60'
+                            }`}>
+                              {passedTests}/3 Tests
+                            </span>
+                          </div>
+                          <span className="text-[9px] text-slate-400 font-mono font-bold">{repo.servx_pin}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {!isVerified ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="p-1 rounded bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed flex items-center justify-center">
+                                  <Lock className="w-3 h-3" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="bg-slate-900 text-white border border-slate-800 p-2 rounded text-[10px] max-w-[200px] leading-normal font-semibold">
+                                Requires all 3 E2E test cases to pass (CLI Auth, Env Scan, and Persistent Link) before it can be assigned to simulated teammates.
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : null}
+                          <Switch
+                            checked={maintenanceAllowed(repo.servx_pin)}
+                            onCheckedChange={(c) => toggleMaintenancePin(repo.servx_pin, c)}
+                            disabled={!isVerified}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
