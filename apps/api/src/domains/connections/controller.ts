@@ -184,11 +184,13 @@ export async function saveHostingConnection(
     };
     const providerLabel = HOSTING_PROVIDERS[providerKey].label;
 
-    if (!name || !token) {
-      throw new ValidationError(`Connection name and ${providerLabel} API key are required.`);
+    if (!token) {
+      throw new ValidationError(`${providerLabel} API key is required.`);
     }
 
-    const result = await svc.saveHostingToken(req.user.uid, req.user.email, providerKey, name, token, {
+    const connectionName = name || providerLabel;
+
+    const result = await svc.saveHostingToken(req.user.uid, req.user.email, providerKey, connectionName, token, {
       edgeConfigId,
     });
     const statusCode = result.message.includes('updated') ? 200 : 201;
