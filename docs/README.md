@@ -6,7 +6,7 @@ This folder contains structured documentation for the ServX monorepo: the **web*
 
 | Area | Path | Description |
 |------|------|-------------|
-| Architecture | [architecture/overview.md](./architecture/overview.md), [repository-structure.md](./architecture/repository-structure.md) | System shape and repo layout |
+| Architecture | [architecture/overview.md](./architecture/overview.md), [repository-structure.md](./architecture/repository-structure.md), [security-architecture.md](./architecture/security-architecture.md) | System shape, repo layout, and security blueprint |
 | Web app | [web/README.md](./web/README.md) | React SPA, routes, features |
 | REST API | [api/README.md](./api/README.md) | Express routes by domain |
 | Packages | [packages/types.md](./packages/types.md) | Shared types, errors, crypto |
