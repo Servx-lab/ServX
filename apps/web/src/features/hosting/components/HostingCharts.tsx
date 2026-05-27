@@ -33,7 +33,7 @@ export const HostingCharts: React.FC<HostingChartsProps> = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Chart 1: Deployments Over Time */}
-      <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
+      <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm min-w-0 overflow-hidden">
         <div className="flex justify-between items-center mb-4">
           <h4 className="text-sm font-semibold text-black">Deployments Over Time</h4>
           <span className="text-[10px] text-gray-500 uppercase tracking-widest">Total: {deploymentTimeline.reduce((acc, curr) => acc + curr.count, 0)}</span>
@@ -66,7 +66,7 @@ export const HostingCharts: React.FC<HostingChartsProps> = ({
       </div>
 
       {/* Chart 2: Service Status */}
-      <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
+      <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm min-w-0 overflow-hidden">
         <div className="flex justify-between items-center mb-4">
           <h4 className="text-sm font-semibold text-black">Service Status</h4>
           <span className="text-[10px] text-gray-500 uppercase tracking-widest">Resource Distribution</span>
@@ -97,7 +97,7 @@ export const HostingCharts: React.FC<HostingChartsProps> = ({
       </div>
 
       {/* Chart 3: Health Overview */}
-      <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
+      <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm min-w-0 overflow-hidden">
         <div className="flex justify-between items-center mb-4">
           <h4 className="text-sm font-semibold text-black">Health Overview</h4>
           <span className="text-[10px] text-gray-500 uppercase tracking-widest">Healthy vs Errors</span>

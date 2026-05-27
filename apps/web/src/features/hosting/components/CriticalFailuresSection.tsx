@@ -45,7 +45,7 @@ export const CriticalFailuresSection: React.FC<CriticalFailuresSectionProps> = (
   };
 
   return (
-    <div className="bg-white border border-red-100 rounded-xl overflow-hidden flex flex-col shadow-sm h-full min-h-[500px]">
+    <div className="bg-white border border-red-100 rounded-xl overflow-hidden flex flex-col shadow-sm h-[480px]">
       <div className="p-5 border-b border-red-50 bg-red-50/30 flex items-center justify-between">
         <h4 className="text-sm font-semibold text-red-900 flex items-center gap-2">
           <ShieldAlert size={14} className="text-red-500" /> Incident Records

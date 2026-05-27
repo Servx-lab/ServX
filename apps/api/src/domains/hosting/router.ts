@@ -9,6 +9,7 @@ import {
   handleDigitalOceanCallback,
   startRailwayOAuth,
   getFailuresHistory,
+  disconnectHosting,
 } from './controller';
 
 const router = Router();
@@ -26,5 +27,8 @@ router.get('/railway', startRailwayOAuth);
 
 // Failure History
 router.get('/failures/history', getFailuresHistory);
+
+// Disconnect Hosting Provider
+router.delete('/disconnect', requireAuth, disconnectHosting);
 
 export default router;

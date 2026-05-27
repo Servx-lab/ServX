@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 
-import { FRONTEND_URL } from '@servx/config';
+import { FRONTEND_URL, HOSTING_PROVIDERS } from '@servx/config';
+import { ValidationError, NotFoundError } from '@servx/errors';
 
 import {
   getVercelOAuthUrl,
@@ -8,7 +9,7 @@ import {
   getDigitalOceanOAuthUrl,
   getGlobalFailureHistory,
 } from './service';
-import { saveHostingToken } from '../connections/service';
+import { saveHostingToken, deleteConnection } from '../connections/service';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 // ─── Redirect helpers ─────────────────────────────────────────────────────────
@@ -128,6 +129,39 @@ export async function getFailuresHistory(req: any, res: Response, next: NextFunc
   try {
     const history = await getGlobalFailureHistory(req.user?.uid || 'mock-user-123');
     res.json({ history });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /api/hosting/disconnect
+export async function disconnectHosting(req: any, res: Response, next: NextFunction) {
+  try {
+    const providerKey = req.query.provider as string;
+    if (!providerKey) {
+      throw new ValidationError('Provider query parameter is required');
+    }
+    const providerInfo = HOSTING_PROVIDERS[providerKey.toLowerCase()];
+    if (!providerInfo) {
+      throw new ValidationError(`Unknown provider: ${providerKey}`);
+    }
+
+    // Find connection in hosting_vault
+    const { data: connections, error } = await supabaseAdmin
+      .from('hosting_vault')
+      .select('id')
+      .eq('user_id', req.user.uid)
+      .eq('provider', providerInfo.dbName);
+
+    if (error) {
+      throw error;
+    }
+
+    if (connections && connections.length > 0) {
+      await deleteConnection(connections[0].id, req.user.uid);
+    }
+
+    res.json({ message: `${providerInfo.label} disconnected successfully` });
   } catch (err) {
     next(err);
   }
