@@ -73,19 +73,6 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {config.consoleUrl && (
-              <a href={config.consoleUrl} target="_blank" rel="noopener noreferrer">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 px-3 border-blue-200 bg-blue-50/30 text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-all font-semibold text-xs rounded-lg flex items-center gap-1.5"
-                >
-                  <ExternalLink size={14} />
-                  Console Dashboard
-                </Button>
-              </a>
-            )}
-
             <Button
               variant="outline"
               size="sm"
@@ -108,10 +95,28 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
               Disconnect
             </Button>
 
+            {config.consoleUrl && (
+              <a href={config.consoleUrl} target="_blank" rel="noopener noreferrer">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-black transition-all flex items-center gap-1.5"
+                >
+                  <ExternalLink size={14} className="text-gray-400" />
+                  <span>{config.label} Console</span>
+                </Button>
+              </a>
+            )}
+
             {config.tokenPageUrl && (
               <a href={config.tokenPageUrl} target="_blank" rel="noopener noreferrer" title={config.tokenPageLabel || "API Settings"}>
-                <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-gray-400 hover:text-black" title="View API Token Settings">
-                  <Key size={14} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-black transition-all flex items-center gap-1.5"
+                >
+                  <Key size={14} className="text-gray-400" />
+                  <span>API Settings</span>
                 </Button>
               </a>
             )}
