@@ -116,6 +116,7 @@ export function registerApiRoutes(app: Express): void {
   app.use('/api/db', databasesRouter);
   app.use('/api/connections', connectionsRouter);
   app.use('/api/oauth', hostingRouter);
+  app.use('/api/hosting', hostingRouter);
   app.use('/api', gmailRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/users', usersRouter);
