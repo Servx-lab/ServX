@@ -5,6 +5,8 @@ import type { HostingCreds, Project } from '@servx/types';
 
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
+import { decrypt } from '@servx/crypto';
+
 export async function getHostingCredentials(
   ownerId: string,
   provider: 'vercel' | 'render'
@@ -22,7 +24,11 @@ export async function getHostingCredentials(
   if (!connection || error) return null;
 
   try {
-    const parsed = JSON.parse(connection.encrypted_config) as { token?: string; apiKey?: string; edgeConfigId?: string };
+    let rawConfig = connection.encrypted_config;
+    if (connection.iv && connection.iv !== '') {
+      rawConfig = decrypt({ iv: connection.iv, content: connection.encrypted_config });
+    }
+    const parsed = JSON.parse(rawConfig) as { token?: string; apiKey?: string; edgeConfigId?: string };
     const token = parsed.token || parsed.apiKey;
     return token ? { token, edgeConfigId: parsed.edgeConfigId } : null;
   } catch {
