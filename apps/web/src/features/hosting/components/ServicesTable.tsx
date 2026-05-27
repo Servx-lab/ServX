@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, ArrowRight } from 'lucide-react';
+import { Box, ArrowRight, ExternalLink, Globe } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ServiceItem } from '../types';
 import { HostingEnvDialog } from '../HostingEnvDialog';
@@ -11,6 +11,27 @@ interface ServicesTableProps {
   timeAgo: (ts: number) => string;
   getStateColor: (state: string) => string;
 }
+
+const getProjectConsoleUrl = (provider: string, serviceName: string, serviceId: string) => {
+  const p = provider.toLowerCase();
+  if (p === 'vercel') {
+    return `https://vercel.com/dashboard/projects/${serviceName}`;
+  }
+  if (p === 'render') {
+    // If it's render, let's link to the render dashboard
+    return `https://dashboard.render.com`;
+  }
+  if (p === 'railway') {
+    return `https://railway.app/project/${serviceId}`;
+  }
+  if (p === 'fly') {
+    return `https://fly.io/apps/${serviceName}`;
+  }
+  if (p === 'digitalocean') {
+    return `https://cloud.digitalocean.com/apps/${serviceId}`;
+  }
+  return null;
+};
 
 export const ServicesTable: React.FC<ServicesTableProps> = ({
   services,
@@ -44,36 +65,56 @@ export const ServicesTable: React.FC<ServicesTableProps> = ({
               <tr>
                 <td colSpan={4} className="px-5 py-8 text-center text-xs text-gray-400">No services found</td>
               </tr>
-            ) : services.map(svc => (
-              <tr key={svc.id} className="hover:bg-gray-50 transition-colors group">
-                <td className="px-5 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-black truncate max-w-[150px]">{svc.name}</span>
-                  </div>
-                </td>
-                <td className="px-5 py-3 text-gray-500 text-xs capitalize">{svc.type || 'Unknown'}</td>
-                <td className="px-5 py-3 text-gray-500 text-xs">{timeAgo(svc.updatedAt)}</td>
-                <td className="px-5 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    {supportsEnvManager ? (
-                      <HostingEnvDialog
-                        providerKey={providerKey}
-                        serviceId={svc.id}
-                        serviceName={svc.name}
-                      />
-                    ) : null}
-                    <Badge variant="outline" className={`text-[10px] ${getStateColor(svc.status)}`}>{svc.status}</Badge>
-                    {svc.url ? (
-                      <a href={svc.url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-black transition-colors">
-                        <ArrowRight size={14} />
-                      </a>
-                    ) : (
-                      <span className="w-3.5" />
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+            ) : services.map(svc => {
+              const consoleLink = getProjectConsoleUrl(providerKey, svc.name, svc.id);
+              return (
+                <tr key={svc.id} className="hover:bg-gray-50 transition-colors group">
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-black truncate max-w-[150px]">{svc.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3 text-gray-500 text-xs capitalize">{svc.type || 'Unknown'}</td>
+                  <td className="px-5 py-3 text-gray-500 text-xs">{timeAgo(svc.updatedAt)}</td>
+                  <td className="px-5 py-3 text-right">
+                    <div className="flex items-center justify-end gap-2.5">
+                      {supportsEnvManager ? (
+                        <HostingEnvDialog
+                          providerKey={providerKey}
+                          serviceId={svc.id}
+                          serviceName={svc.name}
+                        />
+                      ) : null}
+                      <Badge variant="outline" className={`text-[10px] ${getStateColor(svc.status)}`}>{svc.status}</Badge>
+                      
+                      {svc.url && (
+                        <a 
+                          href={svc.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-gray-400 hover:text-blue-500 transition-colors p-1 hover:bg-blue-50 rounded"
+                          title="View Live App"
+                        >
+                          <Globe size={13} />
+                        </a>
+                      )}
+
+                      {consoleLink && (
+                        <a 
+                          href={consoleLink} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-gray-400 hover:text-black transition-colors p-1 hover:bg-gray-100 rounded"
+                          title={`Open project in ${providerKey} dashboard`}
+                        >
+                          <ExternalLink size={13} />
+                        </a>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

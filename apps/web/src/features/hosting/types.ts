@@ -38,6 +38,7 @@ export interface ProviderConfig {
   guideSubtitle: string;
   steps: { title: string; detail: string }[];
   defaultKeyName?: string;
+  consoleUrl?: string;
   features: string[];
   logo: React.ReactNode;
   logoSmall: React.ReactNode;
