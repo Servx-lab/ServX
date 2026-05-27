@@ -140,7 +140,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
           <div className="space-y-8">
             {/* Top Row: Services (2/3) and Global Failure (1/3) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 min-w-0">
                 <ServicesTable 
                     services={services}
                     providerKey={config.key}
@@ -150,7 +150,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
                 />
               </div>
               
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 min-w-0">
                 <CriticalFailuresSection 
                     timeAgo={timeAgo}
                     getStateColor={getStateColor}
@@ -159,7 +159,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
             </div>
 
             {/* Bottom Row: Recent Deployments (Full Width) */}
-            <div className="w-full">
+            <div className="w-full min-w-0">
               <DeploymentsTable 
                   deployments={deployments}
                   timeAgo={timeAgo}

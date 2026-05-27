@@ -20,7 +20,7 @@ export const ServicesTable: React.FC<ServicesTableProps> = ({
   getStateColor
 }) => {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col shadow-sm">
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col shadow-sm h-[480px]">
       <div className="p-5 border-b border-gray-200 flex items-center justify-between">
         <h4 className="text-sm font-semibold text-black flex items-center gap-2">
           <Box size={14} className="text-blue-500" /> Services / Projects
