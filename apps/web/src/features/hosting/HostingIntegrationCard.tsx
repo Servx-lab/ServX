@@ -183,7 +183,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
 
     try {
       // For Coolify, we might need to send the instance URL
-      const payload: any = { provider: config.key, token: tokenInput };
+      const payload: any = { provider: config.key, token: tokenInput, name: config.label };
       if (config.key === 'coolify' && urlInput) {
           payload.instanceUrl = urlInput;
       }
@@ -205,7 +205,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     if (!confirm(`Are you sure you want to disconnect ${config.label}?`)) return;
     setDisconnecting(true);
     try {
-      await apiClient.delete(`/api/hosting/disconnect?provider=${config.key}`);
+      await apiClient.delete(`/hosting/disconnect?provider=${config.key}`);
       setStatus('idle');
       setServices([]);
       setDeployments([]);
