@@ -1,5 +1,5 @@
-import React from 'react';
-import { Globe, Key, Loader2, Shield, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Globe, Key, Loader2, Shield, AlertCircle, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,15 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   errorMsg,
   handleConnect
 }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (!config.defaultKeyName) return;
+    navigator.clipboard.writeText(config.defaultKeyName);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white min-h-[calc(100vh-12rem)]">
       <div className="absolute -top-32 -right-32 h-64 w-64 rounded-full bg-blue-500/10 blur-[100px]" />
@@ -124,6 +133,48 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               <p className="text-xs font-semibold text-blue-500 uppercase tracking-widest mb-2">Setup Guide</p>
               <h2 className="text-2xl font-bold text-black tracking-tight">{config.guideTitle}</h2>
               <p className="text-sm text-gray-500 mt-2 max-w-lg">{config.guideSubtitle}</p>
+              {config.tokenPageUrl && (
+                <div className="mt-3.5 flex flex-wrap items-center gap-3">
+                  <a
+                    href={config.tokenPageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg border border-blue-100 bg-blue-50/50 text-xs font-semibold text-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 group"
+                  >
+                    {config.tokenPageLabel || 'Get API Key'}
+                    <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+                  </a>
+                </div>
+              )}
+
+              {config.defaultKeyName && (
+                <div className="mt-5 p-4 rounded-xl border border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4 max-w-md animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Recommended Key Name</p>
+                    <code className="text-xs font-mono text-black font-semibold bg-white border border-gray-200 px-2 py-1 rounded-md">{config.defaultKeyName}</code>
+                  </div>
+                  <button
+                    onClick={handleCopy}
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all active:scale-95 duration-200 ${
+                      copied 
+                        ? 'bg-green-500 border-green-500 text-white shadow-sm shadow-green-500/10' 
+                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+                    }`}
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5 text-gray-400" />
+                        Copy Name
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">
