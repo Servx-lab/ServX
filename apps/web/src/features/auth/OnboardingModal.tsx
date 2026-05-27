@@ -48,42 +48,42 @@ export const OnboardingModal = ({ userName, authMethod = 'github' }: OnboardingM
         <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="relative w-full max-w-2xl bg-[#181C25]/80 backdrop-blur-xl border border-orizons-teal/40 rounded-2xl shadow-[0_0_50px_rgba(0,194,203,0.15)] overflow-hidden"
+            className="relative w-full max-w-2xl bg-white border border-zinc-200 rounded-2xl shadow-2xl overflow-hidden"
         >
             {/* Top decorative line */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orizons-teal to-transparent opacity-50" />
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orizons-teal to-transparent opacity-80" />
             
             <div className="p-10 text-center relative z-10">
                 
                 {/* Header Icon */}
-                <div className="mx-auto w-20 h-20 bg-orizons-void rounded-2xl border border-orizons-teal/20 flex items-center justify-center mb-6 shadow-xl relative group">
+                <div className="mx-auto w-20 h-20 bg-zinc-50 rounded-2xl border border-zinc-200 flex items-center justify-center mb-6 shadow-md relative group">
                     <Monitor className="w-10 h-10 text-orizons-teal" />
-                    <div className="absolute inset-0 border border-orizons-teal/40 rounded-2xl animate-pulse-glow" />
+                    <div className="absolute inset-0 border border-zinc-200/50 rounded-2xl animate-pulse-glow" />
                 </div>
 
                 {/* Welcome Text */}
-                <h2 className="text-3xl font-bold text-white mb-3 tracking-tight">
+                <h2 className="text-3xl font-bold text-zinc-900 mb-3 tracking-tight">
                     Your Workspace is Ready{userName ? `, ${userName}` : ''}!
                 </h2>
                 
-                <p className="text-orizons-text-low text-lg mb-8 max-w-lg mx-auto leading-relaxed">
-                    To get the full power of the <span className="text-orizons-teal">Auto-Medic Pipeline</span> and local server monitoring, download the ServX-Lab desktop companion.
+                <p className="text-zinc-600 text-base mb-8 max-w-lg mx-auto leading-relaxed">
+                    To get the full power of the <span className="text-orizons-teal font-semibold">Auto-Medic Pipeline</span> and local server monitoring, download the ServX-Lab desktop companion.
                 </p>
 
                 {/* Feature Highlights */}
                 <div className="grid grid-cols-2 gap-4 mb-8 text-left max-w-lg mx-auto">
-                    <div className="bg-orizons-void/50 p-4 rounded-xl border border-white/5 flex items-start gap-3">
-                        <Terminal className="w-5 h-5 text-orizons-purple mt-0.5" />
+                    <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 flex items-start gap-3">
+                        <Terminal className="w-5 h-5 text-orizons-purple mt-0.5 shrink-0" />
                         <div>
-                            <h4 className="text-white font-medium text-sm">Direct Repo Access</h4>
-                            <p className="text-xs text-orizons-text-low mt-1">Zero-config git integration enabled.</p>
+                            <h4 className="text-zinc-800 font-semibold text-sm">Direct Repo Access</h4>
+                            <p className="text-xs text-zinc-500 mt-1">Zero-config git integration enabled.</p>
                         </div>
                     </div>
-                    <div className="bg-orizons-void/50 p-4 rounded-xl border border-white/5 flex items-start gap-3">
-                        <Activity className="w-5 h-5 text-orizons-mint mt-0.5" />
+                    <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 flex items-start gap-3">
+                        <Activity className="w-5 h-5 text-orizons-mint mt-0.5 shrink-0" />
                         <div>
-                            <h4 className="text-white font-medium text-sm">Real-time Metrics</h4>
-                            <p className="text-xs text-orizons-text-low mt-1">Live CPU/Memory usage tracking.</p>
+                            <h4 className="text-zinc-800 font-semibold text-sm">Real-time Metrics</h4>
+                            <p className="text-xs text-zinc-500 mt-1">Live CPU/Memory usage tracking.</p>
                         </div>
                     </div>
                 </div>
@@ -92,7 +92,7 @@ export const OnboardingModal = ({ userName, authMethod = 'github' }: OnboardingM
                 <div className="space-y-4">
                     <Button 
                         onClick={handleDownload}
-                        className="w-full max-w-md h-14 bg-orizons-teal hover:bg-orizons-mint text-white font-semibold text-lg rounded-xl shadow-[0_0_30px_rgba(0,194,203,0.3)] hover:shadow-[0_0_50px_rgba(0,194,203,0.5)] transition-all duration-300 relative overflow-hidden group"
+                        className="w-full max-w-md h-14 bg-orizons-teal hover:bg-orizons-teal/90 text-white font-semibold text-lg rounded-xl shadow-[0_4px_20px_rgba(59,130,246,0.25)] transition-all duration-300 relative overflow-hidden group"
                     >
                         <span className="relative z-10 flex items-center justify-center gap-3">
                             <span className="flex gap-2 items-center opacity-80 mr-2">
@@ -108,7 +108,7 @@ export const OnboardingModal = ({ userName, authMethod = 'github' }: OnboardingM
 
                     <button 
                         onClick={handleSkip}
-                        className="text-orizons-text-low hover:text-white text-sm font-medium transition-colors flex items-center justify-center gap-2 mx-auto pt-2"
+                        className="text-zinc-500 hover:text-zinc-900 text-sm font-semibold transition-colors flex items-center justify-center gap-2 mx-auto pt-2 hover:underline"
                     >
                         Continue to Web Dashboard
                         <ArrowRight className="w-4 h-4" />

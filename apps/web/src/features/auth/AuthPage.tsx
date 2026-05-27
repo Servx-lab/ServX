@@ -112,10 +112,10 @@ const AuthPage = () => {
 
                         <div className="relative py-4">
                             <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t border-white/10" />
+                                <span className="w-full border-t border-zinc-200" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-orizons-card px-2 text-orizons-text-low/50 font-medium tracking-wider">Alternative</span>
+                                <span className="bg-[#F8FAFC] px-2 text-zinc-500 font-bold tracking-wider">Alternative</span>
                             </div>
                         </div>
 
@@ -134,17 +134,17 @@ const AuthPage = () => {
                     </div>
 
                     {/* Security Note */}
-                    <div className="mt-6 flex items-start gap-2 text-xs text-orizons-text-low/60 bg-black/20 p-3 rounded-lg border border-white/5">
+                    <div className="mt-6 flex items-start gap-2 text-xs text-zinc-600 bg-zinc-50 p-3 rounded-lg border border-zinc-200/80">
                         <AlertCircle className="h-4 w-4 text-orizons-teal shrink-0 mt-0.5" />
                         <p>
-                            We request <span className="text-orizons-text-low font-medium">read-only access</span> to your repositories initially. You can manage integration settings later.
+                            We request <span className="text-zinc-900 font-semibold">read-only access</span> to your repositories initially. You can manage integration settings later.
                         </p>
                     </div>
 
                 </div>
 
                 <div className="mt-8 text-center">
-                    <p className="text-xs text-orizons-text-low/40">
+                    <p className="text-xs text-zinc-500 font-medium">
                         By continuing, you agree to our Terms of Service and Privacy Policy.
                     </p>
                 </div>
