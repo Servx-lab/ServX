@@ -1,11 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   ReactFlow, 
   Background, 
   Controls, 
   Handle, 
   Position, 
-  MarkerType,
   Edge,
   Node,
   BaseEdge,
@@ -20,12 +19,23 @@ import {
   Zap, 
   Activity, 
   Tag, 
-  Lock, 
   Cpu, 
   Globe,
-  AlertCircle
+  AlertCircle,
+  Laptop,
+  Check,
+  X,
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useDeviceList, useRevokeDevice, useApproveDevice } from '@/features/admin/hooks';
+import { supabase } from '@/lib/supabase';
+import { buildApiBaseUrl } from '@/lib/apiClient';
+import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 // --- Styles & Constants ---
 const COLORS = {
@@ -126,8 +136,104 @@ const BlastRadiusEdge = ({
 const nodeTypes = { custom: CustomNode };
 const edgeTypes = { blast: BlastRadiusEdge };
 
+function statusBadgeClass(status: string): string {
+  if (status === "APPROVED") {
+    return "bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20";
+  }
+  if (status === "PENDING") {
+    return "bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse";
+  }
+  return "bg-red-500/10 text-red-500 border border-red-500/20";
+}
+
 // --- Main Page Component ---
 const DataGovernance = () => {
+  // Real-time pending requests state
+  const [activeRequest, setActiveRequest] = useState<{
+    device_fingerprint: string;
+    device_name: string;
+    last_ip: string;
+  } | null>(null);
+  const [customDeviceName, setCustomDeviceName] = useState<string>("");
+
+  // Device List Queries and Mutations
+  const { data: devices = [], isLoading: isLoadingDevices, refetch: refetchDevices } = useDeviceList();
+  const revokeDeviceMutation = useRevokeDevice();
+  const approveDeviceMutation = useApproveDevice();
+
+  // ─── Real-Time SSE Listener for Approved Main Devices ───
+  useEffect(() => {
+    let sse: EventSource | null = null;
+
+    const connectSSE = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const rawUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "";
+      const apiBase = buildApiBaseUrl(rawUrl);
+      const isRelative = apiBase.startsWith("/") || !apiBase.startsWith("http");
+      const absoluteBase = isRelative
+        ? `${window.location.protocol}//${window.location.host}${apiBase.replace(/\/$/, "")}`
+        : apiBase.replace(/\/$/, "");
+
+      // Pass session JWT as a query param for EventSource compatibility
+      const sseUrl = `${absoluteBase}/devices/listen-requests?token=${session.access_token}`;
+
+      sse = new EventSource(sseUrl);
+
+      sse.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.event === "login_request") {
+            toast.info(`🔑 Unrecognized Device Approval Request: ${data.device_name}`, {
+              duration: 8000
+            });
+            setActiveRequest({
+              device_fingerprint: data.device_fingerprint,
+              device_name: data.device_name,
+              last_ip: data.last_ip
+            });
+            setCustomDeviceName(`${data.device_name} - Home`);
+            refetchDevices();
+          } else if (data.event === "device_resolved") {
+            refetchDevices();
+          }
+        } catch (err) {
+          // Heartbeats
+        }
+      };
+
+      sse.onerror = () => {
+        sse?.close();
+        setTimeout(connectSSE, 5000);
+      };
+    };
+
+    connectSSE();
+
+    return () => {
+      if (sse) sse.close();
+    };
+  }, [refetchDevices]);
+
+  const handleApproveDevice = (status: "APPROVED" | "DENIED") => {
+    if (!activeRequest) return;
+    approveDeviceMutation.mutate({
+      device_fingerprint: activeRequest.device_fingerprint,
+      status,
+      device_name: status === "APPROVED" ? customDeviceName.trim() : undefined
+    }, {
+      onSuccess: () => {
+        setActiveRequest(null);
+        refetchDevices();
+      }
+    });
+  };
+
+  const handleRevokeDevice = (deviceId: string) => {
+    revokeDeviceMutation.mutate(deviceId);
+  };
+
   // Graph Definitions
   const initialNodes: Node[] = [
     { 
@@ -173,9 +279,75 @@ const DataGovernance = () => {
   ];
 
   return (
-    <div className="flex-1 bg-[#F8FAFC] flex flex-col h-full overflow-hidden font-sans">
+    <div className="flex-1 bg-[#F8FAFC] flex flex-col h-full overflow-y-auto font-sans pt-16">
+      
+      {/* Real-time Glassmorphic Device Approval Modal Overlay */}
+      {activeRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md transition-all animate-in fade-in duration-300">
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-[#00C2CB]/20 bg-[#0B0E14]/90 p-6 text-white shadow-2xl shadow-[#00C2CB]/10">
+            {/* Decorative HSL Gradient glow */}
+            <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-[#00C2CB]/10 blur-3xl" />
+            <div className="absolute -right-20 -bottom-20 h-40 w-40 rounded-full bg-[#00C2CB]/10 blur-3xl" />
+
+            <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
+              <div className="rounded-2xl bg-[#00C2CB]/10 p-3 text-[#00C2CB]">
+                <Laptop className="h-6 w-6 animate-bounce" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black tracking-tight flex items-center gap-1.5">
+                  Device Login Attempt
+                  <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-bold px-2 py-0.5 uppercase tracking-wider">Zero-Trust Alert</Badge>
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">A new device is requesting dashboard authorization.</p>
+              </div>
+            </div>
+
+            <div className="my-5 space-y-3.5 text-sm">
+              <div className="flex items-center justify-between text-xs border-b border-gray-800/50 pb-2">
+                <span className="text-gray-400">Device Description</span>
+                <span className="font-semibold text-[#00C2CB]">{activeRequest.device_name}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs border-b border-gray-800/50 pb-2">
+                <span className="text-gray-400">IP Location</span>
+                <span className="font-mono text-gray-300">{activeRequest.last_ip}</span>
+              </div>
+              <div className="flex flex-col gap-1.5 pt-2">
+                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Device Nickname (Optional)</span>
+                <Input
+                  type="text"
+                  value={customDeviceName}
+                  onChange={(e) => setCustomDeviceName(e.target.value)}
+                  placeholder="e.g. MacBook Pro - Home"
+                  className="bg-[#121620] border-gray-800 text-white placeholder-gray-600 focus-visible:ring-[#00C2CB]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => handleApproveDevice("DENIED")}
+                className="rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                disabled={approveDeviceMutation.isPending}
+              >
+                <X className="w-4 h-4 mr-2" /> Deny Access
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleApproveDevice("APPROVED")}
+                className="rounded-xl bg-[#00C2CB] text-white hover:bg-[#00C2CB]/80 shadow-lg shadow-[#00C2CB]/20 transition-all font-semibold"
+                disabled={approveDeviceMutation.isPending}
+              >
+                <Check className="w-4 h-4 mr-2" /> Authorize Device
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Header / Badge Area */}
-      <header className="p-6 flex justify-between items-center bg-white border-b border-slate-100 shadow-sm relative z-50">
+      <header className="p-6 flex justify-between items-center bg-white border-b border-slate-100 shadow-sm relative z-40">
         <div>
           <h1 className="text-2xl font-black tracking-tighter text-[#0F172A] flex items-center gap-2">
             Data Governance & Incident Center
@@ -196,12 +368,11 @@ const DataGovernance = () => {
         </div>
       </header>
 
-      {/* Main Content Dashboard */}
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 overflow-hidden">
-        
+      {/* Main Content Dashboard - Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 min-h-[500px]">
         {/* Left Panel: Lineage Graph */}
         <section className="lg:col-span-2 flex flex-col gap-4 min-h-0">
-          <div className="flex-1 bg-white rounded-3xl border border-slate-200 overflow-hidden relative shadow-md">
+          <div className="flex-1 bg-white rounded-3xl border border-slate-200 overflow-hidden relative shadow-md min-h-[400px]">
             <div className="absolute top-6 left-6 z-10">
               <h2 className="text-sm font-black text-[#0F172A] uppercase tracking-widest flex items-center gap-2">
                 <Zap size={16} className="text-[#00C2CB]" />
@@ -320,9 +491,123 @@ const DataGovernance = () => {
                 Connection: Secure Channel (AES-256)
              </div>
           </div>
-
         </aside>
-      </main>
+      </div>
+
+      {/* ─── Zero-Trust Device Governance Section - Row 2 ─── */}
+      <div className="px-6 pb-8">
+        <section className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-md">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+            <div className="flex items-center gap-2">
+              <Laptop className="h-5 w-5 text-[#00C2CB]" />
+              <h2 className="text-sm font-black text-[#0F172A] uppercase tracking-widest">
+                Zero-Trust Device Governance
+              </h2>
+            </div>
+            <Badge variant="outline" className="border-[#00C2CB]/20 bg-[#00C2CB]/5 text-[#00C2CB] font-bold text-xs">
+              {devices.length} registered device{devices.length === 1 ? "" : "s"}
+            </Badge>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-100 text-[#64748B] font-bold uppercase tracking-tighter text-[10px]">
+                  <th className="px-6 py-3.5">Hardware ID / Device Nickname</th>
+                  <th className="px-6 py-3.5">Authorization Status</th>
+                  <th className="px-6 py-3.5">IP Location</th>
+                  <th className="px-6 py-3.5">Last Synced</th>
+                  <th className="px-6 py-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {isLoadingDevices ? (
+                  <tr key="loading-devices">
+                    <td colSpan={5} className="h-32 text-center text-[#64748B] animate-pulse">
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-[#00C2CB]" />
+                        Loading registered device matrices…
+                      </div>
+                    </td>
+                  </tr>
+                ) : devices.length === 0 ? (
+                  <tr key="empty-devices">
+                    <td colSpan={5} className="h-32 text-center italic text-[#64748B]">
+                      No device fingerprints verified yet. Log in to register a device.
+                    </td>
+                  </tr>
+                ) : (
+                  devices.map((dev) => (
+                    <tr key={dev.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-xl border ${dev.is_main_device ? 'bg-[#00C2CB]/5 border-[#00C2CB]/20 text-[#00C2CB]' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+                            <Laptop className="h-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-[#0F172A] flex items-center gap-1.5">
+                              {dev.device_name}
+                              {dev.is_main_device && (
+                                <Badge className="bg-[#00C2CB]/10 text-[#00C2CB] hover:bg-[#00C2CB]/10 text-[8px] font-black uppercase tracking-wider px-1.5 py-0">Main Device</Badge>
+                              )}
+                            </div>
+                            <code className="text-[10px] text-slate-400 uppercase tracking-widest font-mono">
+                              DEV-{dev.device_fingerprint.slice(0, 12)}...
+                            </code>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant="outline" className={`capitalize font-bold text-[10px] tracking-wider px-2.5 py-0.5 ${statusBadgeClass(dev.status)}`}>
+                          {dev.status}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 font-mono text-[#64748B] text-xs">
+                        {dev.last_ip || "Unknown IP"}
+                      </td>
+                      <td className="px-6 py-4 text-[#64748B]">
+                        {new Date(dev.last_login).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          {dev.status === "PENDING" && (
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                setActiveRequest({
+                                  device_fingerprint: dev.device_fingerprint,
+                                  device_name: dev.device_name,
+                                  last_ip: dev.last_ip || "Unknown IP"
+                                });
+                                setCustomDeviceName(`${dev.device_name} - Home`);
+                              }}
+                              variant="outline"
+                              className="rounded-xl border-[#00C2CB] text-[#00C2CB] hover:bg-[#00C2CB]/5 font-bold text-xs px-3 h-8 shadow-sm"
+                            >
+                              Approve / Deny
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-lg"
+                            title="Revoke and wipe device profile"
+                            onClick={() => handleRevokeDevice(dev.id)}
+                            disabled={revokeDeviceMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
 
       {/* Global CSS for Lineage Dash */}
       <style>{`

@@ -44,3 +44,35 @@ export const searchUsers = async (q: string): Promise<UserSearchHit[]> => {
   });
   return res.data.users ?? [];
 };
+
+export interface DeviceRecord {
+  id: string;
+  user_uuid: string;
+  device_fingerprint: string;
+  device_name: string;
+  is_main_device: boolean;
+  status: 'PENDING' | 'APPROVED' | 'DENIED';
+  last_ip: string;
+  last_login: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getDevices = async (): Promise<DeviceRecord[]> => {
+  const res = await apiClient.get('/devices');
+  return res.data;
+};
+
+export const revokeDeviceApi = async (id: string): Promise<{ success: boolean }> => {
+  const res = await apiClient.delete(`/devices/${id}`);
+  return res.data;
+};
+
+export const approveDeviceApi = async (body: {
+  device_fingerprint: string;
+  status: 'APPROVED' | 'DENIED';
+  device_name?: string;
+}): Promise<{ success: boolean }> => {
+  const res = await apiClient.post('/devices/approve', body);
+  return res.data;
+};

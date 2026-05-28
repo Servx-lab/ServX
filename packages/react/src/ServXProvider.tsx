@@ -50,8 +50,6 @@ export function ServXProvider({
       return;
     }
 
-    let intervalId: ReturnType<typeof setInterval>;
-
     const checkStatus = async () => {
       try {
         // Fetch the public maintenance status mapped to this unique PIN
@@ -82,7 +80,7 @@ export function ServXProvider({
     checkStatus();
 
     // Setup polling for dynamic live-updates
-    intervalId = setInterval(checkStatus, pollingIntervalMs);
+    const intervalId = setInterval(checkStatus, pollingIntervalMs);
 
     return () => clearInterval(intervalId);
   }, [projectKey, baseUrl, pollingIntervalMs]);

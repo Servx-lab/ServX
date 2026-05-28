@@ -6,7 +6,7 @@ import {
   sendServXAlert 
 } from './service';
 import { prefetchHostingStatuses } from '../connections/service';
-import { cacheDelPattern } from '../../core/services/redisCache';
+import { cacheDelPattern, getRedisClient } from '../../core/services/redisCache';
 import { userGhCachePattern } from '../github/controller';
 
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
@@ -193,9 +193,31 @@ export async function handleGitHubCallback(req: any, res: any, next: any): Promi
   }
 }
 
+function getDeviceNameFromUA(ua: string): string {
+  if (/windows/i.test(ua)) {
+    return 'Chrome on Windows';
+  } else if (/macintosh/i.test(ua)) {
+    return 'Safari on macOS';
+  } else if (/iphone|ipad/i.test(ua)) {
+    return 'Mobile Device (iOS)';
+  } else if (/android/i.test(ua)) {
+    return 'Mobile Device (Android)';
+  } else if (/linux/i.test(ua)) {
+    return 'Linux Desktop';
+  }
+  return 'Web Browser';
+}
+
 export async function syncUser(req: any, res: any, next: any): Promise<void> {
   try {
     const { id, email } = req.user;
+    const fingerprint = req.headers['x-device-uuid'] as string | undefined;
+
+    if (!fingerprint) {
+      res.status(400).json({ error: 'zero_trust_error', message: 'x-device-uuid header is required for zero-trust authorization.' });
+      return;
+    }
+
     const { 
       name, 
       avatarUrl, 
@@ -211,6 +233,113 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
       githubTokenExpiry?: number | string | Date;
       githubId?: string;
     };
+
+    // ─── Zero-Trust Device Authorization Check ───
+    const { data: device, error: deviceError } = await supabaseAdmin
+      .from('user_devices')
+      .select('*')
+      .eq('user_uuid', id)
+      .eq('device_fingerprint', fingerprint)
+      .maybeSingle();
+
+    if (deviceError) {
+      throw deviceError;
+    }
+
+    const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown IP';
+    const userAgent = req.headers['user-agent'] || 'Unknown Browser';
+    const cleanName = getDeviceNameFromUA(userAgent);
+
+    if (!device) {
+      // Check if this is the user's first registered device
+      const { count, error: countError } = await supabaseAdmin
+        .from('user_devices')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_uuid', id);
+
+      if (countError) throw countError;
+
+      const isFirst = count === 0;
+      const initialStatus = isFirst ? 'APPROVED' : 'PENDING';
+      const isMain = isFirst;
+
+      const { data: newDevice, error: insertError } = await supabaseAdmin
+        .from('user_devices')
+        .insert({
+          user_uuid: id,
+          device_fingerprint: fingerprint,
+          device_name: cleanName,
+          is_main_device: isMain,
+          status: initialStatus,
+          last_ip: clientIp,
+          last_login: new Date()
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      if (!isFirst) {
+        // Trigger Redis PubSub event to alert the main device
+        const redis = await getRedisClient();
+        if (redis) {
+          await redis.publish(
+            `device_approvals:${id}`,
+            JSON.stringify({
+              event: 'login_request',
+              device_fingerprint: fingerprint,
+              device_name: cleanName,
+              last_ip: clientIp
+            })
+          );
+        }
+        res.status(403).json({ error: 'device_pending_approval' });
+        return;
+      }
+    } else {
+      // Device exists
+      if (device.status === 'DENIED') {
+        res.status(403).json({ error: 'device_denied', message: 'Access from this device has been explicitly denied.' });
+        return;
+      }
+
+      if (device.status === 'PENDING') {
+        // Update IP and timestamp
+        await supabaseAdmin
+          .from('user_devices')
+          .update({
+            last_ip: clientIp,
+            last_login: new Date()
+          })
+          .eq('id', device.id);
+
+        // Retrigger Redis PubSub to alert the main device
+        const redis = await getRedisClient();
+        if (redis) {
+          await redis.publish(
+            `device_approvals:${id}`,
+            JSON.stringify({
+              event: 'login_request',
+              device_fingerprint: fingerprint,
+              device_name: device.device_name,
+              last_ip: clientIp
+            })
+          );
+        }
+
+        res.status(403).json({ error: 'device_pending_approval' });
+        return;
+      }
+
+      // Approved device: update last active details
+      await supabaseAdmin
+        .from('user_devices')
+        .update({
+          last_ip: clientIp,
+          last_login: new Date()
+        })
+        .eq('id', device.id);
+    }
 
     // Check if user is new BEFORE upsert
     const { data: existingProfile } = await supabaseAdmin

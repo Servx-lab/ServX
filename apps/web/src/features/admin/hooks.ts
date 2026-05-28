@@ -4,7 +4,10 @@ import {
   getAdminList, 
   inviteAdmin, 
   revokeAdmin, 
-  getAdminResources 
+  getAdminResources,
+  getDevices,
+  revokeDeviceApi,
+  approveDeviceApi
 } from './api';
 import { toast } from 'sonner';
 
@@ -62,5 +65,42 @@ export const useAdminResources = () => {
       if (error.response?.status === 401 || error.response?.status === 403) return false;
       return failureCount < 3;
     }
+  });
+};
+
+export const useDeviceList = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['device-list'],
+    queryFn: getDevices,
+    enabled: !!user,
+  });
+};
+
+export const useRevokeDevice = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: revokeDeviceApi,
+    onSuccess: () => {
+      toast.success("Device access revoked successfully");
+      queryClient.invalidateQueries({ queryKey: ['device-list'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to revoke device access");
+    },
+  });
+};
+
+export const useApproveDevice = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: approveDeviceApi,
+    onSuccess: (_, variables) => {
+      toast.success(`Device ${variables.status.toLowerCase()} successfully`);
+      queryClient.invalidateQueries({ queryKey: ['device-list'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to resolve device status");
+    },
   });
 };

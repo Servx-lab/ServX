@@ -21,6 +21,7 @@ import webhooksRouter from './domains/webhooks/router';
 import feedRouter from './domains/feed/router';
 import repositoriesRouter from './domains/repositories/router';
 import verifyRouter from './domains/verify/router';
+import devicesRouter from './domains/devices/router';
 import { defconMiddleware } from './domains/operations/defconMiddleware';
 
 export function createApp(): Express {
@@ -128,6 +129,7 @@ export function registerApiRoutes(app: Express): void {
   app.use('/api/feed', feedRouter);
   app.use('/api/repositories', repositoriesRouter);
   app.use('/api/verify', verifyRouter);
+  app.use('/api/devices', devicesRouter);
 }
 
 

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { supabase } from './supabase';
+import { getDeviceUUID } from './deviceUtils';
 
 declare module 'axios' {
   interface InternalAxiosRequestConfig {
@@ -38,9 +39,19 @@ const apiClient = axios.create({
   },
 });
 
-// Request Interceptor: Attach Supabase JWT
+// Request Interceptor: Attach Supabase JWT & Device Fingerprint
 apiClient.interceptors.request.use(
   async (config) => {
+    // Attach Device Fingerprint in headers
+    try {
+      const fingerprint = await getDeviceUUID();
+      if (fingerprint) {
+        config.headers['x-device-uuid'] = fingerprint;
+      }
+    } catch (fingerprintError) {
+      console.error('[apiClient] Failed to resolve device fingerprint:', fingerprintError);
+    }
+
     let { data: { session } } = await supabase.auth.getSession();
     
     // Micro-retry: If no session, wait 50ms and try once more.

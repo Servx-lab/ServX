@@ -89,19 +89,19 @@ export async function refreshGithubToken(uid: string, refreshToken: string): Pro
 
     // Encrypting new tokens before storage
     const { iv, content: encryptedAccess } = encrypt(access_token);
-    let encryptedRefresh = null;
+    
+    const updatePayload: any = {
+      encrypted_access_token: encryptedAccess,
+      iv: iv,
+      token_expiry: expiryDate,
+    };
     if (refresh_token) {
-      encryptedRefresh = encrypt(refresh_token).content;
+      updatePayload.encrypted_refresh_token = encrypt(refresh_token).content;
     }
 
     const { error: vaultError } = await supabaseAdmin
       .from('github_vault')
-      .update({
-        encrypted_access_token: encryptedAccess,
-        encrypted_refresh_token: encryptedRefresh,
-        iv: iv,
-        token_expiry: expiryDate,
-      })
+      .update(updatePayload)
       .eq('user_id', uid);
 
     if (vaultError) throw vaultError;
