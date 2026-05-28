@@ -11,17 +11,22 @@ declare global {
 }
 
 const requireAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const authHeader = req.headers.authorization;
+  let token: string | undefined;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split('Bearer ')[1];
+  } else if (req.query.token) {
+    token = String(req.query.token);
+  }
+
+  if (!token) {
     res.status(401).json({
       error: 'Unauthorized',
-      message: 'Missing or malformed Authorization header',
+      message: 'Missing or malformed Authorization header or token query parameter',
     });
     return;
   }
-
-  const token = authHeader.split('Bearer ')[1];
 
   try {
     if (!supabaseAdmin) {

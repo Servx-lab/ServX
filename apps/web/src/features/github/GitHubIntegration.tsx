@@ -40,7 +40,6 @@ import type { RepoSummary } from "@servx/types";
 import type { RepoDetails, Deployment, Language } from "./types";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { disconnectGitHub } from "./api";
 import { useIntegrationRepos, useRepoDetails } from "./hooks";
 import { RepositoryAccess } from "./RepositoryAccess";
 
@@ -48,7 +47,7 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"
 
 const GitHubIntegration = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, linkGitHub, signInWithGitHub, isGitHubLinked, refreshGitHubConnection, githubTokenValid } = useAuth();
+  const { user, linkGitHub, signInWithGitHub, isGitHubLinked, refreshGitHubConnection, githubTokenValid, disconnectGitHub } = useAuth();
   const isAuthenticated = !!user;
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null);

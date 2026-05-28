@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContextValue, AuthUser } from './types';
 import { syncUser } from './api';
 import { useLocalCache } from '@/hooks/useLocalCache';
-import { getRepos, getGitHubStatus, saveGitHubInstallationToken } from '@/features/github/api';
+import { getRepos, getGitHubStatus, saveGitHubInstallationToken, disconnectGitHub as apiDisconnectGitHub } from '@/features/github/api';
 import { getHostingStatus, getConnections } from '@/features/hosting/api';
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -38,6 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [loading, setLoading] = useState(true);
     const [isGitHubLinked, setIsGitHubLinked] = useState(false);
     const [githubTokenValid, setGithubTokenValid] = useState<boolean | null>(null);
+    const [isDevicePendingApproval, setIsDevicePendingApproval] = useState<boolean>(false);
     const navigate = useNavigate();
     const lastSyncedUid = React.useRef<string | null>(null);
     const isRefreshingRef = React.useRef(false);
@@ -112,14 +113,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 }
             }
 
-            await withTimeout(syncUser({
-                name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
-                avatarUrl: currentUser.user_metadata?.avatar_url || '',
-                githubAccessToken: opts?.githubAccessToken,
-                githubRefreshToken: opts?.githubRefreshToken,
-                githubTokenExpiry: opts?.githubTokenExpiry,
-                githubId: opts?.githubId,
-            }), 12000, 'syncUser');
+            try {
+                await withTimeout(syncUser({
+                    name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+                    avatarUrl: currentUser.user_metadata?.avatar_url || '',
+                    githubAccessToken: opts?.githubAccessToken,
+                    githubRefreshToken: opts?.githubRefreshToken,
+                    githubTokenExpiry: opts?.githubTokenExpiry,
+                    githubId: opts?.githubId,
+                }), 12000, 'syncUser');
+                setIsDevicePendingApproval(false);
+            } catch (syncError: any) {
+                if (syncError.response?.status === 403 && syncError.response?.data?.error === 'device_pending_approval') {
+                    console.warn('[Auth] Zero-Trust Interceptor: Device pending approval.');
+                    setIsDevicePendingApproval(true);
+                } else {
+                    throw syncError;
+                }
+            }
             lastSyncedUid.current = currentUser.id;
 
             if (opts?.githubAccessToken) {
@@ -136,6 +147,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const handlePostLoginTasks = async (session: any, mappedUser: AuthUser) => {
             if (lastSyncedUid.current === session.user.id && !session.provider_token) return;
             
+            if (!session.provider_token) {
+                lastSyncedUid.current = session.user.id;
+            }
+            
             try {
                 const syncPayload: any = {
                     name: mappedUser.displayName || 'User',
@@ -149,7 +164,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     syncPayload.githubId = session.user.user_metadata.provider_id;
                 }
 
-                await syncUser(syncPayload);
+                try {
+                    await syncUser(syncPayload);
+                    setIsDevicePendingApproval(false);
+                } catch (syncError: any) {
+                    if (syncError.response?.status === 403 && syncError.response?.data?.error === 'device_pending_approval') {
+                        console.warn('[Auth] Zero-Trust Interceptor: Device pending approval.');
+                        setIsDevicePendingApproval(true);
+                    } else {
+                        throw syncError;
+                    }
+                }
                 lastSyncedUid.current = session.user.id;
                 
                 const identities = session.user.identities || [];
@@ -305,6 +330,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
+    const disconnectGitHub = async () => {
+        try {
+            await apiDisconnectGitHub();
+            setIsGitHubLinked(false);
+            setGithubTokenValid(false);
+            clearCache();
+        } catch (err) {
+            console.error('[Auth] Failed to disconnect GitHub:', err);
+            throw err;
+        }
+    };
+
     const logout = async () => {
         await supabase.auth.signOut();
         navigate('/');
@@ -320,7 +357,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             signInWithGoogle,
             linkGitHub,
             refreshGitHubConnection,
-            logout 
+            disconnectGitHub,
+            logout,
+            isDevicePendingApproval
         }}>
             {children}
         </AuthContext.Provider>

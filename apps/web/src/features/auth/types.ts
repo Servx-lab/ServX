@@ -15,7 +15,9 @@ export interface AuthContextValue {
   signInWithGoogle: () => Promise<void>;
   linkGitHub: (shouldNavigate?: boolean) => Promise<void>;
   refreshGitHubConnection: () => Promise<void>;
+  disconnectGitHub: () => Promise<void>;
   logout: () => Promise<void>;
+  isDevicePendingApproval: boolean;
 }
 
 export interface SyncUserPayload {

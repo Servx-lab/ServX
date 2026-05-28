@@ -1,0 +1,36 @@
+# Tasks: Zero-Trust Device Approval System
+
+- `[x]` Phase 1: Database Schema & Device Tracking (Supabase)
+    - `[x]` Design `user_devices` table SQL schema
+    - `[x]` Include status ENUM: 'PENDING', 'APPROVED', 'DENIED'
+    - `[x]` Establish `device_fingerprint` unique constraints per user
+    - `[x]` Implement Row Level Security (RLS) policies for user read/write isolation
+    - `[x]` Run verification and perform self-check
+    - `[x]` Document in `implementation_log.md`
+- `[x]` Phase 2: Device Fingerprinting & Auth Middleware
+    - `[x]` Implement persistent `device_fingerprint` lookup in apiClient request interceptor
+    - `[x]` Add `x-device-uuid` header to all outgoing frontend API requests
+    - `[x]` Parse `x-device-uuid` in backend `/auth/sync` Express controller
+    - `[x]` Implement first-device auto-approval to facilitate bootstrapping
+    - `[x]` Implement 403 `device_pending_approval` return code for unrecognized devices
+    - `[x]` Publish Redis PubSub notifications on `device_approvals:${id}` channel
+- `[x]` Phase 3: Real-Time Signaling (SSE / WebSockets)
+    - `[x]` Implement `GET /api/devices/listen-requests` SSE request channel for Main Device
+    - `[x]` Implement `GET /api/devices/listen-approval/:fingerprint` SSE approval channel for New Device
+    - `[x]` Write `POST /api/devices/approve` action endpoint to handle admin actions (Approve/Deny)
+    - `[x]` Integrate Redis PubSub duplication and clean termination handling in SSE streams
+    - `[x]` Add router mapping and register devicesRouter in app.ts
+- `[x]` Phase 4: Frontend - Governance Center UI Updates
+    - `[x]` Implement `listDevices` and `revokeDevice` backend API endpoints in devices controller
+    - `[x]` Extend `requireAuth` middleware to support query parameter JWT tokens for EventSource compatibility
+    - `[x]` Write frontend API methods and hooks in `api.ts` and `hooks.ts` for device queries
+    - `[x]` Build "Zero-Trust Device Governance" dashboard panel inside Administrator page
+    - `[x]` Integrate active real-time SSE listener in frontend Admin component to intercept incoming pings
+    - `[x]` Design premium glassmorphic modal overlay for real-time approvals and custom renaming
+- `[x]` Phase 5: Frontend - The Login Interceptor
+    - `[x]` Add `isDevicePendingApproval` boolean status flag to AuthContextValue
+    - `[x]` Implement error catcher in AuthContext to intercept 403 `device_pending_approval`
+    - `[x]` Construct `DevicePendingTakeover` glassmorphic full-screen lock boundary
+    - `[x]` Connect `DevicePendingTakeover` EventSource stream to listen for specific fingerprint approvals
+    - `[x]` Hook up automatic browser reload on approval event, and logout redirect on denial
+    - `[x]` Integrate `DevicePendingTakeover` check into `RequireAuth` layout wrapper to block unapproved terminals

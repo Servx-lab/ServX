@@ -20,6 +20,8 @@ export function userGhCachePattern(uid: string) { return `gh:*:${uid}*`; }
 import { getEffectivePermissions } from '../admin/service';
 import { ForbiddenError } from '@servx/errors';
 
+const pendingRefreshes = new Map<string, Promise<string>>();
+
 async function handleGithubRequest<T>(
   uid: string,
   requestFn: (token: string) => Promise<T>
@@ -28,7 +30,19 @@ async function handleGithubRequest<T>(
   
   if (expiry && expiry.getTime() < Date.now() && refreshToken) {
     try {
-      const newToken = await refreshGithubToken(uid, refreshToken);
+      let newToken: string;
+      if (pendingRefreshes.has(uid)) {
+        console.log(`[GitHub Auth] Re-using existing pre-emptive refresh process for user ${uid}...`);
+        newToken = await pendingRefreshes.get(uid)!;
+      } else {
+        const refreshPromise = refreshGithubToken(uid, refreshToken);
+        pendingRefreshes.set(uid, refreshPromise);
+        try {
+          newToken = await refreshPromise;
+        } finally {
+          pendingRefreshes.delete(uid);
+        }
+      }
       return await requestFn(newToken);
     } catch (refreshErr) {
       console.error(`[GitHub Auth] Pre-emptive refresh failed for user ${uid}:`, refreshErr);
@@ -41,11 +55,27 @@ async function handleGithubRequest<T>(
     if (error?.response?.status === 401 && refreshToken) {
       try {
         console.log(`[GitHub Auth] 401 detected for user ${uid}, attempting refresh...`);
-        const newToken = await refreshGithubToken(uid, refreshToken);
+        let newToken: string;
+        if (pendingRefreshes.has(uid)) {
+          console.log(`[GitHub Auth] Re-using existing refresh process for user ${uid}...`);
+          newToken = await pendingRefreshes.get(uid)!;
+        } else {
+          const refreshPromise = refreshGithubToken(uid, refreshToken);
+          pendingRefreshes.set(uid, refreshPromise);
+          try {
+            newToken = await refreshPromise;
+          } finally {
+            pendingRefreshes.delete(uid);
+          }
+        }
         return await requestFn(newToken);
-      } catch (refreshErr) {
+      } catch (refreshErr: any) {
         console.error(`[GitHub Auth] Refresh attempt failed after 401 for user ${uid}:`, refreshErr);
+        throw new AuthError(`GitHub authentication failed: ${refreshErr?.message || 'Token refresh failed'}`);
       }
+    }
+    if (error?.response?.status === 401) {
+      throw new AuthError('GitHub authentication failed: Token is invalid or expired.');
     }
     throw error;
   }
@@ -63,7 +93,7 @@ export async function getRepos(req: any, res: any, next: any): Promise<void> {
   try {
     // 1. Check Permissions (Master Toggle)
     const perms = await getEffectivePermissions(uid, uid); 
-    if (!perms.global.canAccessGithub) {
+    if (!perms.global.canAccessGithub && !perms.global.isFullControl) {
       throw new ForbiddenError('GitHub access is disabled for your account');
     }
 
@@ -78,9 +108,9 @@ export async function getRepos(req: any, res: any, next: any): Promise<void> {
     // 3. Fetch Fresh
     const repos = await handleGithubRequest(uid, (token) => fetchRepos(token));
 
-    // 4. Filter by Granular Allow List
+    // 4. Filter by Granular Allow List (only if not full control admin)
     let filtered = repos;
-    if (perms.granularAllow && perms.granularAllow.repoKeys) {
+    if (perms.granularAllow && perms.granularAllow.repoKeys && !perms.global.isFullControl) {
       const allowed = new Set(perms.granularAllow.repoKeys);
       filtered = repos.filter(r => allowed.has(r.full_name));
     }

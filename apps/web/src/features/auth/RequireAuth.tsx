@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import DevicePendingTakeover from './DevicePendingTakeover';
 
 interface RequireAuthProps {
     children: JSX.Element;
@@ -8,7 +9,7 @@ interface RequireAuthProps {
 }
 
 export const RequireAuth = ({ children, requireGitHub = true }: RequireAuthProps) => {
-    const { user, loading, isGitHubLinked } = useAuth();
+    const { user, loading, isGitHubLinked, isDevicePendingApproval } = useAuth();
     const location = useLocation();
 
     // Check if Supabase is currently processing an OAuth hash token in the URL.
@@ -20,6 +21,10 @@ export const RequireAuth = ({ children, requireGitHub = true }: RequireAuthProps
 
     if (loading || isProcessingCallback) {
         return <div className="h-screen w-full flex items-center justify-center bg-orizons-void"><LoadingSpinner /></div>;
+    }
+
+    if (isDevicePendingApproval) {
+        return <DevicePendingTakeover />;
     }
 
     if (!user) {

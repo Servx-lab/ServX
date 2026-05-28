@@ -56,7 +56,7 @@ export const OnboardingModal = ({ userName, authMethod = 'github' }: OnboardingM
             <div className="p-10 text-center relative z-10">
                 
                 {/* Header Icon */}
-                <div className="mx-auto w-20 h-20 bg-orizons-void rounded-2xl border border-orizons-teal/20 flex items-center justify-center mb-6 shadow-xl relative group">
+                <div className="mx-auto w-20 h-20 bg-[#1c222e] rounded-2xl border border-orizons-teal/20 flex items-center justify-center mb-6 shadow-xl relative group">
                     <Monitor className="w-10 h-10 text-orizons-teal" />
                     <div className="absolute inset-0 border border-orizons-teal/40 rounded-2xl animate-pulse-glow" />
                 </div>
@@ -66,24 +66,24 @@ export const OnboardingModal = ({ userName, authMethod = 'github' }: OnboardingM
                     Your Workspace is Ready{userName ? `, ${userName}` : ''}!
                 </h2>
                 
-                <p className="text-orizons-text-low text-lg mb-8 max-w-lg mx-auto leading-relaxed">
-                    To get the full power of the <span className="text-orizons-teal">Auto-Medic Pipeline</span> and local server monitoring, download the ServX-Lab desktop companion.
+                <p className="text-slate-300 text-lg mb-8 max-w-lg mx-auto leading-relaxed">
+                    To get the full power of the <span className="text-orizons-teal font-semibold">Auto-Medic Pipeline</span> and local server monitoring, download the ServX-Lab desktop companion.
                 </p>
 
                 {/* Feature Highlights */}
                 <div className="grid grid-cols-2 gap-4 mb-8 text-left max-w-lg mx-auto">
-                    <div className="bg-orizons-void/50 p-4 rounded-xl border border-white/5 flex items-start gap-3">
+                    <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 flex items-start gap-3">
                         <Terminal className="w-5 h-5 text-orizons-purple mt-0.5" />
                         <div>
                             <h4 className="text-white font-medium text-sm">Direct Repo Access</h4>
-                            <p className="text-xs text-orizons-text-low mt-1">Zero-config git integration enabled.</p>
+                            <p className="text-xs text-slate-400 mt-1">Zero-config git integration enabled.</p>
                         </div>
                     </div>
-                    <div className="bg-orizons-void/50 p-4 rounded-xl border border-white/5 flex items-start gap-3">
+                    <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 flex items-start gap-3">
                         <Activity className="w-5 h-5 text-orizons-mint mt-0.5" />
                         <div>
                             <h4 className="text-white font-medium text-sm">Real-time Metrics</h4>
-                            <p className="text-xs text-orizons-text-low mt-1">Live CPU/Memory usage tracking.</p>
+                            <p className="text-xs text-slate-400 mt-1">Live CPU/Memory usage tracking.</p>
                         </div>
                     </div>
                 </div>
@@ -108,7 +108,7 @@ export const OnboardingModal = ({ userName, authMethod = 'github' }: OnboardingM
 
                     <button 
                         onClick={handleSkip}
-                        className="text-orizons-text-low hover:text-white text-sm font-medium transition-colors flex items-center justify-center gap-2 mx-auto pt-2"
+                        className="text-slate-400 hover:text-white text-sm font-medium transition-colors flex items-center justify-center gap-2 mx-auto pt-2"
                     >
                         Continue to Web Dashboard
                         <ArrowRight className="w-4 h-4" />
