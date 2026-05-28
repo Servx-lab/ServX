@@ -201,7 +201,7 @@ const AuthCard = () => {
                             <Button 
                                 type="submit" 
                                 disabled={isLoading}
-                                className="w-full bg-orizons-teal hover:bg-orizons-mint text-orizons-text-high font-semibold py-5 rounded-lg shadow-[0_0_20px_rgba(0,194,203,0.3)] border border-transparent hover:border-orizons-mint/50 transition-all group"
+                                className="w-full bg-orizons-teal hover:bg-orizons-teal/90 text-white font-semibold py-5 rounded-lg shadow-lg shadow-orizons-teal/20 transition-all group"
                             >
                                 {isLoading ? 'Processing...' : (isLogin ? 'Sign In to Console' : 'Create Free Account')}
                                 {!isLoading && <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />}
@@ -213,10 +213,10 @@ const AuthCard = () => {
                     <div className="mt-8">
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t border-orizons-border-inactive" />
+                                <span className="w-full border-t border-zinc-200" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-orizons-card px-2 text-orizons-text-low">Or continue with</span>
+                                <span className="bg-[#F8FAFC] px-2 text-zinc-500 font-bold tracking-wider">Or continue with</span>
                             </div>
                         </div>
 
@@ -225,7 +225,7 @@ const AuthCard = () => {
                                 type="button"
                                 onClick={() => handleSocialLogin('github')}
                                 variant="outline" 
-                                className="bg-orizons-input border-orizons-border-inactive hover:bg-white/5 hover:text-orizons-text-high text-orizons-text-low"
+                                className="bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 transition-all rounded-lg"
                             >
                                 <Github className="mr-2 h-4 w-4" />
                                 GitHub
@@ -234,7 +234,7 @@ const AuthCard = () => {
                                 type="button"
                                 onClick={() => handleSocialLogin('google')}
                                 variant="outline" 
-                                className="bg-orizons-input border-orizons-border-inactive hover:bg-white/5 hover:text-orizons-text-high text-orizons-text-low"
+                                className="bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 transition-all rounded-lg"
                             >
                                 <GoogleIcon />
                                 <span className="ml-2">Google</span>

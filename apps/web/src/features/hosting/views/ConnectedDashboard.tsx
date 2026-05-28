@@ -1,5 +1,4 @@
-import React from 'react';
-import { RefreshCw, Trash2, ExternalLink, Activity, Globe, Shield, Clock, Box, Zap } from 'lucide-react';
+import { RefreshCw, Trash2, ExternalLink, Activity, Globe, Shield, Clock, Box, Zap, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ProviderConfig, ProviderUser, ServiceItem, DeploymentItem } from '../types';
@@ -96,10 +95,28 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
               Disconnect
             </Button>
 
+            {config.consoleUrl && (
+              <a href={config.consoleUrl} target="_blank" rel="noopener noreferrer">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-black transition-all flex items-center gap-1.5"
+                >
+                  <ExternalLink size={14} className="text-gray-400" />
+                  <span>{config.label} Console</span>
+                </Button>
+              </a>
+            )}
+
             {config.tokenPageUrl && (
-              <a href={config.tokenPageUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-gray-400 hover:text-black">
-                  <ExternalLink size={14} />
+              <a href={config.tokenPageUrl} target="_blank" rel="noopener noreferrer" title={config.tokenPageLabel || "API Settings"}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-black transition-all flex items-center gap-1.5"
+                >
+                  <Key size={14} className="text-gray-400" />
+                  <span>API Settings</span>
                 </Button>
               </a>
             )}
@@ -140,7 +157,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
           <div className="space-y-8">
             {/* Top Row: Services (2/3) and Global Failure (1/3) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 min-w-0">
                 <ServicesTable 
                     services={services}
                     providerKey={config.key}
@@ -150,7 +167,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
                 />
               </div>
               
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 min-w-0">
                 <CriticalFailuresSection 
                     timeAgo={timeAgo}
                     getStateColor={getStateColor}
@@ -159,7 +176,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
             </div>
 
             {/* Bottom Row: Recent Deployments (Full Width) */}
-            <div className="w-full">
+            <div className="w-full min-w-0">
               <DeploymentsTable 
                   deployments={deployments}
                   timeAgo={timeAgo}

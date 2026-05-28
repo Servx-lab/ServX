@@ -30,14 +30,14 @@ const ComingSoon = () => {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
-            <div className="glass-card p-6 flex flex-col items-center text-center rounded-xl border border-white/5 bg-white/5">
+            <div className="bg-slate-50/50 p-6 flex flex-col items-center text-center rounded-xl border border-gray-200 shadow-sm">
               <Clock className="w-6 h-6 text-primary mb-3" />
-              <h3 className="font-medium mb-1">In Development</h3>
+              <h3 className="font-medium mb-1 text-zinc-900">In Development</h3>
               <p className="text-sm text-muted-foreground">This module is currently being built by our engineering team.</p>
             </div>
-            <div className="glass-card p-6 flex flex-col items-center text-center rounded-xl border border-white/5 bg-white/5">
+            <div className="bg-slate-50/50 p-6 flex flex-col items-center text-center rounded-xl border border-gray-200 shadow-sm">
               <Sparkles className="w-6 h-6 text-accent mb-3" />
-              <h3 className="font-medium mb-1">Stay Tuned</h3>
+              <h3 className="font-medium mb-1 text-zinc-900">Stay Tuned</h3>
               <p className="text-sm text-muted-foreground">Check back later for updates on this exciting new capability.</p>
             </div>
           </div>

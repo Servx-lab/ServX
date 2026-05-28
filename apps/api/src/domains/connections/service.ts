@@ -773,7 +773,11 @@ export async function getHostingCredentials(
   if (!data || error) return null;
 
   try {
-    const parsed = JSON.parse(data.encrypted_config);
+    let rawConfig = data.encrypted_config;
+    if (data.iv && data.iv !== '') {
+      rawConfig = decrypt({ iv: data.iv, content: data.encrypted_config });
+    }
+    const parsed = JSON.parse(rawConfig);
     return {
         ...parsed,
         token: parsed.token || parsed.apiKey // Normalize token field

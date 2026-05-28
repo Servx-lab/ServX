@@ -56,14 +56,14 @@ const Bridge = () => {
                 className="w-full max-w-lg relative z-10"
             >
                 {/* Bridge Card */}
-                <div className="bg-orizons-card border border-orizons-teal/20 rounded-2xl shadow-2xl overflow-hidden">
+                <div className="bg-white border border-zinc-200 rounded-2xl shadow-2xl overflow-hidden">
                     
                     {/* Header Section */}
-                    <div className="bg-gradient-to-r from-orizons-card to-orizons-input p-8 text-center border-b border-white/5">
+                    <div className="bg-gradient-to-r from-zinc-50 to-zinc-100/50 p-8 text-center border-b border-zinc-100">
                         <div className="flex items-center justify-center gap-4 mb-6 relative">
                             {/* Avatar 1: Google User */}
                             <div className="relative">
-                                <div className="w-16 h-16 rounded-full border-2 border-orizons-teal/50 overflow-hidden shadow-lg bg-orizons-void">
+                                <div className="w-16 h-16 rounded-full border-2 border-orizons-teal/50 overflow-hidden shadow-lg bg-white">
                                     <ProfilePhoto
                                         src={user?.photoURL}
                                         alt="User"
@@ -72,26 +72,26 @@ const Bridge = () => {
                                         fallbackClassName="bg-orizons-teal text-white text-xl font-bold"
                                     />
                                 </div>
-                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 border-2 border-orizons-void">
+                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 border-2 border-zinc-200 shadow-sm">
                                     <CheckCircle2 className="w-4 h-4 text-green-500 fill-green-500" />
                                 </div>
                             </div>
 
                             {/* Link Icon */}
-                            <div className="w-10 h-10 rounded-full bg-orizons-void border border-orizons-teal/20 flex items-center justify-center -mx-2 z-10 shadow-xl">
-                                <Link2 className="w-5 h-5 text-orizons-text-low" />
+                            <div className="w-10 h-10 rounded-full bg-white border border-zinc-200 flex items-center justify-center -mx-2 z-10 shadow-md">
+                                <Link2 className="w-5 h-5 text-zinc-400" />
                             </div>
 
                             {/* Avatar 2: GitHub Placeholder */}
                             <div className="relative">
-                                <div className="w-16 h-16 rounded-full border-2 border-dashed border-orizons-text-low/30 flex items-center justify-center bg-orizons-card/50">
-                                    <Github className="w-8 h-8 text-orizons-text-low/50" />
+                                <div className="w-16 h-16 rounded-full border-2 border-dashed border-zinc-300 flex items-center justify-center bg-zinc-50">
+                                    <Github className="w-8 h-8 text-zinc-400" />
                                 </div>
                             </div>
                         </div>
 
-                        <h2 className="text-2xl font-bold text-white mb-2">Connect GitHub</h2>
-                        <p className="text-orizons-text-low max-w-sm mx-auto">
+                        <h2 className="text-2xl font-bold text-zinc-900 mb-2">Connect GitHub</h2>
+                        <p className="text-zinc-600 max-w-sm mx-auto text-sm leading-relaxed">
                             To create deployments and manage repositories, ServX requires a GitHub connection.
                         </p>
                     </div>
@@ -99,12 +99,12 @@ const Bridge = () => {
                     {/* Action Section */}
                     <div className="p-8 space-y-6">
                         
-                        <div className="bg-orizons-card/50 rounded-xl p-4 border border-orizons-teal/10">
+                        <div className="bg-zinc-50 rounded-xl p-4 border border-zinc-200/80">
                             <ul className="space-y-3">
-                                <li className="flex items-start gap-3 text-sm text-orizons-text-low">
-                                    <Shield className="w-5 h-5 text-orizons-teal shrink-0" />
+                                <li className="flex items-start gap-3 text-sm text-zinc-600">
+                                    <Shield className="w-5 h-5 text-orizons-teal shrink-0 mt-0.5" />
                                     <span>
-                                        This will link your Google account <span className="text-white font-medium">{user?.email}</span> with your GitHub profile.
+                                        This will link your Google account <span className="text-zinc-900 font-semibold">{user?.email}</span> with your GitHub profile.
                                     </span>
                                 </li>
                             </ul>
@@ -113,7 +113,7 @@ const Bridge = () => {
                         <Button 
                             onClick={handleLinkGitHub}
                             disabled={isLoading}
-                            className="w-full h-12 bg-orizons-teal hover:bg-orizons-mint text-white font-semibold rounded-xl text-md shadow-lg shadow-orizons-teal/20 transition-all hover:scale-[1.01]"
+                            className="w-full h-12 bg-orizons-teal hover:bg-orizons-teal/90 text-white font-semibold rounded-xl text-md shadow-lg shadow-orizons-teal/20 transition-all hover:scale-[1.01]"
                         >
                             <Github className="w-5 h-5 mr-2" />
                             {isLoading ? 'Connecting...' : 'Link GitHub Account'}
@@ -122,7 +122,7 @@ const Bridge = () => {
                         <div className="text-center">
                             <button 
                                 onClick={handleLogout}
-                                className="text-xs text-orizons-text-low hover:text-white transition-colors flex items-center justify-center gap-1 mx-auto"
+                                className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline transition-colors flex items-center justify-center gap-1 mx-auto"
                             >
                                 <LogOut className="w-3 h-3" />
                                 Sign out and try a different account
