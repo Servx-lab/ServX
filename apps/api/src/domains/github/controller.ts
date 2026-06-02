@@ -28,9 +28,11 @@ async function handleGithubRequest<T>(
 ): Promise<T> {
   const { accessToken, refreshToken, expiry } = await getGithubToken(uid);
   
+  let currentToken = accessToken;
+
   if (expiry && expiry.getTime() < Date.now() && refreshToken) {
+    let newToken: string | undefined;
     try {
-      let newToken: string;
       if (pendingRefreshes.has(uid)) {
         console.log(`[GitHub Auth] Re-using existing pre-emptive refresh process for user ${uid}...`);
         newToken = await pendingRefreshes.get(uid)!;
@@ -43,16 +45,19 @@ async function handleGithubRequest<T>(
           pendingRefreshes.delete(uid);
         }
       }
-      return await requestFn(newToken);
     } catch (refreshErr) {
       console.error(`[GitHub Auth] Pre-emptive refresh failed for user ${uid}:`, refreshErr);
+    }
+
+    if (newToken) {
+      currentToken = newToken;
     }
   }
 
   try {
-    return await requestFn(accessToken);
+    return await requestFn(currentToken);
   } catch (error: any) {
-    if (error?.response?.status === 401 && refreshToken) {
+    if ((error?.response?.status === 401 || error?.status === 401) && refreshToken) {
       try {
         console.log(`[GitHub Auth] 401 detected for user ${uid}, attempting refresh...`);
         let newToken: string;
@@ -74,7 +79,7 @@ async function handleGithubRequest<T>(
         throw new AuthError(`GitHub authentication failed: ${refreshErr?.message || 'Token refresh failed'}`);
       }
     }
-    if (error?.response?.status === 401) {
+    if (error?.response?.status === 401 || error?.status === 401) {
       throw new AuthError('GitHub authentication failed: Token is invalid or expired.');
     }
     throw error;

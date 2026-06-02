@@ -7,7 +7,7 @@ import type { RepoDetails, RepoSummary } from '@servx/types';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 
 import { cacheDelPattern } from '../../core/services/redisCache';
-import { encrypt, decrypt } from '@servx/crypto';
+import { encrypt, encryptWithIv, decrypt } from '@servx/crypto';
 
 export async function getGithubToken(uid: string): Promise<{ accessToken: string; refreshToken?: string; expiry?: Date }> {
   const { data: vaultData, error } = await supabaseAdmin
@@ -96,7 +96,7 @@ export async function refreshGithubToken(uid: string, refreshToken: string): Pro
       token_expiry: expiryDate,
     };
     if (refresh_token) {
-      updatePayload.encrypted_refresh_token = encrypt(refresh_token).content;
+      updatePayload.encrypted_refresh_token = encryptWithIv(refresh_token, iv).content;
     }
 
     const { error: vaultError } = await supabaseAdmin
@@ -150,14 +150,7 @@ export async function fetchRepoDetails(token: string, owner: string, repo: strin
   const repoFullName = `${owner}/${repo}`;
   const headers = { Authorization: `Bearer ${token}` };
 
-  const [
-    currentUserResult, 
-    repoResult,
-    commitsResult,
-    contributorsResult,
-    languagesResult,
-    deploymentsResult
-  ] = await Promise.allSettled([
+  const results = await Promise.allSettled([
     axios.get('https://api.github.com/user', { headers }),
     axios.get(`https://api.github.com/repos/${repoFullName}`, { headers }),
     axios.get(`https://api.github.com/repos/${repoFullName}/commits?per_page=30`, { headers }),
@@ -165,6 +158,25 @@ export async function fetchRepoDetails(token: string, owner: string, repo: strin
     axios.get(`https://api.github.com/repos/${repoFullName}/languages`, { headers }),
     axios.get(`https://api.github.com/repos/${repoFullName}/deployments?per_page=5`, { headers }),
   ]);
+
+  // Check for 401 errors so they trigger token refresh
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      const err = result.reason;
+      if (err?.response?.status === 401 || err?.status === 401) {
+        throw err;
+      }
+    }
+  }
+
+  const [
+    currentUserResult,
+    repoResult,
+    commitsResult,
+    contributorsResult,
+    languagesResult,
+    deploymentsResult
+  ] = results;
 
   const currentUserResponse = currentUserResult.status === 'fulfilled' ? currentUserResult.value : null;
   const repoResponse = repoResult.status === 'fulfilled' ? repoResult.value : null;
