@@ -42,6 +42,9 @@ export function encrypt(text: string): EncryptedPayload {
 }
 
 export function encryptWithIv(text: string, ivHex: string): EncryptedPayload {
+	if (ivHex.length !== IV_LENGTH * 2 || !/^[0-9a-fA-F]+$/.test(ivHex)) {
+		throw new Error(`Invalid IV: expected ${IV_LENGTH * 2} hex characters`);
+	}
 	const iv = Buffer.from(ivHex, 'hex');
 	const cipher = crypto.createCipheriv(ALGORITHM, resolveEncryptionKey(), iv);
 

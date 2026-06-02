@@ -28,6 +28,8 @@ async function handleGithubRequest<T>(
 ): Promise<T> {
   const { accessToken, refreshToken, expiry } = await getGithubToken(uid);
   
+  let currentToken = accessToken;
+
   if (expiry && expiry.getTime() < Date.now() && refreshToken) {
     let newToken: string | undefined;
     try {
@@ -48,12 +50,12 @@ async function handleGithubRequest<T>(
     }
 
     if (newToken) {
-      return await requestFn(newToken);
+      currentToken = newToken;
     }
   }
 
   try {
-    return await requestFn(accessToken);
+    return await requestFn(currentToken);
   } catch (error: any) {
     if ((error?.response?.status === 401 || error?.status === 401) && refreshToken) {
       try {
