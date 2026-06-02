@@ -30,7 +30,7 @@ interface Vulnerability {
   file?: string;
 }
 
-type AttackType = "ddos" | "injection" | null;
+type AttackType = "dast" | "sast" | "secret" | "iac" | "sbom" | "cspm" | null;
 type ScanPhase = "idle" | "scanning" | "attacking" | "reporting";
 
 // ─── Device UUID (persistent per browser) ───────────────────────
@@ -489,60 +489,110 @@ const DefenseRadar = ({ selectedRepo, scanPhase }: { selectedRepo: RepoSummary |
 
 // ─── Simulated Vulnerability Generator ──────────────────────────
 
-function generateVulnerabilities(repo: RepoSummary): Vulnerability[] {
-  const name = repo.name.toLowerCase();
-  const vulns: Vulnerability[] = [
-    {
-      id: `${repo.id}-crit-1`,
-      severity: "critical",
-      title: "Hardcoded Firebase Key found in config.js",
-      detail: `Plaintext API credentials detected in the ${repo.name} repository. This allows unauthenticated access to the Firebase project and all associated user data.`,
-      file: "src/config.js:14",
-    },
-    {
-      id: `${repo.id}-crit-2`,
-      severity: "critical",
-      title: "Exposed .env file in public directory",
-      detail: "Environment variables containing database credentials are served as a static asset. Immediate remediation required.",
-      file: "public/.env",
-    },
-    {
-      id: `${repo.id}-med-1`,
-      severity: "medium",
-      title: "Outdated dependency: axios v0.21.1",
-      detail: "Known SSRF vulnerability (CVE-2023-45857) in axios versions below 1.6.0. Upgrade to latest stable release.",
-      file: "package.json",
-    },
-    {
-      id: `${repo.id}-med-2`,
-      severity: "medium",
-      title: "Missing Content-Security-Policy header",
-      detail: "The application does not set CSP headers, leaving it vulnerable to XSS attacks via injected scripts.",
-    },
-    {
-      id: `${repo.id}-med-3`,
-      severity: "medium",
-      title: "Insecure CORS configuration",
-      detail: `Access-Control-Allow-Origin is set to '*' allowing any origin to make authenticated requests.`,
-      file: "server/server.js:28",
-    },
-  ];
+function generateVulnerabilities(repo: RepoSummary, type: AttackType): Vulnerability[] {
+  const vulns: Vulnerability[] = [];
 
-  if (name.includes("quiz") || name.includes("game")) {
-    vulns.push({
-      id: `${repo.id}-low-1`,
-      severity: "low",
-      title: "Rate limiting not configured on API routes",
-      detail: "Public API endpoints lack rate limiting, making brute-force enumeration feasible.",
-      file: "server/routes/api.js",
-    });
-  } else {
-    vulns.push({
-      id: `${repo.id}-low-1`,
-      severity: "low",
-      title: "Debug logging enabled in production build",
-      detail: "Console.log statements found in 14 files. Sensitive data may be leaked to browser devtools.",
-    });
+  if (type === "dast") {
+    vulns.push(
+      {
+        id: `${repo.id}-dast-1`,
+        severity: "critical",
+        title: "Reflected Cross-Site Scripting (XSS)",
+        detail: "User input is rendered on the page without proper sanitization, allowing arbitrary JavaScript execution.",
+        file: "/search endpoint",
+      },
+      {
+        id: `${repo.id}-dast-2`,
+        severity: "medium",
+        title: "Missing Content-Security-Policy header",
+        detail: "The application does not set CSP headers, leaving it vulnerable to XSS attacks via injected scripts.",
+      }
+    );
+  } else if (type === "sast") {
+    vulns.push(
+      {
+        id: `${repo.id}-sast-1`,
+        severity: "critical",
+        title: "SQL Injection Vulnerability",
+        detail: "Unsanitized user input is concatenated directly into a database query.",
+        file: "src/db/queries.ts",
+      },
+      {
+        id: `${repo.id}-sast-2`,
+        severity: "medium",
+        title: "Insecure Direct Object Reference (IDOR)",
+        detail: "API endpoint does not verify user authorization before accessing resource.",
+        file: "src/routes/users.ts",
+      }
+    );
+  } else if (type === "secret") {
+    vulns.push(
+      {
+        id: `${repo.id}-secret-1`,
+        severity: "critical",
+        title: "Hardcoded Firebase Key found",
+        detail: `Plaintext API credentials detected in the ${repo.name} repository. This allows unauthenticated access.`,
+        file: "src/config.js:14",
+      },
+      {
+        id: `${repo.id}-secret-2`,
+        severity: "critical",
+        title: "Exposed Stripe Secret Key",
+        detail: "Payment gateway credentials exposed in git history.",
+        file: ".env.example",
+      }
+    );
+  } else if (type === "iac") {
+    vulns.push(
+      {
+        id: `${repo.id}-iac-1`,
+        severity: "critical",
+        title: "Docker container running as root",
+        detail: "Dockerfile specifies USER root, violating least privilege principles.",
+        file: "Dockerfile",
+      },
+      {
+        id: `${repo.id}-iac-2`,
+        severity: "medium",
+        title: "Publicly accessible S3 bucket configuration",
+        detail: "Terraform/Pulumi code configures S3 bucket with public read access.",
+        file: "infra/storage.ts",
+      }
+    );
+  } else if (type === "sbom") {
+    vulns.push(
+      {
+        id: `${repo.id}-sbom-1`,
+        severity: "medium",
+        title: "Outdated dependency: axios v0.21.1",
+        detail: "Known SSRF vulnerability (CVE-2023-45857) in axios versions below 1.6.0.",
+        file: "package.json",
+      },
+      {
+        id: `${repo.id}-sbom-2`,
+        severity: "low",
+        title: "Lodash prototype pollution",
+        detail: "Vulnerable lodash version detected (CVE-2020-8203).",
+        file: "package-lock.json",
+      }
+    );
+  } else if (type === "cspm") {
+    vulns.push(
+      {
+        id: `${repo.id}-cspm-1`,
+        severity: "critical",
+        title: "Database instance publicly accessible",
+        detail: "Cloud RDS instance has a public IP and allows connections from 0.0.0.0/0.",
+        file: "Cloud Provider",
+      },
+      {
+        id: `${repo.id}-cspm-2`,
+        severity: "medium",
+        title: "IAM User with excessive permissions",
+        detail: "Service account has AdministratorAccess policy attached instead of scoped permissions.",
+        file: "Cloud IAM",
+      }
+    );
   }
 
   return vulns;
@@ -614,13 +664,25 @@ const AttackPath = () => {
 
       // Phase 2: Attacking (3s)
       setTimeout(() => {
-        logs.push(`[ATTACK] ${type === "ddos" ? "DDoS flood packets" : "SQL injection payloads"} deployed`);
+        if (type === "dast") {
+          logs.push("[ATTACK] Nuclei DAST payloads deployed");
+        } else if (type === "sast") {
+          logs.push("[ATTACK] Semgrep SAST analysis initiated");
+        } else if (type === "secret") {
+          logs.push("[ATTACK] Gitleaks secret entropy scan started");
+        } else if (type === "iac") {
+          logs.push("[ATTACK] Trivy IaC configuration audit running");
+        } else if (type === "sbom") {
+          logs.push("[ATTACK] Syft SBOM generation process started");
+        } else if (type === "cspm") {
+          logs.push("[ATTACK] CloudSploit cloud posture evaluation running");
+        }
         logs.push("[ATTACK] Monitoring response degradation...");
         setScanLog([...logs]);
 
         // Phase 3: Reporting (2s)
         setTimeout(() => {
-          const vulns = generateVulnerabilities(selectedRepo);
+          const vulns = generateVulnerabilities(selectedRepo, type);
           logs.push(`[REPORT] Scan complete. ${vulns.length} vulnerabilities detected.`);
           setScanLog([...logs]);
 
@@ -804,18 +866,42 @@ const AttackPath = () => {
               animate={{ y: 0, opacity: 1 }}
               className="col-span-1 bg-white/80 backdrop-blur-xl border border-gray-200 p-6 rounded-2xl shadow-sm pointer-events-auto"
             >
-              <h3 className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mb-4">Chaos Simulation</h3>
-              <div className="space-y-4">
+              <h3 className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mb-4">Security Scanners</h3>
+              <div className="space-y-4 max-h-48 overflow-y-auto pr-2">
                 <ChaosToggle
-                  label="Simulate DDoS"
-                  active={activeAttackType === "ddos" && scanPhase !== "idle"}
-                  onClick={() => handleChaosToggle("ddos")}
+                  label="DAST (Live Endpoints)"
+                  active={activeAttackType === "dast" && scanPhase !== "idle"}
+                  onClick={() => handleChaosToggle("dast")}
                   disabled={scanPhase !== "idle"}
                 />
                 <ChaosToggle
-                  label="Inject Payload"
-                  active={activeAttackType === "injection" && scanPhase !== "idle"}
-                  onClick={() => handleChaosToggle("injection")}
+                  label="SAST (Source Code)"
+                  active={activeAttackType === "sast" && scanPhase !== "idle"}
+                  onClick={() => handleChaosToggle("sast")}
+                  disabled={scanPhase !== "idle"}
+                />
+                <ChaosToggle
+                  label="Secret & Credential"
+                  active={activeAttackType === "secret" && scanPhase !== "idle"}
+                  onClick={() => handleChaosToggle("secret")}
+                  disabled={scanPhase !== "idle"}
+                />
+                <ChaosToggle
+                  label="IaC & Config"
+                  active={activeAttackType === "iac" && scanPhase !== "idle"}
+                  onClick={() => handleChaosToggle("iac")}
+                  disabled={scanPhase !== "idle"}
+                />
+                <ChaosToggle
+                  label="SBOM Generation"
+                  active={activeAttackType === "sbom" && scanPhase !== "idle"}
+                  onClick={() => handleChaosToggle("sbom")}
+                  disabled={scanPhase !== "idle"}
+                />
+                <ChaosToggle
+                  label="CSPM (Cloud Posture)"
+                  active={activeAttackType === "cspm" && scanPhase !== "idle"}
+                  onClick={() => handleChaosToggle("cspm")}
                   disabled={scanPhase !== "idle"}
                 />
                 {scanPhase !== "idle" && (
