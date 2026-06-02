@@ -41,6 +41,18 @@ export function encrypt(text: string): EncryptedPayload {
 	};
 }
 
+export function encryptWithIv(text: string, ivHex: string): EncryptedPayload {
+	const iv = Buffer.from(ivHex, 'hex');
+	const cipher = crypto.createCipheriv(ALGORITHM, resolveEncryptionKey(), iv);
+
+	const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+
+	return {
+		iv: ivHex,
+		content: encrypted.toString('hex'),
+	};
+}
+
 export function decrypt(payload: EncryptedPayload): string {
 	const iv = Buffer.from(payload.iv, 'hex');
 	const encryptedText = Buffer.from(payload.content, 'hex');
