@@ -9,11 +9,13 @@ import {
   getRepositoryVulnerabilities,
   saveInstallationToken 
 } from './controller';
+import { scanStream } from './scanStream';
 
 const router = Router();
 
 // Scanning
 router.post('/scan-target', requireAuth, scanTarget);
+router.post('/scan', requireAuth, scanStream);
 
 // GitHub Security
 router.post('/installation-token', requireAuth, saveInstallationToken);
