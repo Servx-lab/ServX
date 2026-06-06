@@ -1,7 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { Finding, ScanEmitFn } from './types';
 
-function scanDockerfile(path: string, content: string): Finding[] {
+export function scanDockerfile(path: string, content: string): Finding[] {
   const fileFindings: Finding[] = [];
 
   // 1. Check for USER instruction (defaults to root if missing or explicitly set to root)
@@ -74,7 +74,7 @@ function scanDockerfile(path: string, content: string): Finding[] {
   return fileFindings;
 }
 
-function scanDockerCompose(path: string, content: string): Finding[] {
+export function scanDockerCompose(path: string, content: string): Finding[] {
   const fileFindings: Finding[] = [];
   const lines = content.split('\n');
 
@@ -131,7 +131,7 @@ function scanDockerCompose(path: string, content: string): Finding[] {
   return fileFindings;
 }
 
-function scanWorkflow(path: string, content: string): Finding[] {
+export function scanWorkflow(path: string, content: string): Finding[] {
   const fileFindings: Finding[] = [];
   const lines = content.split('\n');
 
@@ -182,7 +182,7 @@ function scanWorkflow(path: string, content: string): Finding[] {
   return fileFindings;
 }
 
-function scanVercel(path: string, content: string): Finding[] {
+export function scanVercel(path: string, content: string): Finding[] {
   const fileFindings: Finding[] = [];
   try {
     const config = JSON.parse(content);
@@ -213,7 +213,7 @@ function scanVercel(path: string, content: string): Finding[] {
   return fileFindings;
 }
 
-function scanRender(path: string, content: string): Finding[] {
+export function scanRender(path: string, content: string): Finding[] {
   const fileFindings: Finding[] = [];
   const lines = content.split('\n');
 

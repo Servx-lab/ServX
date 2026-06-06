@@ -9,13 +9,13 @@ interface PackageQuery {
   ecosystem: string;
 }
 
-function cleanSemver(verStr: string): string {
+export function cleanSemver(verStr: string): string {
   if (!verStr) return '0.0.0';
   const match = verStr.match(/\d+\.\d+(?:\.\d+)?/);
   return match ? match[0] : verStr.replace(/[\^~>=<]/g, '').trim();
 }
 
-function parsePackageLock(lockContent: string): PackageQuery[] {
+export function parsePackageLock(lockContent: string): PackageQuery[] {
   const queries: PackageQuery[] = [];
   try {
     const lock = JSON.parse(lockContent);
@@ -53,7 +53,7 @@ function parsePackageLock(lockContent: string): PackageQuery[] {
   return queries;
 }
 
-function parsePackageJson(content: string): PackageQuery[] {
+export function parsePackageJson(content: string): PackageQuery[] {
   const queries: PackageQuery[] = [];
   try {
     const pkg = JSON.parse(content);
@@ -75,7 +75,7 @@ function parsePackageJson(content: string): PackageQuery[] {
   return queries;
 }
 
-function severityFromCvss(score: number): 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' {
+export function severityFromCvss(score: number): 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' {
   if (score >= 9.0) return 'CRITICAL';
   if (score >= 7.0) return 'HIGH';
   if (score >= 4.0) return 'MODERATE';

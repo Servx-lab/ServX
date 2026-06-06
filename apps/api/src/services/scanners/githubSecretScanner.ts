@@ -1,7 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { Finding, ScanEmitFn } from './types';
 
-const SECRET_PATTERNS: { name: string; pattern: RegExp }[] = [
+export const SECRET_PATTERNS: { name: string; pattern: RegExp }[] = [
   { name: 'Google API Key', pattern: /AIza[0-9A-Za-z-_]{35}/g },
   { name: 'Stripe Secret Key', pattern: /sk_live_[0-9a-zA-Z]{24}/g },
   { name: 'AWS Access Key ID', pattern: /AKIA[0-9A-Z]{16}/g },
@@ -21,7 +21,7 @@ const TEXT_EXTENSIONS = [
   '.py', '.sh', '.bash', '.md', '.txt'
 ];
 
-function isLikelyTextFile(path: string): boolean {
+export function isLikelyTextFile(path: string): boolean {
   const p = path.toLowerCase();
   if (
     p.includes('node_modules/') ||
@@ -39,7 +39,7 @@ function isLikelyTextFile(path: string): boolean {
   return TEXT_EXTENSIONS.some(ext => p.endsWith(ext)) || p.includes('.env');
 }
 
-function getPriorityScore(path: string): number {
+export function getPriorityScore(path: string): number {
   const p = path.toLowerCase();
   if (p.includes('.env')) return 100;
   if (p.includes('config') || p.includes('settings') || p.includes('credentials')) return 50;
