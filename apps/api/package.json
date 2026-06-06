@@ -6,7 +6,8 @@
   "scripts": {
     "start": "tsx server.js",
     "dev": "tsx --watch server.js",
-    "sync-users": "tsx scripts/syncUsersToSheets.js"
+    "sync-users": "tsx scripts/syncUsersToSheets.js",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@octokit/graphql": "^9.0.3",
