@@ -25,6 +25,7 @@ import ServXLogo from "@/components/ServXLogo";
 import { useAuth } from './hooks';
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from '@/lib/supabase';
+import { LandingCanvas } from './components/LandingCanvas';
 
 const GoogleIcon = () => (
     <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true">
@@ -218,6 +219,7 @@ const StaticAuth = () => {
 
 const Hero = () => (
     <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-24 px-6 bg-white overflow-hidden">
+        <LandingCanvas />
         <div className="container mx-auto">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
                 {/* Left Column: The Gate */}
