@@ -62,7 +62,7 @@ export const DatabaseScene: React.FC<{ isActive: boolean }> = ({ isActive }) => 
             <cylinderGeometry args={[0.4, 0.4, 0.6, 16]} />
             <meshStandardMaterial color="#3B82F6" roughness={0.3} metalness={0.7} />
           </mesh>
-          <Html position={[0, -0.6, 0]} center transform sprite scale={0.5}>
+          <Html position={[0, -0.6, 0]} center transform sprite distanceFactor={10} scale={0.5}>
             <div className="bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full border border-blue-900 text-blue-300 text-xs font-bold shadow-lg">
               {['PostgreSQL', 'MongoDB', 'Redis'][i]}
             </div>
@@ -83,7 +83,7 @@ export const DatabaseScene: React.FC<{ isActive: boolean }> = ({ isActive }) => 
       ))}
 
       {/* UI Control Panel */}
-      <Html position={[0, -1.5, 1]} center transform sprite>
+      <Html position={[0, -1.5, 1]} center transform sprite distanceFactor={10}>
         <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-700 p-4 rounded-xl shadow-2xl flex flex-col gap-3 min-w-[200px] text-white select-none pointer-events-none">
           <div className="flex items-center justify-between border-b border-slate-700 pb-2">
             <span className="font-bold text-sm flex items-center gap-2">

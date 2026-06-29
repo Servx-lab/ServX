@@ -58,7 +58,7 @@ export const AutoMedicScene: React.FC<{ isActive: boolean }> = ({ isActive }) =>
         </mesh>
 
         {/* Floating UI Panel for the Server */}
-        <Html position={[1.2, 0, 0]} center transform sprite>
+        <Html position={[1.2, 0, 0]} center transform sprite distanceFactor={10}>
           <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700 p-4 rounded-xl shadow-2xl flex flex-col gap-3 min-w-[200px] text-white">
             <div className="flex items-center justify-between border-b border-slate-700 pb-2">
               <span className="font-bold flex items-center gap-2">

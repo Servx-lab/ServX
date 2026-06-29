@@ -73,7 +73,7 @@ export const ZeroTrustScene: React.FC<{ isActive: boolean }> = ({ isActive }) =>
         <Box args={[1.5, 1.5, 1.5]}>
           <meshStandardMaterial color="#1E293B" roughness={0.1} metalness={0.8} />
         </Box>
-        <Html position={[0, 1.2, 0]} center transform sprite scale={0.7}>
+        <Html position={[0, 1.2, 0]} center transform sprite distanceFactor={10} scale={0.7}>
           <div className="bg-slate-900 px-3 py-1 rounded-full border border-slate-700 text-slate-300 text-xs font-bold flex items-center gap-2">
             <Lock size={12} /> SECURE CORE
           </div>
@@ -99,7 +99,7 @@ export const ZeroTrustScene: React.FC<{ isActive: boolean }> = ({ isActive }) =>
       </mesh>
 
       {/* Admin Approval Device (Simulating a mobile device or admin console) */}
-      <Html position={[-2.5, -1, 1]} center transform sprite>
+      <Html position={[-2.5, -1, 1]} center transform sprite distanceFactor={10}>
         <div className="bg-slate-900/90 backdrop-blur-xl border border-blue-900/50 p-4 rounded-xl shadow-[0_0_30px_rgba(59,130,246,0.2)] flex flex-col gap-3 min-w-[220px] text-white pointer-events-none select-none">
           <div className="flex items-center justify-between border-b border-slate-700 pb-2">
             <span className="font-bold text-sm flex items-center gap-2">

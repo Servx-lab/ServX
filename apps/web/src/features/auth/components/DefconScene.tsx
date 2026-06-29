@@ -99,7 +99,7 @@ export const DefconScene: React.FC<{ isActive: boolean }> = ({ isActive }) => {
         </Sphere>
 
         {/* DEFCON UI Panel */}
-        <Html position={[-2, 1, 0]} center transform sprite>
+        <Html position={[-2, 1, 0]} center transform sprite distanceFactor={10}>
           <div className="bg-slate-900/90 backdrop-blur-xl border border-red-900/50 p-4 rounded-xl shadow-[0_0_30px_rgba(239,68,68,0.2)] flex flex-col gap-4 min-w-[240px] text-white select-none pointer-events-none">
             <div className="flex items-center justify-between border-b border-slate-700 pb-2">
               <span className="font-bold tracking-widest text-sm flex items-center gap-2">

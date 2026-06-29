@@ -218,13 +218,13 @@ const StaticAuth = () => {
 };
 
 const Hero = () => (
-    <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-24 px-6 bg-white overflow-hidden">
+    <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-24 px-6 bg-slate-950 overflow-hidden">
         <LandingCanvas />
         <div className="container mx-auto">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
                 {/* Left Column: The Gate */}
                 <div className="relative z-10 w-full flex justify-center lg:justify-start">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-100 rounded-full blur-[100px] -z-10" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-900 rounded-full blur-[100px] -z-10" />
                     <StaticAuth />
                 </div>
 
@@ -235,12 +235,12 @@ const Hero = () => (
                         <span className="text-xs font-bold tracking-wide uppercase">100% Open Source Command Center</span>
                     </div>
                     
-                    <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight text-gray-900 leading-[1.1] mb-6">
+                    <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] mb-6">
                         Your Infrastructure,<br />
-                        <span className="text-blue-600">Mastered.</span>
+                        <span className="text-blue-500">Mastered.</span>
                     </h1>
                     
-                    <p className="text-lg text-gray-600 mb-10 max-w-xl leading-relaxed">
+                    <p className="text-lg text-slate-300 mb-10 max-w-xl leading-relaxed">
                         A God-Mode DevOps, CI/CD, and Security dashboard. Total visibility. Complete control. Zero compromises.
                     </p>
                 </div>
