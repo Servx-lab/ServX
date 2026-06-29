@@ -6,6 +6,7 @@ import { Cursor3D } from './Cursor3D';
 import { AutoMedicScene } from './AutoMedicScene';
 import { DefconScene } from './DefconScene';
 import { DatabaseScene } from './DatabaseScene';
+import { ZeroTrustScene } from './ZeroTrustScene';
 
 export const LandingCanvas: React.FC = () => {
   const [cursorTarget, setCursorTarget] = useState<THREE.Vector3>(new THREE.Vector3(0, 0, 0));
@@ -19,6 +20,7 @@ export const LandingCanvas: React.FC = () => {
       { name: 'AutoMedic', duration: 7000 },
       { name: 'Defcon', duration: 7000 },
       { name: 'Database', duration: 7000 },
+      { name: 'ZeroTrust', duration: 7000 },
     ];
 
     let timer: any;
@@ -50,17 +52,27 @@ export const LandingCanvas: React.FC = () => {
 
       if (feature.name === 'Database') {
         setCursorTarget(new THREE.Vector3(-2, 1, 2));
-        // Move towards the Wire button
         setTimeout(() => setCursorTarget(new THREE.Vector3(0, -1.8, 1.2)), 1000);
-        
-        // Click the button
         setTimeout(() => {
           setIsClicking(true);
           setTimeout(() => setIsClicking(false), 200);
         }, 2500);
-
-        // Move away to see the data streams
         setTimeout(() => setCursorTarget(new THREE.Vector3(1.5, 1, 2)), 3500);
+      }
+
+      if (feature.name === 'ZeroTrust') {
+        setCursorTarget(new THREE.Vector3(1, 2, 1));
+        // Move towards the Approve button on the admin console
+        setTimeout(() => setCursorTarget(new THREE.Vector3(-1.6, -1.2, 1.2)), 1500);
+        
+        // Click the Approve button (matching the 3.5s timer in ZeroTrustScene)
+        setTimeout(() => {
+          setIsClicking(true);
+          setTimeout(() => setIsClicking(false), 200);
+        }, 3500);
+
+        // Move away to see the packet enter the core
+        setTimeout(() => setCursorTarget(new THREE.Vector3(-3, 1, 1.5)), 4500);
       }
 
       // Next feature
@@ -90,6 +102,7 @@ export const LandingCanvas: React.FC = () => {
         <AutoMedicScene isActive={currentFeatureIndex === 0} />
         <DefconScene isActive={currentFeatureIndex === 1} />
         <DatabaseScene isActive={currentFeatureIndex === 2} />
+        <ZeroTrustScene isActive={currentFeatureIndex === 3} />
 
         {/* Animated Cursor */}
         <Cursor3D targetPosition={cursorTarget} isClicking={isClicking} />
