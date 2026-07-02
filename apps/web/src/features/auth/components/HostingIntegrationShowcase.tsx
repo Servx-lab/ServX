@@ -330,7 +330,7 @@ export const HostingIntegrationShowcase = () => {
     (flowState === 'step_2' || flowState === 'typing_key' || flowState === 'clicking_connect') ? 2 : 3;
 
   return (
-    <div ref={containerRef} className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full h-[750px] relative overflow-hidden">
+    <div ref={containerRef} className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full h-[600px] relative overflow-hidden">
       
       <motion.div
         animate={cursorControls}
@@ -342,7 +342,7 @@ export const HostingIntegrationShowcase = () => {
       </motion.div>
 
       {/* Left Column: UI Panel (Takes up 2 columns) */}
-      <div className="col-span-1 lg:col-span-2 flex h-full relative rounded-2xl overflow-hidden shadow-2xl border border-gray-200 bg-white">
+      <div className="col-span-1 lg:col-span-2 flex h-full relative rounded-2xl overflow-hidden border border-gray-200 bg-white">
         
         <AnimatePresence mode="wait">
           {viewState === 'render' && (
@@ -837,7 +837,7 @@ export const HostingIntegrationShowcase = () => {
 
         {/* Right Column: 3D R3F Canvas */}
         <div className="col-span-1 flex items-center justify-center h-full">
-          <div className="w-full h-[500px] bg-black relative rounded-2xl overflow-hidden shadow-2xl">
+          <div className="w-full h-[480px] bg-black relative rounded-2xl overflow-hidden">
             <SplineScene flowState={flowState} />
           </div>
         </div>

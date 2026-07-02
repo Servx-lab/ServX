@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, Terminal, Shield, Code, MousePointer2, Database, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { NodeState } from './AutoMedicScene';
+import { NodeState } from './AutoMedicShowcaseScene';
 import { motion, useAnimationControls } from 'framer-motion';
 
 const ERRORS = [
