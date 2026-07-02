@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { AutoMedicScene, NodeState } from './AutoMedicScene';
+import { AutoMedicShowcaseScene, NodeState } from './AutoMedicShowcaseScene';
 import { AutoMedicPipelineUI } from './AutoMedicPipelineUI';
 import { useInView } from 'framer-motion';
 
@@ -49,7 +49,7 @@ export const AutoMedicShowcase = () => {
     <div ref={containerRef} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch min-h-[500px] w-full">
       {/* 1:3 ratio for the 3D Node (col-span-4) */}
       <div className="lg:col-span-4 w-full h-full min-h-[500px]">
-        <AutoMedicScene nodeState={nodeState} />
+        <AutoMedicShowcaseScene nodeState={nodeState} />
       </div>
 
       {/* 2:3 ratio for the UI Dashboard (col-span-8) */}
