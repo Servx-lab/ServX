@@ -50,6 +50,8 @@ export function ServXProvider({
       return;
     }
 
+    let intervalId: ReturnType<typeof setInterval>;
+
     const checkStatus = async () => {
       try {
         // Fetch the public maintenance status mapped to this unique PIN
@@ -67,10 +69,16 @@ export function ServXProvider({
           // Assume backend returns { isMaintenance: boolean }
           setIsMaintenance(!!data.isMaintenance);
         }
-      } catch (err) {
+      } catch (err: any) {
         // Silently fail in production to avoid crashing user applications
         // if the ServX network is experiencing latency.
-        console.warn('[ServX] Polling sync degraded, maintaining previous operational state.');
+        if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+          // Stop polling if the server is completely unreachable (e.g. localhost down)
+          if (intervalId) clearInterval(intervalId);
+          console.warn('[ServX] Backend unreachable. Polling suspended.');
+        } else {
+          console.warn('[ServX] Polling sync degraded, maintaining previous operational state.');
+        }
       } finally {
         setIsChecking(false);
       }
@@ -80,9 +88,11 @@ export function ServXProvider({
     checkStatus();
 
     // Setup polling for dynamic live-updates
-    const intervalId = setInterval(checkStatus, pollingIntervalMs);
+    intervalId = setInterval(checkStatus, pollingIntervalMs);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [projectKey, baseUrl, pollingIntervalMs]);
 
   // If the user opted to handle the UI themselves, we just provide the state context

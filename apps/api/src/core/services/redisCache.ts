@@ -65,7 +65,7 @@ export async function getRedisClient(): Promise<RedisClientType | null> {
     isConnecting = true;
     const connectPromise = client.connect();
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Redis connection timeout')), 1000)
+      setTimeout(() => reject(new Error('Redis connection timeout')), 5000)
     );
     await Promise.race([connectPromise, timeoutPromise]);
     return client;
