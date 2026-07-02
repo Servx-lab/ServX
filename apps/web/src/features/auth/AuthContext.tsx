@@ -185,8 +185,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     tokenIsGood = await checkGitHubTokenHealth();
                 }
                 prefetchUserData(!tokenIsGood);
-            } catch (err) {
-                console.error('[Auth] Background sync/prefetch failed:', err);
+            } catch (err: any) {
+                // If the backend isn't running (e.g. frontend-only dev mode), 
+                // silently ignore ERR_NETWORK to prevent console spam.
+                if (err.code !== 'ERR_NETWORK') {
+                    console.error('[Auth] Background sync/prefetch failed:', err);
+                }
             }
         };
 

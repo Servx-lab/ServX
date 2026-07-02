@@ -22,10 +22,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ServXLogo from "@/components/ServXLogo";
-import { useAuth } from './hooks';
-import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { LandingCanvas } from './components/LandingCanvas';
+import { AnimatedCodeEditor } from './components/AnimatedCodeEditor';
+import { AutoMedicShowcase } from './components/AutoMedicShowcase';
+import { HostingIntegrationShowcase } from './components/HostingIntegrationShowcase';
+import { AttackPathScene } from './components/AttackPathScene';
+import { DatabaseShowcase } from './components/DatabaseShowcase';
+import { useToast } from "@/components/ui/use-toast";
 
 const GoogleIcon = () => (
     <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true">
@@ -511,6 +516,59 @@ const Landing = () => {
             <Navbar />
             <main>
                 <Hero />
+                
+                {/* 3D Database Section */}
+                <section className="py-24 bg-white border-y border-gray-200">
+                    <div className="container mx-auto px-6">
+                        <div className="text-center mb-16">
+                            <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-4">Pluggable Database Controller</h2>
+                            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Watch how effortlessly you can connect your data sources and search through massive datasets in real-time.</p>
+                        </div>
+                        <div className="w-full">
+                            <DatabaseShowcase />
+                        </div>
+                    </div>
+                </section>
+
+                {/* 3D Showcase Section */}
+                <section className="py-24 bg-slate-50 border-b border-gray-200">
+                    <div className="container mx-auto px-6">
+                        <div className="text-center mb-16">
+                            <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-4">Auto-Medic & Healing System</h2>
+                            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Trigger an infrastructure fault and watch the Auto-Medic AI detect, isolate, and repair the corrupted node in real-time.</p>
+                        </div>
+                        <div className="w-full">
+                            <AutoMedicShowcase />
+                        </div>
+                    </div>
+                </section>
+
+                {/* 3D Hosting Integration Section */}
+                <section className="py-24 bg-white border-b border-gray-200">
+                    <div className="container mx-auto px-6">
+                        <div className="text-center mb-16">
+                            <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-4">Cryptographic Hosting Bridge</h2>
+                            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Connect your cloud provider securely. Watch our cryptographic bridge establish a high-speed, encrypted data stream in real-time.</p>
+                        </div>
+                        <div className="w-full">
+                            <HostingIntegrationShowcase />
+                        </div>
+                    </div>
+                </section>
+
+                {/* 3D Attack Path Section */}
+                <section className="py-24 bg-white border-b border-gray-200">
+                    <div className="container mx-auto px-6">
+                        <div className="text-center mb-16">
+                            <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-4">3D Attack Path & Quarantine</h2>
+                            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Hover over the exposed node to see it react, and click to deploy a Kill Switch shield that instantly neutralizes the threat.</p>
+                        </div>
+                        <div className="w-full">
+                            <AttackPathScene />
+                        </div>
+                    </div>
+                </section>
+
                 <FloatingUI />
                 <BentoGrid />
                 <FeatureDeepDives />
