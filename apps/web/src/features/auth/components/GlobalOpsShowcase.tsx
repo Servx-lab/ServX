@@ -1,20 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldAlert, Terminal, Zap, Power, Activity, Loader2, MousePointer2 } from 'lucide-react';
+import { ShieldAlert, Terminal, Zap, Power, Activity, Loader2, MousePointer2, Eye, Lock, ChevronDown } from 'lucide-react';
 import { motion, useAnimationControls } from 'framer-motion';
 
 export const GlobalOpsShowcase = () => {
   const [isLockdown, setIsLockdown] = useState(false);
   const [defcon, setDefcon] = useState(5);
   const [ghostMode, setGhostMode] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const [circuits, setCircuits] = useState<Record<string, 'online' | 'loading' | 'offline'>>({
-    OpenAI: 'online',
-    Resend: 'online',
-    Vercel: 'online'
-  });
+  const mockUsers = [
+    'Alex Chen', 'Emily Carter', 'Michael Ross', 'Priya Patel', 
+    'Sarah Jenkins', 'David Kim', 'Jessica Day', 'Nick Miller', 
+    'Winston Schmidt', 'Cece Parekh'
+  ];
 
   const initialLogs = [
-    { time: '22:04:12', type: '[SYS]', color: 'text-green-400', msg: 'Circuit OpenAI restored to closed state.' },
+    { time: '21:55:00', type: '[SYS]', color: 'text-slate-400', msg: 'Starting global operations monitoring daemon...' },
+    { time: '21:55:05', type: '[SYS]', color: 'text-green-400', msg: 'Connection to US-East data center established.' },
+    { time: '21:55:06', type: '[SYS]', color: 'text-green-400', msg: 'Connection to EU-West data center established.' },
+    { time: '21:58:12', type: '[INFO]', color: 'text-blue-400', msg: 'Scheduled database backup completed successfully.' },
+    { time: '22:00:00', type: '[SYS]', color: 'text-slate-400', msg: 'Rotating access keys for primary vault...' },
+    { time: '22:00:05', type: '[SUCCESS]', color: 'text-green-400', msg: 'Access keys rotated and securely stored.' },
+    { time: '22:04:12', type: '[SYS]', color: 'text-green-400', msg: 'System initialized and actively monitoring.' },
     { time: '22:05:01', type: '[AUTH]', color: 'text-blue-400', msg: 'Admin logged in from IP 192.168.1.100' },
     { time: '22:05:30', type: '[WARN]', color: 'text-yellow-400', msg: 'High latency detected on Redis cluster.' }
   ];
@@ -22,38 +30,40 @@ export const GlobalOpsShowcase = () => {
   const [logs, setLogs] = useState(initialLogs);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const openAIButtonRef = useRef<HTMLButtonElement>(null);
   const ghostModeToggleRef = useRef<HTMLButtonElement>(null);
+  const dropdownTriggerRef = useRef<HTMLButtonElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const targetUserRef = useRef<HTMLButtonElement>(null);
   const defcon1Ref = useRef<HTMLButtonElement>(null);
+  const terminalScrollRef = useRef<HTMLDivElement>(null);
   const cursorControls = useAnimationControls();
   
   // Use a mutable ref for state so the async sequence can access the latest values
-  const stateRef = useRef({ circuits, ghostMode, defcon });
+  const stateRef = useRef({ ghostMode, defcon, selectedUser, isDropdownOpen });
   useEffect(() => {
-    stateRef.current = { circuits, ghostMode, defcon };
-  }, [circuits, ghostMode, defcon]);
+    stateRef.current = { ghostMode, defcon, selectedUser, isDropdownOpen };
+  }, [ghostMode, defcon, selectedUser, isDropdownOpen]);
+
+  // Auto-scroll terminal to bottom when new logs appear
+  useEffect(() => {
+    if (terminalScrollRef.current) {
+      terminalScrollRef.current.scrollTop = terminalScrollRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   const addLog = (type: string, color: string, msg: string) => {
     const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    setLogs(prev => [...prev, { time, type, color, msg }].slice(-8));
-  };
-
-  const handleTripCircuit = (name: string) => {
-    if (stateRef.current.circuits[name] !== 'online') return;
-    
-    setCircuits(prev => ({ ...prev, [name]: 'loading' }));
-    
-    setTimeout(() => {
-      setCircuits(prev => ({ ...prev, [name]: 'offline' }));
-      addLog('[SYS]', 'text-red-400', `${name} Circuit Tripped. Using local fallback.`);
-    }, 1000);
+    setLogs(prev => [...prev, { time, type, color, msg }].slice(-25));
   };
 
   const toggleGhostMode = () => {
     const newState = !stateRef.current.ghostMode;
+    const user = stateRef.current.selectedUser;
+    if (newState && !user) return; // Prevent toggle if no user selected
+    
     setGhostMode(newState);
     if (newState) {
-      addLog('[AUTH]', 'text-purple-400', 'Ghost Mode: Impersonating User session.');
+      addLog('[AUTH]', 'text-purple-400', `Ghost Mode: Impersonating session for ${user}.`);
     } else {
       addLog('[AUTH]', 'text-purple-400', 'Ghost Mode deactivated. Session restored.');
     }
@@ -64,7 +74,6 @@ export const GlobalOpsShowcase = () => {
     setIsLockdown(level === 1);
     
     if (level === 1) {
-      setCircuits({ OpenAI: 'offline', Resend: 'offline', Vercel: 'offline' });
       addLog('[CRITICAL]', 'text-red-500', 'SYSTEM LOCKDOWN INITIATED.');
       
       let count = 0;
@@ -120,7 +129,8 @@ export const GlobalOpsShowcase = () => {
         setDefcon(5);
         setIsLockdown(false);
         setGhostMode(false);
-        setCircuits({ OpenAI: 'online', Resend: 'online', Vercel: 'online' });
+        setSelectedUser(null);
+        setIsDropdownOpen(false);
         setLogs(initialLogs);
         
         cursorControls.set({ opacity: 0, top: "80%", left: "80%", scale: 1 });
@@ -128,15 +138,28 @@ export const GlobalOpsShowcase = () => {
         
         cursorControls.set({ opacity: 1 });
         
-        // 1. Trip OpenAI Circuit
-        await moveAndClick(openAIButtonRef, signal, () => handleTripCircuit('OpenAI'));
-        await sleep(2500, signal);
+        // 1. Open Dropdown
+        await moveAndClick(dropdownTriggerRef, signal, () => setIsDropdownOpen(true));
+        await sleep(800, signal);
         
-        // 2. Toggle Ghost Mode
+        // Simulate scrolling inside the dropdown
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({ top: 80, behavior: 'smooth' });
+        }
+        await sleep(500, signal);
+
+        // 2. Select Target User
+        await moveAndClick(targetUserRef, signal, () => {
+          setSelectedUser('Sarah Jenkins');
+          setIsDropdownOpen(false);
+        });
+        await sleep(1000, signal);
+
+        // 3. Toggle Ghost Mode
         await moveAndClick(ghostModeToggleRef, signal, toggleGhostMode);
         await sleep(2000, signal);
         
-        // 3. Initiate Lockdown (DEFCON 1)
+        // 4. Initiate Lockdown (DEFCON 1)
         await moveAndClick(defcon1Ref, signal, () => handleDefconChange(1));
         await sleep(6000, signal);
         
@@ -171,7 +194,7 @@ export const GlobalOpsShowcase = () => {
         <motion.div
           animate={cursorControls}
           initial={{ opacity: 0, top: "80%", left: "80%" }}
-          className="absolute z-50 pointer-events-none drop-shadow-2xl"
+          className="absolute z-[9999] pointer-events-none drop-shadow-2xl"
           style={{ originX: 0, originY: 0 }}
         >
           <MousePointer2 className="w-8 h-8 text-black fill-white -rotate-12" />
@@ -180,7 +203,7 @@ export const GlobalOpsShowcase = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Left Box (col-span-5) */}
-          <div className="lg:col-span-5 flex flex-col gap-8">
+          <div className="lg:col-span-5 flex flex-col gap-8 pointer-events-none select-none">
             <div>
               <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
                 Global Operations
@@ -190,6 +213,84 @@ export const GlobalOpsShowcase = () => {
               </p>
             </div>
             
+            {/* Ghost Mode Toggle */}
+            <div className={`backdrop-blur-md rounded-2xl border p-8 shadow-sm flex flex-col justify-center transition-colors duration-500 relative z-50 ${isLockdown ? 'bg-red-900/10 border-red-200' : 'bg-white/80 border-gray-200'}`}>
+              {/* User Selection Dropdown */}
+              <div className="mb-8 relative z-20">
+                <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${isLockdown ? 'text-red-500' : 'text-slate-400'}`}>Select Target User</p>
+                <button
+                  ref={dropdownTriggerRef}
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${
+                    isDropdownOpen ? 'border-purple-400 ring-2 ring-purple-400/20 bg-white' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
+                  }`}
+                >
+                  {selectedUser ? (
+                    <div className="flex items-center gap-2 text-slate-800">
+                      <div className="w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-[10px] text-white">
+                        {selectedUser.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      {selectedUser}
+                    </div>
+                  ) : (
+                    <span className="text-slate-400">Select a user to impersonate...</span>
+                  )}
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isDropdownOpen && (
+                  <div className="absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-30">
+                    <div ref={scrollContainerRef} className="max-h-48 overflow-y-auto p-2 scroll-smooth">
+                      {mockUsers.map((user) => (
+                        <button
+                          key={user}
+                          ref={user === 'Sarah Jenkins' ? targetUserRef : null}
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setIsDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                            selectedUser === user 
+                              ? 'bg-purple-50 text-purple-700' 
+                              : 'text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white ${selectedUser === user ? 'bg-purple-500' : 'bg-slate-300'}`}>
+                            {user.split(' ').map(n => n[0]).join('')}
+                          </div>
+                          {user}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className={`text-sm font-extrabold tracking-widest uppercase ${isLockdown ? 'text-red-600' : 'text-slate-500'}`}>Ghost Mode</h3>
+                  <div className="mt-1">
+                    {ghostMode ? (
+                      <span className="text-xs font-mono text-purple-600">SYS_OVERRIDE_ENABLED</span>
+                    ) : (
+                      <p className={`text-xs ${isLockdown ? 'text-red-400' : 'text-slate-400'}`}>Impersonate user sessions securely</p>
+                    )}
+                  </div>
+                </div>
+                <button 
+                  ref={ghostModeToggleRef}
+                  onClick={toggleGhostMode}
+                  disabled={!selectedUser}
+                  className={`w-16 h-8 rounded-full p-1 transition-all duration-300 relative ${ghostMode ? 'bg-purple-600 shadow-[0_0_12px_rgba(147,51,234,0.5)]' : 'bg-slate-300'} ${!selectedUser && 'opacity-50 cursor-not-allowed'}`}
+                >
+                  <div className={`w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center transform transition-transform duration-300 ${ghostMode ? 'translate-x-8' : 'translate-x-0'}`}>
+                    {ghostMode ? <Eye className="w-3.5 h-3.5 text-purple-600" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
+                  </div>
+                </button>
+              </div>
+            </div>
+
             {/* DEFCON Switch */}
             <div className={`backdrop-blur-md rounded-2xl border p-8 shadow-sm h-48 flex flex-col justify-center transition-colors duration-500 ${isLockdown ? 'bg-red-900/10 border-red-200' : 'bg-white/80 border-gray-200'}`}>
               <div className="flex justify-between items-center mb-6">
@@ -203,16 +304,20 @@ export const GlobalOpsShowcase = () => {
                 </span>
               </div>
               
-              <div className={`flex rounded-lg p-1 transition-colors duration-500 ${isLockdown ? 'bg-red-100/50' : 'bg-slate-100'}`}>
+              <div className="flex gap-2 rounded-xl p-2 transition-colors duration-500 bg-slate-100 border border-slate-200 shadow-inner">
                 {[5, 3, 1].map((level) => (
                   <button
                     key={level}
                     ref={level === 1 ? defcon1Ref : null}
                     onClick={() => handleDefconChange(level)}
-                    className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${
+                    className={`flex-1 py-2 rounded-lg text-sm transition-all ${
                       defcon === level 
-                        ? (level === 1 ? 'bg-red-500 text-white shadow-md shadow-red-500/50' : level === 3 ? 'bg-yellow-500 text-white shadow-md' : 'bg-green-500 text-white shadow-md')
-                        : `text-slate-500 hover:text-slate-700 ${isLockdown ? 'hover:bg-red-200/50' : 'hover:bg-slate-200/50'}`
+                        ? (level === 1 
+                            ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.6)] font-bold tracking-widest animate-pulse' 
+                            : level === 3 
+                            ? 'bg-amber-500 text-white shadow-md font-bold' 
+                            : 'bg-emerald-500 text-white shadow-md font-bold')
+                        : 'bg-transparent text-slate-500 hover:bg-slate-200 font-semibold'
                     }`}
                   >
                     {level === 1 ? 'DEFCON 1' : level === 3 ? 'DEFCON 3' : 'DEFCON 5'}
@@ -220,80 +325,13 @@ export const GlobalOpsShowcase = () => {
                 ))}
               </div>
             </div>
-            
-            {/* Ghost Mode Toggle */}
-            <div className={`backdrop-blur-md rounded-2xl border p-8 shadow-sm h-32 flex items-center justify-between transition-colors duration-500 ${isLockdown ? 'bg-red-900/10 border-red-200' : 'bg-white/80 border-gray-200'}`}>
-              <div>
-                <h3 className={`text-sm font-extrabold tracking-widest uppercase ${isLockdown ? 'text-red-600' : 'text-slate-500'}`}>Ghost Mode</h3>
-                <p className={`text-xs mt-1 ${isLockdown ? 'text-red-400' : 'text-slate-400'}`}>Impersonate user sessions securely</p>
-              </div>
-              <button 
-                ref={ghostModeToggleRef}
-                onClick={toggleGhostMode}
-                className={`w-14 h-8 rounded-full p-1 transition-colors ${ghostMode ? 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]' : 'bg-slate-300'}`}
-              >
-                <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform ${ghostMode ? 'translate-x-6' : 'translate-x-0'}`} />
-              </button>
-            </div>
           </div>
           
           {/* Right Box (col-span-7) */}
           <div className="lg:col-span-7 flex flex-col gap-8 h-full">
             
-            {/* Top half: Circuit Breakers Grid (3 cards) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[
-                { name: 'OpenAI', icon: Activity },
-                { name: 'Resend', icon: Zap },
-                { name: 'Vercel', icon: Power }
-              ].map((breaker) => {
-                const status = circuits[breaker.name];
-                return (
-                  <div key={breaker.name} className={`backdrop-blur-md rounded-2xl border p-6 shadow-sm h-36 flex flex-col justify-between transition-colors duration-500 ${isLockdown ? 'bg-red-900/10 border-red-200' : 'bg-white/80 border-gray-200'}`}>
-                    <div className="flex justify-between items-start">
-                      <div className={`flex items-center gap-2 font-bold text-sm ${isLockdown ? 'text-red-700' : 'text-slate-700'}`}>
-                        <breaker.icon className={`w-4 h-4 ${isLockdown ? 'text-red-400' : 'text-slate-400'}`} />
-                        {breaker.name}
-                      </div>
-                      
-                      {status === 'online' && (
-                        <span className="px-2 py-0.5 bg-green-50 border border-green-200 text-green-600 text-[10px] font-bold uppercase rounded flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Online
-                        </span>
-                      )}
-                      {status === 'loading' && (
-                        <span className="px-2 py-0.5 bg-yellow-50 border border-yellow-200 text-yellow-600 text-[10px] font-bold uppercase rounded flex items-center gap-1">
-                          <Loader2 className="w-3 h-3 animate-spin" /> Calc...
-                        </span>
-                      )}
-                      {status === 'offline' && (
-                        <span className="px-2 py-0.5 bg-red-50 border border-red-200 text-red-600 text-[10px] font-bold uppercase rounded flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Offline
-                        </span>
-                      )}
-                    </div>
-                    
-                    <button 
-                      ref={breaker.name === 'OpenAI' ? openAIButtonRef : null}
-                      onClick={() => handleTripCircuit(breaker.name)}
-                      disabled={status !== 'online'}
-                      className={`w-full py-1.5 rounded text-xs font-bold transition-colors ${
-                        status === 'online'
-                          ? 'bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-600 hover:text-red-600'
-                          : status === 'loading'
-                          ? 'bg-yellow-50 border border-yellow-200 text-yellow-600 cursor-not-allowed'
-                          : 'bg-red-50 border border-red-200 text-red-600 cursor-not-allowed opacity-75'
-                      }`}
-                    >
-                      {status === 'online' ? 'Trip Circuit' : status === 'loading' ? 'Assessing...' : 'Circuit Tripped'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            
-            {/* Bottom half: Terminal Placeholder */}
-            <div className="bg-slate-900 rounded-2xl border border-slate-700 p-6 shadow-xl flex-grow min-h-[300px] flex flex-col overflow-hidden relative">
+            {/* Terminal */}
+            <div className="bg-slate-900 rounded-2xl border border-slate-700 p-6 shadow-xl flex-grow min-h-[450px] flex flex-col overflow-hidden relative">
               <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800">
                 <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-widest">
                   <Terminal className="w-4 h-4" /> Live Audit Stream
@@ -305,7 +343,11 @@ export const GlobalOpsShowcase = () => {
                 </div>
               </div>
               
-              <div className="font-mono text-xs space-y-2 text-slate-300 flex-grow overflow-hidden flex flex-col justify-end">
+              <div 
+                ref={terminalScrollRef}
+                className="font-mono text-xs space-y-2 text-slate-300 flex-grow overflow-y-auto flex flex-col justify-start"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
                 {logs.map((log, i) => (
                   <div key={i} className="flex gap-3 animate-in slide-in-from-bottom-2 fade-in duration-300">
                     <span className="text-slate-500 shrink-0">{log.time}</span>

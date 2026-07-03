@@ -31,6 +31,7 @@ import { AttackPathScene } from './components/AttackPathScene';
 import { DatabaseShowcase } from './components/DatabaseShowcase';
 import { GlobalOpsShowcase } from './components/GlobalOpsShowcase';
 import { VSCodeIntegrationShowcase } from './components/VSCodeIntegrationShowcase';
+import { GitHubAnalyticsShowcase } from '../github/GitHubAnalyticsShowcase';
 import { useToast } from "@/components/ui/use-toast";
 
 const GoogleIcon = () => (
@@ -560,6 +561,9 @@ const Landing = () => {
 
                 {/* VSCode Integration Showcase */}
                 <VSCodeIntegrationShowcase />
+
+                {/* GitHub Analytics Showcase */}
+                <GitHubAnalyticsShowcase />
 
                 {/* 3D Attack Path Section */}
                 <section className="py-24 bg-white border-b border-gray-200">
