@@ -116,31 +116,46 @@ const SolarSystemBackground = () => {
   );
 };
 
-const AttackParticles = React.memo(({ start, end, active }: any) => {
-  const [pos, setPos] = useState(0);
-  
-  useFrame((state, delta) => {
-    if (!active) return;
-    setPos((prev) => (prev + delta * 2) % 1);
-  });
+const AttackParticles = React.memo(
+  ({
+    start,
+    end,
+    active,
+  }: {
+    start: [number, number, number];
+    end: [number, number, number];
+    active: boolean;
+  }) => {
+    const meshRef = useRef<THREE.Mesh>(null);
+    const posRef = useRef(0);
 
-  const currentPos = useMemo(() => {
-    return new THREE.Vector3().lerpVectors(new THREE.Vector3(...start), new THREE.Vector3(...end), pos);
-  }, [pos, start, end]);
+    const startVec = useMemo(() => new THREE.Vector3(...start), [start]);
+    const endVec = useMemo(() => new THREE.Vector3(...end), [end]);
 
-  if (!active) return null;
+    useFrame((state, delta) => {
+      if (!active) return;
+      posRef.current = (posRef.current + delta * 2) % 1;
 
-  return (
-    <mesh position={currentPos}>
-      <sphereGeometry args={[0.08, 16, 16]} />
-      <meshBasicMaterial color="#6C63FF" />
-      <pointLight color="#6C63FF" intensity={4} distance={3} />
-    </mesh>
-  );
-});
+      const current = startVec.clone().lerp(endVec, posRef.current);
+      if (meshRef.current) {
+        meshRef.current.position.copy(current);
+      }
+    });
+
+    if (!active) return null;
+
+    return (
+      <mesh ref={meshRef} position={startVec}>
+        <sphereGeometry args={[0.08, 16, 16]} />
+        <meshBasicMaterial color="#6C63FF" />
+        <pointLight color="#6C63FF" intensity={4} distance={3} />
+      </mesh>
+    );
+  }
+);
 
 const TopologyNode = React.memo(({ position, label, isTargeted, isRepoNode }: {
-  position: number[];
+  position: [number, number, number];
   label: string;
   isTargeted: boolean;
   isRepoNode?: boolean;
@@ -565,15 +580,24 @@ const AttackPath = () => {
   const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
   const [showReport, setShowReport] = useState(false);
   const [scanLog, setScanLog] = useState<string[]>([]);
+  const [repoLoadError, setRepoLoadError] = useState<string | null>(null);
 
   const deviceUUID = useMemo(() => getDeviceUUID(), []);
 
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    apiClient.get("/github/repos").then((res) => {
-      setRepos(res.data);
-    }).catch(() => {});
+    setRepoLoadError(null);
+    apiClient
+      .get("/github/repos")
+      .then((res) => {
+        setRepos(res.data);
+      })
+      .catch((err) => {
+        console.error("Failed to load repositories for /attack", err);
+        setRepos([]);
+        setRepoLoadError("Repository load failed. Please refresh or re-link your GitHub connection.");
+      });
   }, [isAuthenticated]);
 
   // 3D node labels — replace default label when repo is selected
@@ -589,9 +613,10 @@ const AttackPath = () => {
     return ["G-FRONTEND-01", "G-CORE-API-07", "G-PERSIST-09", "G-AUTH-SYS-04"];
   }, [selectedRepo]);
 
-  // Simulate attack sequence
-  const runAttack = useCallback((type: AttackType) => {
+  // Backend-driven attack sequence (job -> SSE -> results)
+  const runAttack = useCallback(async (type: AttackType) => {
     if (!selectedRepo || scanPhase !== "idle") return;
+    if (!type) return;
 
     setActiveAttackType(type);
     setScanPhase("scanning");
@@ -604,23 +629,78 @@ const AttackPath = () => {
     logs.push(`[TARGET] ${selectedRepo.full_name}`);
     setScanLog([...logs]);
 
-    // Phase 1: Scanning (2s)
-    setTimeout(() => {
-      logs.push("[SCAN] Enumerating attack surface...");
-      logs.push("[SCAN] Probing endpoints...");
-      setScanLog([...logs]);
-      setScanPhase("attacking");
-      setIsAttackActive(true);
+    // Map UI "type" to backend scanTypes placeholders
+    const scanTypes =
+      type === "ddos"
+        ? ["ddos_surface", "rate_limit_gaps"]
+        : ["id_or_bizlogic", "injection_candidate"];
 
-      // Phase 2: Attacking (3s)
-      setTimeout(() => {
-        logs.push(`[ATTACK] ${type === "ddos" ? "DDoS flood packets" : "SQL injection payloads"} deployed`);
-        logs.push("[ATTACK] Monitoring response degradation...");
-        setScanLog([...logs]);
+    const analysisDepth = 2;
 
-        // Phase 3: Reporting (2s)
-        setTimeout(() => {
-          const vulns = generateVulnerabilities(selectedRepo);
+    try {
+      const createRes = await apiClient.post("/attack-paths/jobs", {
+        repoId: String(selectedRepo.id),
+        repoFullName: selectedRepo.full_name,
+        scanTypes,
+        analysisDepth,
+        deviceId: deviceUUID,
+      });
+
+      const jobId = String(createRes.data.jobId);
+
+      // SSE: use fetch + stream parsing (EventSource cannot attach Authorization header)
+      const controller = new AbortController();
+
+      const streamUrl = `/attack-paths/jobs/${jobId}/stream`;
+      const resp = await fetch(streamUrl, {
+        method: "GET",
+        headers: {
+          Accept: "text/event-stream",
+          Authorization: (apiClient.defaults.headers as any)?.Authorization,
+        },
+        signal: controller.signal,
+      });
+
+      if (!resp.ok || !resp.body) {
+        throw new Error(`SSE stream failed: ${resp.status}`);
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      const handleEvent = async (event: string, data: any) => {
+        if (event === "progress") {
+          const phase = String(data.phase || "");
+          const progressPct = Number(data.progressPct || 0);
+          const statusMessage = String(data.statusMessage || "");
+
+          // Map backend phases into UI phases
+          if (phase === "queued") setScanPhase("scanning");
+          if (phase === "cpgraph_building" || phase === "cpgraph_analyzing" || phase === "harness_synthesizing") {
+            setScanPhase("scanning");
+            setIsAttackActive(progressPct >= 20);
+          }
+          if (phase === "sandbox_verifying") {
+            setScanPhase("attacking");
+            setIsAttackActive(true);
+          }
+          if (phase === "rendering_report") {
+            setScanPhase("reporting");
+            setIsAttackActive(false);
+          }
+
+          if (statusMessage) {
+            logs.push(`[${phase}] ${statusMessage}`);
+            setScanLog([...logs]);
+          }
+        }
+
+        if (event === "completed" || event === "progress_done" || data?.status === "completed") {
+          // Load final results
+          const resultRes = await apiClient.get(`/attack-paths/jobs/${jobId}`);
+          const vulns = (resultRes.data?.results || []) as Vulnerability[];
+
           logs.push(`[REPORT] Scan complete. ${vulns.length} vulnerabilities detected.`);
           setScanLog([...logs]);
 
@@ -629,10 +709,46 @@ const AttackPath = () => {
           setVulnerabilities(vulns);
           setShowReport(true);
           setActiveAttackType(null);
-        }, 2000);
-      }, 3000);
-    }, 2000);
-  }, [selectedRepo, scanPhase, deviceUUID]);
+        }
+
+        if (event === "error") {
+          logs.push(`[ERROR] ${data?.message || "Attack paths job failed"}`);
+          setScanLog([...logs]);
+          setIsAttackActive(false);
+          setActiveAttackType(null);
+        }
+      };
+
+      // Read SSE stream line-by-line (basic parser)
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE events are separated by double newline
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() || "";
+
+        for (const part of parts) {
+          const lines = part.split("\n").filter(Boolean);
+          const eventLine = lines.find((l) => l.startsWith("event:"));
+          const dataLine = lines.find((l) => l.startsWith("data:"));
+          const event = eventLine ? eventLine.replace("event:", "").trim() : "progress";
+          const dataStr = dataLine ? dataLine.replace("data:", "").trim() : "";
+          const parsed = dataStr ? JSON.parse(dataStr) : {};
+
+          await handleEvent(event, parsed);
+        }
+      }
+    } catch (e: any) {
+      logs.push(`[ERROR] ${e?.message || "Failed to start attack paths job"}`);
+      setScanLog([...logs]);
+      setIsAttackActive(false);
+      setActiveAttackType(null);
+      setScanPhase("idle");
+    }
+  }, [selectedRepo, scanPhase, deviceUUID, apiClient]);
 
   const handleChaosToggle = useCallback((type: AttackType) => {
     if (scanPhase !== "idle") return;
@@ -695,13 +811,17 @@ const AttackPath = () => {
             <Suspense fallback={null}>
               <SolarSystemBackground />
               <group rotation={[0.2, 0, 0]}>
-                <TopologyNode position={[-4, 0, 0]} label={nodeLabels[0]} isTargeted={false} isRepoNode={!!selectedRepo} />
-                <TopologyNode position={[0, 2.5, 0]} label={nodeLabels[1]} isTargeted={isAttackActive} isRepoNode={!!selectedRepo} />
-                <TopologyNode position={[4, 0, 0]} label={nodeLabels[2]} isTargeted={false} isRepoNode={!!selectedRepo} />
-                <TopologyNode position={[0, -2.5, 0]} label={nodeLabels[3]} isTargeted={false} isRepoNode={!!selectedRepo} />
+                <TopologyNode position={[-4, 0, 0] as [number, number, number]} label={nodeLabels[0]} isTargeted={false} isRepoNode={!!selectedRepo} />
+                <TopologyNode position={[0, 2.5, 0] as [number, number, number]} label={nodeLabels[1]} isTargeted={isAttackActive} isRepoNode={!!selectedRepo} />
+                <TopologyNode position={[4, 0, 0] as [number, number, number]} label={nodeLabels[2]} isTargeted={false} isRepoNode={!!selectedRepo} />
+                <TopologyNode position={[0, -2.5, 0] as [number, number, number]} label={nodeLabels[3]} isTargeted={false} isRepoNode={!!selectedRepo} />
 
                 {/* Attack Animation */}
-                <AttackParticles start={[-4, 0, 0]} end={[0, 2, 0]} active={isAttackActive} />
+                <AttackParticles
+                  start={[-4, 0, 0] as [number, number, number]}
+                  end={[0, 2, 0] as [number, number, number]}
+                  active={isAttackActive}
+                />
 
                 {/* Holographic Flow Paths */}
                 <Line
@@ -749,7 +869,7 @@ const AttackPath = () => {
                 animate={{ x: 0, opacity: 1 }}
                 className="bg-white/80 backdrop-blur-xl border border-gray-200 p-6 rounded-2xl shadow-sm pointer-events-auto"
               >
-                <h2 className="text-xs font-black text-blue-500 uppercase tracking-[0.3em] mb-1">War Room Context</h2>
+
                 <div className="flex items-center gap-3">
                   <AlertTriangle className={`w-5 h-5 ${isAttackActive ? 'text-purple-500 animate-pulse' : 'text-blue-500'}`} />
                   <span className="text-xl font-bold tracking-tight text-black">Active Infrastructure Map</span>
@@ -770,6 +890,15 @@ const AttackPath = () => {
                   setIsOpen={setRepoDropdownOpen}
                   scanPhase={scanPhase}
                 />
+                {repoLoadError && (
+                  <div className="mt-3 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-800 pointer-events-auto">
+                    <p className="text-[10px] font-mono font-bold uppercase tracking-widest">Repo Load Error</p>
+                    <p className="text-xs mt-1">{repoLoadError}</p>
+                    <p className="text-[10px] mt-2 text-red-700">
+                      Tip: verify GitHub connection + permissions, then refresh.
+                    </p>
+                  </div>
+                )}
               </motion.div>
             </div>
 
@@ -966,40 +1095,61 @@ const AttackPath = () => {
   );
 };
 
-const ChaosToggle = ({ label, active, onClick, disabled }: { label: string; active: boolean; onClick: () => void; disabled?: boolean }) => {
+function ChaosToggle({
+  label,
+  active,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
   return (
-    <div className={`flex items-center justify-between group pointer-events-auto ${disabled && !active ? 'opacity-50' : ''}`}>
-      <span className={`text-xs font-bold tracking-wider transition-colors duration-300 ${active ? 'text-black' : 'text-gray-500'}`}>
+    <div
+      className={`flex items-center justify-between group pointer-events-auto ${
+        disabled && !active ? "opacity-50" : ""
+      }`}
+    >
+      <span
+        className={`text-xs font-bold tracking-wider transition-colors duration-300 ${
+          active ? "text-black" : "text-gray-500"
+        }`}
+      >
         {label}
       </span>
       <div
         onClick={disabled && !active ? undefined : onClick}
-        className={`relative w-14 h-7 ${disabled && !active ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        className={`relative w-14 h-7 ${
+          disabled && !active ? "cursor-not-allowed" : "cursor-pointer"
+        }`}
       >
-        {/* Track */}
-        <div className={`absolute inset-0 rounded-full border transition-all duration-500 ${active ? 'bg-purple-100 border-purple-500' : 'bg-gray-100 border-gray-300'}`} />
-        
-        {/* Handle */}
-        <motion.div 
-          animate={{ 
+        <div
+          className={`absolute inset-0 rounded-full border transition-all duration-500 ${
+            active ? "bg-purple-100 border-purple-500" : "bg-gray-100 border-gray-300"
+          }`}
+        />
+
+        <motion.div
+          animate={{
             x: active ? 28 : 0,
-            backgroundColor: active ? "#8b5cf6" : "#9ca3af"
+            backgroundColor: active ? "#8b5cf6" : "#9ca3af",
           }}
-          transition={{ 
-            type: "spring", 
-            stiffness: 400, 
+          transition={{
+            type: "spring",
+            stiffness: 400,
             damping: 25,
-            mass: 0.8
+            mass: 0.8,
           }}
           className="absolute top-1 left-1 w-5 h-5 rounded-full shadow-sm flex items-center justify-center"
         >
-          <div className={`w-1 h-1 rounded-full ${active ? 'bg-white' : 'bg-gray-200'}`} />
+          <div className={`w-1 h-1 rounded-full ${active ? "bg-white" : "bg-gray-200"}`} />
         </motion.div>
 
-        {/* Ripple Effect */}
         <AnimatePresence>
           {active && (
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.5, opacity: 1 }}
               animate={{ scale: 8, opacity: 0 }}
               exit={{ opacity: 0 }}
@@ -1011,53 +1161,71 @@ const ChaosToggle = ({ label, active, onClick, disabled }: { label: string; acti
       </div>
     </div>
   );
-};
+}
 
-const MasterOverride = ({ onClick, active }: { onClick: () => void; active: boolean }) => {
+function MasterOverride({ onClick, active }: { onClick: () => void; active: boolean }) {
   const [coverOpen, setCoverOpen] = useState(false);
 
   return (
     <div className="relative group flex flex-col items-center gap-6">
-      <div 
+      <div
         className="relative w-40 h-40 flex items-center justify-center cursor-pointer perspective-1000"
         onMouseEnter={() => setCoverOpen(true)}
         onMouseLeave={() => setCoverOpen(false)}
         onClick={() => coverOpen && onClick()}
       >
-        {/* Glow Background */}
-        <div className={`absolute inset-0 rounded-full blur-3xl opacity-20 transition-all duration-1000 ${active ? 'bg-purple-500 opacity-40' : 'bg-blue-500'}`} />
+        <div
+          className={`absolute inset-0 rounded-full blur-3xl opacity-20 transition-all duration-1000 ${
+            active ? "bg-purple-500 opacity-40" : "bg-blue-500"
+          }`}
+        />
 
-        {/* Under Button */}
-        <div className={`relative z-0 w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 shadow-xl ${active ? 'bg-purple-500 shadow-purple-200' : 'bg-white border-2 border-purple-200'}`}>
+        <div
+          className={`relative z-0 w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 shadow-xl ${
+            active ? "bg-purple-500 shadow-purple-200" : "bg-white border-2 border-purple-200"
+          }`}
+        >
           <motion.div
             animate={{ scale: active ? [1, 1.2, 1] : 1 }}
             transition={{ repeat: Infinity, duration: 2 }}
           >
-            {active ? <Shield className="w-12 h-12 text-white" /> : <Lock className="w-12 h-12 text-purple-300" />}
+            {active ? (
+              <Shield className="w-12 h-12 text-white" />
+            ) : (
+              <Lock className="w-12 h-12 text-purple-300" />
+            )}
           </motion.div>
         </div>
 
-        {/* Glass Cover */}
-        <motion.div 
+        <motion.div
           animate={{ rotateX: coverOpen ? -130 : 0, y: coverOpen ? -20 : 0 }}
           transition={{ type: "spring", stiffness: 150, damping: 15 }}
           style={{ transformOrigin: "top", transformStyle: "preserve-3d" }}
           className="absolute inset-x-0 top-0 h-40 bg-white/50 backdrop-blur-md border border-gray-200 rounded-2xl flex flex-col items-center justify-center pointer-events-none z-10 shadow-lg"
         >
           <div className="w-12 h-1 bg-gray-300 rounded-full mb-4" />
-          <p className="text-[10px] font-black italic text-gray-500 uppercase tracking-[0.4em] mb-2">Level 4 Clearance</p>
+          <p className="text-[10px] font-black italic text-gray-500 uppercase tracking-[0.4em] mb-2">
+            Level 4 Clearance
+          </p>
           <div className="flex gap-1">
-             {[1,2,3].map(i => <div key={i} className="w-1 h-1 bg-purple-500 rounded-full animate-pulse" />)}
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="w-1 h-1 bg-purple-500 rounded-full animate-pulse" />
+            ))}
           </div>
         </motion.div>
       </div>
+
       <div className="text-center">
-        <p className={`text-[10px] font-mono tracking-widest transition-colors ${coverOpen ? 'text-purple-600' : 'text-gray-400'}`}>
+        <p
+          className={`text-[10px] font-mono tracking-widest transition-colors ${
+            coverOpen ? "text-purple-600" : "text-gray-400"
+          }`}
+        >
           {coverOpen ? "ENGAGE MASTER OVERRIDE" : "RESTRICTED ACCESS"}
         </p>
       </div>
     </div>
   );
-};
+}
 
 export default AttackPath;
