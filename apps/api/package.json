@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@octokit/graphql": "^9.0.3",
+    "zod": "^3.24.4",
     "@octokit/rest": "^22.0.1",
     "@supabase/supabase-js": "^2.103.0",
     "axios": "^1.13.6",

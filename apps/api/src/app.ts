@@ -23,6 +23,7 @@ import repositoriesRouter from './domains/repositories/router';
 import verifyRouter from './domains/verify/router';
 import devicesRouter from './domains/devices/router';
 import { defconMiddleware } from './domains/operations/defconMiddleware';
+import attackPathsRouter from './domains/attack-paths/router';
 
 export function createApp(): Express {
   const app = express();
@@ -130,6 +131,8 @@ export function registerApiRoutes(app: Express): void {
   app.use('/api/repositories', repositoriesRouter);
   app.use('/api/verify', verifyRouter);
   app.use('/api/devices', devicesRouter);
+
+  app.use('/api/attack-paths', attackPathsRouter);
 }
 
 
