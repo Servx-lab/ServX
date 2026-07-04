@@ -7,6 +7,7 @@ export type AttackPathsJobDoc = Document & {
 
   repoId: string;
   repoFullName: string;
+  targetUrl?: string;
 
   scanTypes: string[];
   analysisDepth: number;
@@ -22,7 +23,10 @@ export type AttackPathsJobDoc = Document & {
   githubTokenExpiry?: Date | null;
 
   results: any;
+  scanArtifacts: any;
+  toolStatuses: any[];
   graphArtifact: any;
+  assuranceSummary?: any;
   reportArtifactUrl: string;
 
   createdAt?: Date;
@@ -37,6 +41,7 @@ export async function createAttackPathsJob(params: {
   requestedBy: string;
   repoId: string;
   repoFullName: string;
+  targetUrl?: string;
   scanTypes: string[];
   analysisDepth: number;
   deviceId?: string;
@@ -51,6 +56,7 @@ export async function createAttackPathsJob(params: {
     requestedBy: params.requestedBy,
     repoId: params.repoId,
     repoFullName: params.repoFullName,
+    targetUrl: params.targetUrl || '',
     scanTypes: params.scanTypes,
     analysisDepth: params.analysisDepth,
     deviceId: params.deviceId || '',
@@ -65,7 +71,9 @@ export async function createAttackPathsJob(params: {
     githubTokenIv: params.githubTokenIv || '',
     githubTokenExpiry: params.githubTokenExpiry ?? null,
 
-    results: {},
+    results: [],
+    scanArtifacts: [],
+    toolStatuses: [],
     graphArtifact: null,
     reportArtifactUrl: '',
     lastError: '',
@@ -104,10 +112,13 @@ export async function setAttackPathsJobResult(jobId: string, update: {
   progressPct: number;
   phaseMessage: string;
   results: any;
+  scanArtifacts?: any;
+  toolStatuses?: any[];
   graphArtifact: any;
   reportArtifactUrl: string;
   failedScanners?: any[];
   lastError?: string;
+  assuranceSummary?: any;
 }): Promise<AttackPathsJobDoc | null> {
   const doc = await AttackPathsJobModel.findByIdAndUpdate(
     jobId,
@@ -117,8 +128,11 @@ export async function setAttackPathsJobResult(jobId: string, update: {
         progressPct: update.progressPct,
         phaseMessage: update.phaseMessage,
         results: update.results,
+        scanArtifacts: update.scanArtifacts ?? [],
+        toolStatuses: update.toolStatuses ?? [],
         graphArtifact: update.graphArtifact,
         reportArtifactUrl: update.reportArtifactUrl,
+        assuranceSummary: update.assuranceSummary ?? {},
         lastError: update.lastError || '',
         completedAt: new Date(),
       }

@@ -7,6 +7,7 @@ const attackPathsJobSchema = new mongoose.Schema(
 
     repoId: { type: String, required: true, index: true },
     repoFullName: { type: String, required: true },
+    targetUrl: { type: String, default: '' },
 
     // client-provided scan config
     scanTypes: {
@@ -46,14 +47,26 @@ const attackPathsJobSchema = new mongoose.Schema(
     githubTokenIv: { type: String, default: '' }, // iv used for encryption
     githubTokenExpiry: { type: Date, default: null }, // optional expiry from GitHub vault
 
-    // results / artifacts (v1)
+// results / artifacts (v1)
     results: {
       type: mongoose.Schema.Types.Mixed,
-      default: {},
+      default: [],
+    },
+    scanArtifacts: {
+      type: mongoose.Schema.Types.Mixed,
+      default: [],
+    },
+    toolStatuses: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: [],
     },
     graphArtifact: {
       type: mongoose.Schema.Types.Mixed,
       default: null,
+    },
+    assuranceSummary: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
     reportArtifactUrl: { type: String, default: '' },
 

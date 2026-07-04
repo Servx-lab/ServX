@@ -13,6 +13,7 @@ const CreateJobSchema = z.object({
   body: z.object({
     repoId: z.string().min(1),
     repoFullName: z.string().min(1),
+    targetUrl: z.string().url().optional(),
     scanTypes: z.array(z.string()).min(1),
     analysisDepth: z.number().int().min(1).max(5),
     deviceId: z.string().optional(),
@@ -54,6 +55,7 @@ export async function createAttackPathsJob(req: Request, res: Response): Promise
       requestedBy: req.user.id,
       repoId: req.body.repoId,
       repoFullName: req.body.repoFullName,
+      targetUrl: req.body.targetUrl,
       scanTypes: req.body.scanTypes,
       analysisDepth: req.body.analysisDepth,
       deviceId: req.body.deviceId,
@@ -73,8 +75,7 @@ export async function createAttackPathsJob(req: Request, res: Response): Promise
 }
 
 /**
- * Phase1: SSE stub. Streams current DB phase only (no worker wiring yet).
- * Later phases will push real progress from worker events.
+ * Streams progress from persisted job state.
  */
 export async function streamAttackPathsJobProgress(req: Request, res: Response): Promise<void> {
   const jobId = String(req.params.jobId || '');
@@ -115,13 +116,26 @@ export async function streamAttackPathsJobProgress(req: Request, res: Response):
     send('progress', {
       jobId,
       phase: job.status,
+      status: job.status,
       progressPct: job.progressPct,
       statusMessage: job.phaseMessage || '',
+      lastError: (job as any).lastError || '',
       updatedAt: (job as any).updatedAt,
     });
 
     const isDone = ['completed', 'failed'].includes(String(job.status));
-    if (isDone) break;
+    if (isDone) {
+      send(String(job.status) === 'completed' ? 'completed' : 'failed', {
+        jobId,
+        phase: job.status,
+        status: job.status,
+        progressPct: job.progressPct,
+        statusMessage: job.phaseMessage || '',
+        lastError: (job as any).lastError || '',
+        updatedAt: (job as any).updatedAt,
+      });
+      break;
+    }
 
     if (Date.now() - started > 15 * 60 * 1000) {
       send('error', { message: 'SSE timeout' });
@@ -151,10 +165,14 @@ export async function getAttackPathsJobResult(req: Request, res: Response): Prom
     jobId,
     repoId: (job as any).repoId,
     repoFullName: (job as any).repoFullName,
+    targetUrl: (job as any).targetUrl,
     status: (job as any).status,
     progressPct: (job as any).progressPct,
     phaseMessage: (job as any).phaseMessage,
     results: (job as any).results,
+    findings: (job as any).results,
+    scanArtifacts: (job as any).scanArtifacts || [],
+    toolStatuses: (job as any).toolStatuses || [],
     graphArtifact: (job as any).graphArtifact,
     reportArtifactUrl: (job as any).reportArtifactUrl,
     lastError: (job as any).lastError,
