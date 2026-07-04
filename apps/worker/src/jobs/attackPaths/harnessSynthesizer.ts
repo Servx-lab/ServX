@@ -80,7 +80,7 @@ describe('Exploit Verification: IDOR on ${routePath}', () => {
     const victimResourceId = 'victim_resource_999';
 
     const res = await request(app)
-      .${routeMethod.toLowerCase()}('${routePath.replace(/:id|\{id\}/, victimResourceId)}')
+      .${routeMethod.toLowerCase()}('${routePath.replace(/:id|\{id\}/, '${victimResourceId}')}')
       .set('Authorization', attackerToken)
       .send({ title: 'Hacked by User A' });
 
