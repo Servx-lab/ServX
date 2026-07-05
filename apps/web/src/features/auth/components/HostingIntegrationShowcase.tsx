@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, Suspense } from 'react';
-import { motion, useAnimationControls, AnimatePresence } from 'framer-motion';
+import { motion, useAnimationControls, AnimatePresence, useInView } from 'framer-motion';
 import Spline from '@splinetool/react-spline';
 import * as THREE from 'three';
 import { easing } from 'maath';
@@ -87,34 +87,46 @@ const SplineScene = ({ flowState }: { flowState: FlowState }) => {
   };
 
   useEffect(() => {
+    let timer1: ReturnType<typeof setTimeout>;
+    let timer2: ReturnType<typeof setTimeout>;
+
     // When API Key connects, trigger the synthetic event AGAIN to reassemble.
     if (isConnected && splineRef.current && hasShatteredRef.current && !hasReassembledRef.current) {
       hasReassembledRef.current = true;
-      setTimeout(() => {
+      timer1 = setTimeout(() => {
         triggerCanvasEvent();
         console.log('[Spline] Reassemble triggered');
       }, 300);
     } else if (!isConnected && splineRef.current && hasReassembledRef.current) {
       // When the cycle resets (isConnected becomes false), shatter it again.
       hasReassembledRef.current = false;
-      setTimeout(() => {
+      timer2 = setTimeout(() => {
         triggerCanvasEvent();
         console.log('[Spline] Shatter triggered (cycle reset)');
       }, 300);
     }
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
   }, [isConnected]);
+
+  const containerRef = useRef(null);
+  const isInView = useInView(containerRef, { once: true, margin: "200px" });
 
   return (
     <motion.div 
+      ref={containerRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 2, duration: 1 }}
       style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
       >
-        <Spline
+        {isInView && <Spline
           scene="/3D-model/shattered-cube.splinecode"
           onLoad={onLoad}
-        />
+        />}
       </motion.div>
   );
 };
