@@ -97,6 +97,8 @@ export const VSCodeIntegrationShowcase = () => {
   useEffect(() => {
     let abortController = new AbortController();
 
+    let currentTimeout: ReturnType<typeof setTimeout> | null = null;
+
     const sleep = async (ms: number, signal: AbortSignal) => {
       let timePassed = 0;
       const interval = 20;
@@ -105,14 +107,18 @@ export const VSCodeIntegrationShowcase = () => {
         if (isVisibleRef.current) {
           timePassed += interval;
         }
-        await new Promise(r => setTimeout(r, interval));
+        await new Promise(r => {
+          currentTimeout = setTimeout(r, interval);
+        });
       }
     };
 
     const waitUntilVisible = async (signal: AbortSignal) => {
       while (!isVisibleRef.current) {
         if (signal.aborted) throw new Error('aborted');
-        await new Promise(r => setTimeout(r, 50));
+        await new Promise(r => {
+          currentTimeout = setTimeout(r, 50);
+        });
       }
     };
 
@@ -227,6 +233,7 @@ export const VSCodeIntegrationShowcase = () => {
     return () => {
       observer.disconnect();
       abortController.abort();
+      if (currentTimeout) clearTimeout(currentTimeout);
     };
   }, [cursorControls]);
 

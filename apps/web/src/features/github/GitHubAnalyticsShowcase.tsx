@@ -39,6 +39,9 @@ export const GitHubAnalyticsShowcase = () => {
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const splineRef = useRef<any>(null);
 
+  const splineContainerRef = useRef<HTMLDivElement>(null);
+  const isSplineInView = useInView(splineContainerRef, { once: true, margin: "200px" });
+
   // Block manual 's'
   useEffect(() => {
     const blockManualS = (e: KeyboardEvent) => {
@@ -105,9 +108,16 @@ export const GitHubAnalyticsShowcase = () => {
     if (!isInView || !isSplineReady) return;
 
     let mounted = true;
+    let timeouts: ReturnType<typeof setTimeout>[] = [];
+    
+    const sleep = (ms: number) => new Promise(r => {
+      const t = setTimeout(r, ms);
+      timeouts.push(t);
+    });
+
     const runSequence = async () => {
       while (mounted) {
-        await new Promise(r => setTimeout(r, 2000));
+        await sleep(2000);
         if (!mounted) return;
 
         setFlowState('clicking_authorize');
@@ -133,13 +143,9 @@ export const GitHubAnalyticsShowcase = () => {
         await new Promise(r => setTimeout(r, 1000));
         if (!mounted) return;
 
-        // Animate Scroll Down
-        await scrollControls.start({
-          y: -280,
-          transition: { duration: 2, ease: "easeInOut" }
-        });
-
-        await new Promise(r => setTimeout(r, 3000));
+        if (!mounted) return;
+        await scrollControls.start({ y: -100, transition: { duration: 1.5, ease: "easeInOut" } });
+        await sleep(1000);
         if (!mounted) return;
 
         // Scroll back up
@@ -162,9 +168,8 @@ export const GitHubAnalyticsShowcase = () => {
         // Click Toggle
         await moveAndClick(toggleBtnRef, () => { if (mounted) setIsToggleOn(false); }, 1000);
         if (!mounted) return;
-
-        // Wait before reset
-        await new Promise(r => setTimeout(r, 3000));
+        setFlowState('dashboard_active');
+        await sleep(2000); 
         if (!mounted) return;
 
         // Reset
@@ -179,7 +184,11 @@ export const GitHubAnalyticsShowcase = () => {
     };
 
     runSequence();
-    return () => { mounted = false; };
+
+    return () => {
+      mounted = false;
+      timeouts.forEach(clearTimeout);
+    };
   }, [cursorControls, scrollControls, isInView, isSplineReady]);
 
   // Random Mock Data
@@ -237,8 +246,8 @@ export const GitHubAnalyticsShowcase = () => {
         </motion.div>
 
         {/* Left Side: 3D Model */}
-        <div className="w-full lg:w-[22%] h-[500px] min-w-[100px] min-h-[500px] relative flex items-center justify-center overflow-hidden rounded-2xl bg-black/5 pointer-events-none">
-          <Spline scene="/3D-model/bulb.splinecode" className="w-full h-full" onLoad={onLoad} />
+        <div ref={splineContainerRef} className="w-full lg:w-[22%] h-[500px] min-w-[100px] min-h-[500px] relative flex items-center justify-center overflow-hidden rounded-2xl bg-black/5 pointer-events-none">
+          {isSplineInView && <Spline scene="/3D-model/bulb.splinecode" className="w-full h-full" onLoad={onLoad} />}
         </div>
 
         {/* Right Side: UI Card */}
