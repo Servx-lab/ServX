@@ -18,9 +18,9 @@ const broadcastStatusChange = (pin: string, status: string) => {
 
 /**
  * Test 1: Ping
- * Validates the PIN exists and updates status from PENDING to TEST_1_PASSED.
+ * Validates the PIN exists and updates status from PENDING to AUTH_OK.
  */
-export async function verifyPing(
+export async function verifyAuth(
   req: Request,
   res: Response,
   next: NextFunction
@@ -56,7 +56,7 @@ export async function verifyPing(
 
 /**
  * Test 2: Environment Sync
- * Validates framework metadata and updates status to META_OK.
+ * Validates framework metadata and updates status to ENV_OK.
  */
 export async function verifyEnv(
   req: Request,
@@ -79,13 +79,13 @@ export async function verifyEnv(
       const { error: updateError } = await supabaseAdmin
         .from('servx_repositories')
         .update({ 
-          verification_status: 'META_OK',
+          verification_status: 'ENV_OK',
           framework_meta: frameworkData
         })
         .eq('servx_pin', pin);
 
       if (updateError) throw new Error('Database update failed.');
-      broadcastStatusChange(pin, 'META_OK');
+      broadcastStatusChange(pin, 'ENV_OK');
     }
 
     res.json({ success: true, message: 'Environment data synchronized.' });
@@ -99,7 +99,7 @@ export async function verifyEnv(
  * Opens a persistent stream with the CLI. Keeps it alive for 3 seconds to test firewalls,
  * then updates DB to VERIFIED and closes.
  */
-export async function verifySseTest(
+export async function verifyStream(
   req: Request,
   res: Response,
   next: NextFunction
@@ -127,7 +127,7 @@ export async function verifySseTest(
     // Simulate 3 seconds of persistence checking (bypassing basic proxy buffers)
     setTimeout(async () => {
       try {
-        if (repo.verification_status === 'META_OK') {
+        if (repo.verification_status === 'ENV_OK') {
           await supabaseAdmin
             .from('servx_repositories')
             .update({ verification_status: 'VERIFIED' })

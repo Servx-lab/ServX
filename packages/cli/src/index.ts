@@ -59,7 +59,7 @@ async function performHandshake() {
     // --- TEST 1: Ping & Authentication ---
     const spinner1 = ora('Test 1: Authenticating PIN and connecting to Control Plane...').start();
     try {
-        await axios.post(`${API_URL}/api/verify/ping`, { pin });
+        await axios.post(`${API_URL}/api/verify/auth`, { pin });
         spinner1.succeed('Test 1 Passed: Securely authenticated PIN.');
     } catch (err: any) {
         spinner1.fail('Test 1 Failed: ' + (err.response?.data?.message || err.message));
@@ -92,7 +92,7 @@ async function performHandshake() {
     const spinner3 = ora('Test 3: Checking persistent SSE tunnel for remote signals...').start();
     try {
         // Axios waits for the entire stream to resolve (server ends connection after 3000ms)
-        const response = await axios.get(`${API_URL}/api/verify/sse-test?pin=${pin}`);
+        const response = await axios.get(`${API_URL}/api/verify/stream?pin=${pin}`);
         const responseData = response.data.toString();
         
         if (responseData.includes('VERIFIED')) {
