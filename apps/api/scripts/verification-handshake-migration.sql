@@ -7,20 +7,29 @@
 -- Adds 'verification_status' and 'framework_meta' columns with fallback defaults
 ALTER TABLE servx_repositories 
 ADD COLUMN IF NOT EXISTS verification_status VARCHAR(50) DEFAULT 'PENDING' NOT NULL,
-ADD COLUMN IF NOT EXISTS framework_meta JSONB DEFAULT '{}'::jsonb NOT NULL;
+ADD COLUMN IF NOT EXISTS framework_meta JSONB DEFAULT '{}'::jsonb NOT NULL,
+ADD COLUMN IF NOT EXISTS is_maintenance BOOLEAN DEFAULT FALSE NOT NULL;
 
 -- 2. ADD CHECK CONSTRAINT
 -- Enforces valid states for the verification state machine:
 -- - PENDING: Initial state upon PIN generation
 -- - AUTH_OK: Authenticated successfully by the CLI ping test
--- - META_OK: Environment scanned and framework info synced
+-- - ENV_OK: Environment scanned and framework info synced
 -- - VERIFIED: Live persistent connection handshake verified
 ALTER TABLE servx_repositories
 DROP CONSTRAINT IF EXISTS check_verification_status;
 
 ALTER TABLE servx_repositories
 ADD CONSTRAINT check_verification_status 
-CHECK (verification_status IN ('PENDING', 'AUTH_OK', 'META_OK', 'VERIFIED'));
+CHECK (verification_status IN ('PENDING', 'AUTH_OK', 'ENV_OK', 'VERIFIED'));
+
+-- Add constraint for the Master Kill Switch (is_maintenance)
+ALTER TABLE servx_repositories
+DROP CONSTRAINT IF EXISTS check_is_maintenance_lock;
+
+ALTER TABLE servx_repositories
+ADD CONSTRAINT check_is_maintenance_lock
+CHECK (is_maintenance = FALSE OR verification_status = 'VERIFIED');
 
 -- 3. MIGRATE EXISTING PRODUCTION RECORDS
 -- Set existing active records to 'VERIFIED' to prevent service interruption
@@ -36,7 +45,7 @@ CREATE OR REPLACE FUNCTION cleanup_stale_pending_repositories()
 RETURNS void AS $$
 BEGIN
   DELETE FROM servx_repositories
-  WHERE verification_status IN ('PENDING', 'AUTH_OK', 'META_OK')
+  WHERE verification_status IN ('PENDING', 'AUTH_OK', 'ENV_OK')
     AND created_at < NOW() - INTERVAL '1 hour';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
