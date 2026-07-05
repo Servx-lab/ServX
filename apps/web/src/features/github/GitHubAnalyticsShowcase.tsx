@@ -42,6 +42,8 @@ export const GitHubAnalyticsShowcase = () => {
   const splineContainerRef = useRef<HTMLDivElement>(null);
   const isSplineInView = useInView(splineContainerRef, { once: true, margin: "200px" });
 
+  const isBulbOnRef = useRef(true); // Spline initially loads in the ON state
+
   // Block manual 's'
   useEffect(() => {
     const blockManualS = (e: KeyboardEvent) => {
@@ -70,16 +72,27 @@ export const GitHubAnalyticsShowcase = () => {
           const eventParams = { key: 's', code: 'KeyS', keyCode: 83, which: 83, bubbles: true, cancelable: true };
           canvas.dispatchEvent(new KeyboardEvent('keydown', eventParams));
           canvas.dispatchEvent(new KeyboardEvent('keyup', eventParams));
+          return true;
         }
       }
     } catch (e) {}
+    return false;
+  };
+
+  const setBulbState = (turnOn: boolean) => {
+    if (isBulbOnRef.current !== turnOn) {
+      const success = triggerSplineEvent();
+      if (success) {
+        isBulbOnRef.current = turnOn;
+      }
+    }
   };
 
   const onLoad = (splineApp: any) => {
     splineRef.current = splineApp;
     try { splineApp.setZoom(0.5); } catch (e) {}
     setTimeout(() => { 
-      triggerSplineEvent(); 
+      setBulbState(false); 
       setIsSplineReady(true);
     }, 2000);
   };
@@ -116,6 +129,9 @@ export const GitHubAnalyticsShowcase = () => {
     });
 
     const runSequence = async () => {
+      // Force reset to idle when sequence starts, just in case
+      setFlowState('idle');
+      
       while (mounted) {
         await sleep(2000);
         if (!mounted) return;
@@ -136,7 +152,7 @@ export const GitHubAnalyticsShowcase = () => {
         if (!mounted) return;
         setFlowState('dashboard_active');
         
-        triggerSplineEvent();
+        setBulbState(true);
 
         cursorControls.start({ top: "80%", left: "90%", opacity: 0, transition: { duration: 1, delay: 1 } });
 
@@ -178,7 +194,7 @@ export const GitHubAnalyticsShowcase = () => {
         setIsAppInstalled(false);
         setSelectedRepoIndex(0);
         setIsToggleOn(true);
-        triggerSplineEvent(); 
+        setBulbState(false); 
         cursorControls.set({ opacity: 1, top: "80%", left: "80%", scale: 1 });
       }
     };
@@ -188,6 +204,12 @@ export const GitHubAnalyticsShowcase = () => {
     return () => {
       mounted = false;
       timeouts.forEach(clearTimeout);
+      setFlowState('idle'); // Force reset state if scrolled away
+      setIsAppInstalled(false);
+      setSelectedRepoIndex(0);
+      setIsToggleOn(true);
+      scrollControls.set({ y: 0 });
+      setBulbState(false); // Force bulb OFF if scrolled away
     };
   }, [cursorControls, scrollControls, isInView, isSplineReady]);
 

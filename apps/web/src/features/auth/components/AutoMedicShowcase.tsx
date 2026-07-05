@@ -42,7 +42,11 @@ export const AutoMedicShowcase = () => {
 
     runLoop();
 
-    return () => clearTimeout(timeout);
+    return () => {
+      clearTimeout(timeout);
+      setNodeState('healthy');
+      setErrorIndex(0);
+    };
   }, [isInView]);
 
   return (

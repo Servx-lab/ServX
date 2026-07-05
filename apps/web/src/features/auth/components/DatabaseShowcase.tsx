@@ -69,7 +69,11 @@ export const DatabaseShowcase = () => {
     };
 
     runLoop();
-    return () => clearTimeout(timeout);
+    return () => {
+      clearTimeout(timeout);
+      setDbState('idle');
+      setCycleIndex(0);
+    };
   }, [isInView]);
 
   return (

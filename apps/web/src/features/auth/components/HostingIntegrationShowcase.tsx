@@ -316,13 +316,17 @@ export const HostingIntegrationShowcase = () => {
       (entries) => {
         if (entries[0].isIntersecting) {
           isPausedRef.current = false;
-          if (!hasStarted.current) {
-            hasStarted.current = true;
-            abortController = new AbortController();
-            runAnimationSequence(abortController.signal);
-          }
+          abortController = new AbortController();
+          runAnimationSequence(abortController.signal);
         } else {
+          abortController.abort();
           isPausedRef.current = true;
+          // Reset states immediately when out of view
+          setFlowState('idle');
+          setApiKey('');
+          setApiName('');
+          setIsCopied(false);
+          cursorControls.set({ opacity: 0, top: "80%", left: "80%", scale: 1 });
         }
       },
       { threshold: 0.3 }
