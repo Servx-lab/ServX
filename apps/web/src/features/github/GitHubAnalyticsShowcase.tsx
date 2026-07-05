@@ -23,6 +23,7 @@ export const GitHubAnalyticsShowcase = () => {
   const [isAppInstalled, setIsAppInstalled] = useState(false);
   const [selectedRepoIndex, setSelectedRepoIndex] = useState(0);
   const [isToggleOn, setIsToggleOn] = useState(true);
+  const [isSplineReady, setIsSplineReady] = useState(false);
   
   const cursorControls = useAnimationControls();
   const scrollControls = useAnimationControls();
@@ -74,7 +75,10 @@ export const GitHubAnalyticsShowcase = () => {
   const onLoad = (splineApp: any) => {
     splineRef.current = splineApp;
     try { splineApp.setZoom(0.5); } catch (e) {}
-    setTimeout(() => { triggerSplineEvent(); }, 1000);
+    setTimeout(() => { 
+      triggerSplineEvent(); 
+      setIsSplineReady(true);
+    }, 2000);
   };
 
   const getCoords = (target: React.RefObject<HTMLElement>, offset = { x: 0, y: 0 }) => {
@@ -98,7 +102,7 @@ export const GitHubAnalyticsShowcase = () => {
   };
 
   useEffect(() => {
-    if (!isInView) return;
+    if (!isInView || !isSplineReady) return;
 
     let mounted = true;
     const runSequence = async () => {
@@ -132,7 +136,7 @@ export const GitHubAnalyticsShowcase = () => {
         // Animate Scroll Down
         await scrollControls.start({
           y: -280,
-          transition: { duration: 4, ease: "linear" }
+          transition: { duration: 2, ease: "easeInOut" }
         });
 
         await new Promise(r => setTimeout(r, 3000));
@@ -176,7 +180,7 @@ export const GitHubAnalyticsShowcase = () => {
 
     runSequence();
     return () => { mounted = false; };
-  }, [cursorControls, scrollControls, isInView]);
+  }, [cursorControls, scrollControls, isInView, isSplineReady]);
 
   // Random Mock Data
   const repos = [
@@ -233,7 +237,7 @@ export const GitHubAnalyticsShowcase = () => {
         </motion.div>
 
         {/* Left Side: 3D Model */}
-        <div className="w-full lg:w-[22%] h-[500px] relative flex items-center justify-center overflow-hidden rounded-2xl bg-black/5 pointer-events-none">
+        <div className="w-full lg:w-[22%] h-[500px] min-w-[100px] min-h-[500px] relative flex items-center justify-center overflow-hidden rounded-2xl bg-black/5 pointer-events-none">
           <Spline scene="/3D-model/bulb.splinecode" className="w-full h-full" onLoad={onLoad} />
         </div>
 
@@ -413,7 +417,7 @@ export const GitHubAnalyticsShowcase = () => {
                     <div className="flex-1 flex gap-4">
                       {/* Radial */}
                       <div className="flex-[1] relative flex items-center justify-center border-r border-slate-100">
-                         <ResponsiveContainer width="100%" height="100%">
+                         <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                             <RadialBarChart innerRadius="30%" outerRadius="100%" data={[...languageData].reverse()} startAngle={180} endAngle={-180}>
                                 <RadialBar background dataKey="bytes" cornerRadius={10} />
                             </RadialBarChart>
@@ -504,7 +508,7 @@ export const GitHubAnalyticsShowcase = () => {
                       {/* Contributor 1 */}
                       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600">A</div>
+                          <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=alex" alt="alex" className="w-10 h-10 rounded-full bg-blue-100" />
                           <div>
                             <p className="font-bold text-sm text-slate-900">alex-dev</p>
                             <p className="text-[11px] text-slate-500">142 contributions</p>
@@ -530,7 +534,7 @@ export const GitHubAnalyticsShowcase = () => {
                       {/* Contributor 2 */}
                       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center font-bold text-purple-600">M</div>
+                          <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=maya" alt="maya" className="w-10 h-10 rounded-full bg-purple-100" />
                           <div>
                             <p className="font-bold text-sm text-slate-900">maya-codes</p>
                             <p className="text-[11px] text-slate-500">89 contributions</p>

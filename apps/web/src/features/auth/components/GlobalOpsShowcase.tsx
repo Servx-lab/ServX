@@ -227,9 +227,7 @@ export const GlobalOpsShowcase = () => {
                 >
                   {selectedUser ? (
                     <div className="flex items-center gap-2 text-slate-800">
-                      <div className="w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-[10px] text-white">
-                        {selectedUser.split(' ').map(n => n[0]).join('')}
-                      </div>
+                      <img src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${selectedUser.replace(' ', '')}`} alt={selectedUser} className="w-5 h-5 rounded-full bg-slate-100" />
                       {selectedUser}
                     </div>
                   ) : (
@@ -256,9 +254,7 @@ export const GlobalOpsShowcase = () => {
                               : 'text-slate-600 hover:bg-slate-50'
                           }`}
                         >
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white ${selectedUser === user ? 'bg-purple-500' : 'bg-slate-300'}`}>
-                            {user.split(' ').map(n => n[0]).join('')}
-                          </div>
+                          <img src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.replace(' ', '')}`} alt={user} className="w-6 h-6 rounded-full bg-slate-100" />
                           {user}
                         </button>
                       ))}
