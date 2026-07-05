@@ -7,7 +7,7 @@ export const AutoMedicShowcase = () => {
   const [nodeState, setNodeState] = useState<NodeState>('healthy');
   const [errorIndex, setErrorIndex] = useState(0);
   const containerRef = useRef(null);
-  const isInView = useInView(containerRef, { once: true, margin: "-100px" });
+  const isInView = useInView(containerRef, { once: false, margin: "-100px" });
 
   useEffect(() => {
     if (!isInView) return;

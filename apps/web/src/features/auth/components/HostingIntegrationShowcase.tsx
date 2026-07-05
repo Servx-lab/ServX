@@ -113,7 +113,7 @@ const SplineScene = ({ flowState }: { flowState: FlowState }) => {
   }, [isConnected]);
 
   const containerRef = useRef(null);
-  const isInView = useInView(containerRef, { once: true, margin: "200px" });
+  const isInView = useInView(containerRef, { once: false, margin: "200px" });
 
   return (
     <motion.div 
