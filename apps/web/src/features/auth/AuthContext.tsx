@@ -220,7 +220,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     handlePostLoginTasks(session, mappedUser);
                 }
 
-                if (!hasHash && mounted) {
+                if (hasHash && mounted) {
+                    // Fallback timeout in case Supabase's onAuthStateChange drops the event
+                    setTimeout(() => {
+                        if (mounted) setLoading(false);
+                    }, 4000);
+                } else if (mounted) {
                     setLoading(false);
                 }
             } catch (err) {
