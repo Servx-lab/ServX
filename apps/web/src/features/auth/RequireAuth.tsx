@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -12,8 +13,14 @@ export const RequireAuth = ({ children, requireGitHub = true }: RequireAuthProps
     const { user, loading, isGitHubLinked, isDevicePendingApproval } = useAuth();
     const location = useLocation();
 
-    const isProcessingCallback = window.location.hash && window.location.hash.includes('access_token=');
     const hasError = (window.location.hash && window.location.hash.includes('error=')) || window.location.search.includes('error=');
+
+    useEffect(() => {
+        // Automatically clear the hash from the URL once authentication finishes loading
+        if (!loading && window.location.hash && window.location.hash.includes('access_token=')) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+    }, [loading]);
 
     if (hasError) {
         // Extract the error_description for better debugging
@@ -29,7 +36,7 @@ export const RequireAuth = ({ children, requireGitHub = true }: RequireAuthProps
         return <Navigate to="/auth" state={{ from: location, error: errorDesc }} replace />;
     }
 
-    if (loading || isProcessingCallback) {
+    if (loading) {
         return <div className="h-screen w-full flex items-center justify-center bg-orizons-void"><LoadingSpinner /></div>;
     }
 
