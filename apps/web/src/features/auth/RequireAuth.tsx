@@ -12,12 +12,22 @@ export const RequireAuth = ({ children, requireGitHub = true }: RequireAuthProps
     const { user, loading, isGitHubLinked, isDevicePendingApproval } = useAuth();
     const location = useLocation();
 
-    // Check if Supabase is currently processing an OAuth hash token in the URL.
-    // If so, we must keep rendering the loading state and block immediate routing redirects.
-    const isProcessingCallback = window.location.hash && (
-        window.location.hash.includes('access_token=') || 
-        window.location.hash.includes('error=')
-    );
+    const isProcessingCallback = window.location.hash && window.location.hash.includes('access_token=');
+    const hasError = (window.location.hash && window.location.hash.includes('error=')) || window.location.search.includes('error=');
+
+    if (hasError) {
+        // Extract the error_description for better debugging
+        let errorDesc = "OAuth failed. Please try again.";
+        try {
+            const params = new URLSearchParams(window.location.hash.substring(1) || window.location.search);
+            if (params.get('error_description')) {
+                errorDesc = params.get('error_description')!.replace(/\+/g, ' ');
+            }
+        } catch(e) {}
+        
+        // Clear the URL and redirect back to auth so they aren't stuck forever
+        return <Navigate to="/auth" state={{ from: location, error: errorDesc }} replace />;
+    }
 
     if (loading || isProcessingCallback) {
         return <div className="h-screen w-full flex items-center justify-center bg-orizons-void"><LoadingSpinner /></div>;

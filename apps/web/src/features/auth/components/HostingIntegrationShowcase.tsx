@@ -75,7 +75,9 @@ const SplineScene = ({ flowState }: { flowState: FlowState }) => {
     try {
       if (splineApp._scene) splineApp._scene.background = null;
       if (typeof splineApp.setBackgroundColor === 'function') splineApp.setBackgroundColor('#000000');
-    } catch (e) {}
+    } catch (e) {
+      /* ignore */
+    }
 
     // Hidden behind opacity: 0 for 2s.
     // Delay 1000ms ensures Spline's internal physics/state engine is fully initialized
@@ -113,7 +115,7 @@ const SplineScene = ({ flowState }: { flowState: FlowState }) => {
   }, [isConnected]);
 
   const containerRef = useRef(null);
-  const isInView = useInView(containerRef, { once: true, margin: "200px" });
+  const isInView = useInView(containerRef, { once: false, margin: "200px" });
 
   return (
     <motion.div 
@@ -316,13 +318,17 @@ export const HostingIntegrationShowcase = () => {
       (entries) => {
         if (entries[0].isIntersecting) {
           isPausedRef.current = false;
-          if (!hasStarted.current) {
-            hasStarted.current = true;
-            abortController = new AbortController();
-            runAnimationSequence(abortController.signal);
-          }
+          abortController = new AbortController();
+          runAnimationSequence(abortController.signal);
         } else {
+          abortController.abort();
           isPausedRef.current = true;
+          // Reset states immediately when out of view
+          setFlowState('idle');
+          setApiKey('');
+          setApiName('');
+          setIsCopied(false);
+          cursorControls.set({ opacity: 0, top: "80%", left: "80%", scale: 1 });
         }
       },
       { threshold: 0.3 }

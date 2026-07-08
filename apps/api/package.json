@@ -9,11 +9,15 @@
     "sync-users": "tsx scripts/syncUsersToSheets.js"
   },
   "dependencies": {
+    "@langchain/textsplitters": "^1.0.1",
     "@octokit/graphql": "^9.0.3",
     "@octokit/rest": "^22.0.1",
+    "@pinecone-database/pinecone": "^8.0.0",
     "@supabase/supabase-js": "^2.103.0",
+    "@types/dockerode": "^4.0.1",
     "axios": "^1.13.6",
     "cors": "^2.8.5",
+    "dockerode": "^5.0.1",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "google-spreadsheet": "^4.1.5",
@@ -26,7 +30,8 @@
     "openai": "^6.37.0",
     "pg": "^8.20.0",
     "puppeteer": "^24.41.0",
-    "redis": "^5.11.0"
+    "redis": "^5.11.0",
+    "ts-jest": "^29.4.11"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

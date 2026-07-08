@@ -83,7 +83,7 @@ export const DatabasePipelineUI = ({ dbState, cycleIndex = 0 }: { dbState: DBSta
   };
 
   useEffect(() => {
-    let timeouts: ReturnType<typeof setTimeout>[] = [];
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
     
     if (dbState === 'idle') {
       cursorControls.set({ opacity: 0, top: "80%", left: "10%", scale: 1 });

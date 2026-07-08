@@ -32,6 +32,7 @@ import { DatabaseShowcase } from './components/DatabaseShowcase';
 import { GlobalOpsShowcase } from './components/GlobalOpsShowcase';
 import { VSCodeIntegrationShowcase } from './components/VSCodeIntegrationShowcase';
 import { GitHubAnalyticsShowcase } from '../github/GitHubAnalyticsShowcase';
+import { FloatingNav } from './components/FloatingNav';
 import { useToast } from "@/components/ui/use-toast";
 
 const GoogleIcon = () => (
@@ -517,21 +518,8 @@ const Landing = () => {
             <main>
                 <Hero />
                 
-                {/* 3D Database Section */}
-                <section className="py-24 bg-white border-y border-gray-200">
-                    <div className="container mx-auto px-6">
-                        <div className="text-center mb-16">
-                            <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-4">Pluggable Database Controller</h2>
-                            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Watch how effortlessly you can connect your data sources and search through massive datasets in real-time.</p>
-                        </div>
-                        <div className="w-full">
-                            <DatabaseShowcase />
-                        </div>
-                    </div>
-                </section>
-
                 {/* 3D Showcase Section */}
-                <section className="py-24 bg-slate-50 border-b border-gray-200">
+                <section id="showcase-automedic" className="py-24 bg-slate-50 border-y border-gray-200">
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-16">
                             <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-4">Auto-Medic & Healing System</h2>
@@ -543,8 +531,21 @@ const Landing = () => {
                     </div>
                 </section>
 
+                {/* 3D Database Section */}
+                <section id="showcase-database" className="py-24 bg-white border-b border-gray-200">
+                    <div className="container mx-auto px-6">
+                        <div className="text-center mb-16">
+                            <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-4">Pluggable Database Controller</h2>
+                            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Watch how effortlessly you can connect your data sources and search through massive datasets in real-time.</p>
+                        </div>
+                        <div className="w-full">
+                            <DatabaseShowcase />
+                        </div>
+                    </div>
+                </section>
+
                 {/* 3D Hosting Integration Section */}
-                <section className="py-24 bg-white border-b border-gray-200">
+                <section id="showcase-hosting" className="py-24 bg-white border-b border-gray-200">
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-16">
                             <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-4">Cryptographic Hosting Bridge</h2>
@@ -557,16 +558,22 @@ const Landing = () => {
                 </section>
 
                 {/* Global Operations Showcase */}
-                <GlobalOpsShowcase />
+                <div id="showcase-globalops">
+                    <GlobalOpsShowcase />
+                </div>
 
                 {/* VSCode Integration Showcase */}
-                <VSCodeIntegrationShowcase />
+                <div id="showcase-vscode">
+                    <VSCodeIntegrationShowcase />
+                </div>
 
                 {/* GitHub Analytics Showcase */}
-                <GitHubAnalyticsShowcase />
+                <div id="showcase-github">
+                    <GitHubAnalyticsShowcase />
+                </div>
 
                 {/* 3D Attack Path Section */}
-                <section className="py-24 bg-white border-b border-gray-200">
+                <section id="showcase-attackpath" className="py-24 bg-white border-b border-gray-200">
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-16">
                             <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-4">3D Attack Path & Quarantine</h2>
@@ -578,6 +585,7 @@ const Landing = () => {
                     </div>
                 </section>
 
+                <FloatingNav />
                 <FloatingUI />
                 <BentoGrid />
                 <FeatureDeepDives />
