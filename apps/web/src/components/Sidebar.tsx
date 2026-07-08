@@ -36,6 +36,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { useConnections } from "@/features/databases/hooks";
+
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", to: "/dashboard" },
   { icon: Stethoscope, label: "Auto-Medic Pipeline", to: "/auto-medic" },
@@ -58,6 +60,18 @@ const bottomItems = [
 const Sidebar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { connections } = useConnections();
+
+  const hasDeployments = connections.some(c => 
+    c.provider && (c.provider.toLowerCase() === 'vercel' || c.provider.toLowerCase() === 'render')
+  );
+
+  const filteredNavItems = navItems.filter(item => {
+    if (item.to === "/auto-medic") {
+      return hasDeployments;
+    }
+    return true;
+  });
 
   return (
     <div className="glass-sidebar w-56 shrink-0 h-full min-h-0 flex flex-col py-6 px-3 relative z-40 overflow-y-auto no-scrollbar rounded-tl-[2rem] rounded-bl-[2rem]">
@@ -68,7 +82,7 @@ const Sidebar = () => {
 
       {/* Main Nav */}
       <nav className="flex-1 flex flex-col gap-1">
-        {navItems.map((item) => (
+        {filteredNavItems.map((item) => (
           item.subItems ? (
              <Collapsible key={item.label} className="group/collapsible">
                 <CollapsibleTrigger className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 w-full text-left text-muted-foreground hover:bg-secondary/50 hover:text-foreground group-data-[state=open]/collapsible:text-foreground">

@@ -95,7 +95,7 @@ const ServerNode = ({ nodeState }: { nodeState: NodeState }) => {
         for (let i = 0; i < posAttribute.count; i++) {
           const y = posAttribute.getY(i);
           // Create a gradient band based on local Y coordinate
-          let mixFactor = THREE.MathUtils.clamp((y - p) * 1.5 + 0.5, 0, 1);
+          const mixFactor = THREE.MathUtils.clamp((y - p) * 1.5 + 0.5, 0, 1);
           
           if (nodeState === 'healing') {
             tempColor.lerpColors(colorBottom.current, colorTop.current, mixFactor);

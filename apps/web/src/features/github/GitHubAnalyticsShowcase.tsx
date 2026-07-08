@@ -75,7 +75,9 @@ export const GitHubAnalyticsShowcase = () => {
           return true;
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      /* ignore */
+    }
     return false;
   };
 
@@ -90,7 +92,7 @@ export const GitHubAnalyticsShowcase = () => {
 
   const onLoad = (splineApp: any) => {
     splineRef.current = splineApp;
-    try { splineApp.setZoom(0.5); } catch (e) {}
+    try { splineApp.setZoom(0.5); } catch (e) { /* ignore */ }
     setTimeout(() => { 
       setBulbState(false); 
       setIsSplineReady(true);
@@ -121,7 +123,7 @@ export const GitHubAnalyticsShowcase = () => {
     if (!isInView || !isSplineReady) return;
 
     let mounted = true;
-    let timeouts: ReturnType<typeof setTimeout>[] = [];
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
     
     const sleep = (ms: number) => new Promise(r => {
       const t = setTimeout(r, ms);

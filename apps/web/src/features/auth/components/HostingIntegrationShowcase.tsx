@@ -75,7 +75,9 @@ const SplineScene = ({ flowState }: { flowState: FlowState }) => {
     try {
       if (splineApp._scene) splineApp._scene.background = null;
       if (typeof splineApp.setBackgroundColor === 'function') splineApp.setBackgroundColor('#000000');
-    } catch (e) {}
+    } catch (e) {
+      /* ignore */
+    }
 
     // Hidden behind opacity: 0 for 2s.
     // Delay 1000ms ensures Spline's internal physics/state engine is fully initialized

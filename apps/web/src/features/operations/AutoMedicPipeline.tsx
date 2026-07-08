@@ -25,7 +25,7 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '@/lib/apiClient';
 import { useLatestIncident } from './hooks';
 
-export const AutoMedicPipeline = () => {
+export const AutoMedicPipeline = ({ onCheck }: { onCheck?: () => void }) => {
     const navigate = useNavigate();
     const [isHudOpen, setIsHudOpen] = useState(false);
     const [activeStep, setActiveStep] = useState(0);
@@ -127,23 +127,23 @@ export const AutoMedicPipeline = () => {
                     className={`
                         flex items-center gap-2 px-4 py-2 rounded-full border shadow-sm backdrop-blur-md transition-all duration-300
                         ${activeIncident 
-                            ? 'bg-white/95 border-purple-200 hover:border-purple-400 text-purple-700 shadow-[0_0_20px_rgba(108,99,255,0.1)]' 
-                            : 'bg-white/95 border-green-200 hover:border-green-400 text-green-700'
+                            ? 'bg-white/95 border-gray-200 hover:border-gray-300 text-black shadow-sm' 
+                            : 'bg-white/95 border-gray-200 hover:border-gray-300 text-black'
                         }
                     `}
                 >
                     {activeIncident ? (
                         <>
                             <span className="relative flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#6C63FF] opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#6C63FF]"></span>
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 shadow-[0_0_8px_#ef4444]"></span>
                             </span>
-                            <span className="text-sm font-semibold tracking-wide">1 Active Incident Detected</span>
+                            <span className="text-sm font-semibold tracking-wide text-black">1 Active Incident Detected</span>
                         </>
                     ) : (
                         <>
-                             <CheckCircle2 className="w-4 h-4 text-green-500" />
-                             <span className="text-sm font-semibold tracking-wide">All Systems Nominal</span>
+                             <CheckCircle2 className="w-4 h-4 text-black" />
+                             <span className="text-sm font-semibold tracking-wide text-black">All Systems Nominal</span>
                         </>
                     )}
                 </button>
@@ -154,16 +154,16 @@ export const AutoMedicPipeline = () => {
                 <div className="flex-1 p-6 pt-24 overflow-hidden flex flex-col">
                     
                     <div className="mb-6 flex items-center gap-3">
-                         <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-1.5 shadow-sm font-mono text-xs text-gray-500">
-                             <div className="flex items-center gap-2 px-3 py-1.5 hover:text-black transition-colors cursor-default">
-                                <Server className="w-4 h-4 text-[#00C2CB]" /> PRODUCTION
+                         <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1.5 shadow-sm font-mono text-xs text-black font-medium">
+                             <div className="flex items-center gap-2 px-3 py-1.5 cursor-default">
+                                <Server className="w-4 h-4 text-black" /> PRODUCTION
                              </div>
                              <div className="text-gray-300 font-light">/</div>
-                             <div className="flex items-center gap-2 px-3 py-1.5 hover:text-black transition-colors cursor-default capitalize">
-                                <FolderGit2 className="w-4 h-4 text-[#6C63FF]" /> {activeIncident.method} {activeIncident.path}
+                             <div className="flex items-center gap-2 px-3 py-1.5 cursor-default capitalize">
+                                <FolderGit2 className="w-4 h-4 text-black" /> {activeIncident.method} {activeIncident.path}
                              </div>
                          </div>
-                         <Badge variant="outline" className={`font-mono tracking-widest text-[10px] py-1 ${activeIncident.cached ? 'bg-green-50 text-green-600 border-green-100' : 'bg-purple-50 text-[#6C63FF] border-purple-100'}`}>
+                         <Badge variant="outline" className={`font-mono tracking-widest text-[10px] py-1 bg-white text-black border-gray-200 font-medium`}>
                              {activeIncident.cached ? 'CACHE HIT' : 'REAL-TIME ANALYSIS'}
                          </Badge>
                     </div>
@@ -264,8 +264,14 @@ export const AutoMedicPipeline = () => {
                                             </div>
                                         </ScrollArea>
                                         <div className="p-4 border-t border-gray-200 bg-white">
-                                            <Button className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold h-10 transition-all border border-green-400">
-                                                <Cpu className="mr-2 h-4 w-4" /> Deploy Resolution
+                                            <Button 
+                                                onClick={() => {
+                                                    if (onCheck) onCheck();
+                                                    else navigate('/auto-medic/diagnostic');
+                                                }}
+                                                className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold h-10 transition-all border border-green-400"
+                                            >
+                                                <Activity className="mr-2 h-4 w-4" /> Check
                                             </Button>
                                         </div>
                                     </>

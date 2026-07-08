@@ -95,7 +95,7 @@ export const VSCodeIntegrationShowcase = () => {
   const isVisibleRef = useRef(false);
 
   useEffect(() => {
-    let abortController = new AbortController();
+    const abortController = new AbortController();
 
     let currentTimeout: ReturnType<typeof setTimeout> | null = null;
 

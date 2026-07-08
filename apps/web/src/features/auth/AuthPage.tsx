@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
     Github, 
@@ -33,9 +34,31 @@ const GoogleIcon = () => (
 );
 
 const AuthPage = () => {
-    const { signInWithGitHub, signInWithGoogle } = useAuth();
+    const { signInWithGitHub, signInWithGoogle, user, isGitHubLinked } = useAuth();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        // If we were redirected here with an error, show it
+        if (location.state?.error) {
+            toast({
+                variant: "destructive",
+                title: "Authentication Error",
+                description: location.state.error,
+            });
+            // Clear the state so we don't keep toasting on reload
+            window.history.replaceState({}, document.title);
+        } else if (user) {
+            // If logged in and no error, redirect away from auth page
+            if (isGitHubLinked) {
+                navigate('/dashboard', { replace: true });
+            } else {
+                navigate('/bridge', { replace: true });
+            }
+        }
+    }, [location.state, user, isGitHubLinked, navigate, toast]);
 
     const handleGitHubLogin = async () => {
         setIsLoading(true);
@@ -131,6 +154,60 @@ const AuthPage = () => {
                                 Sign in with Google
                             </div>
                         </Button>
+
+                        <div className="relative py-4 mt-2">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t border-zinc-200" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-[#F8FAFC] px-2 text-zinc-500 font-bold tracking-wider">Or Use Email</span>
+                            </div>
+                        </div>
+
+                        {/* Fallback Email Login */}
+                        <form 
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                setIsLoading(true);
+                                const formData = new FormData(e.currentTarget);
+                                const email = formData.get('email') as string;
+                                const password = formData.get('password') as string;
+                                try {
+                                    const { supabase } = await import('@/lib/supabase');
+                                    const { error } = await supabase.auth.signInWithPassword({ email, password });
+                                    if (error) throw error;
+                                    toast({ title: "Success", description: "Logged in via email." });
+                                    window.location.href = '/dashboard';
+                                } catch(err: any) {
+                                    toast({ variant: "destructive", title: "Login Failed", description: err.message });
+                                } finally {
+                                    setIsLoading(false);
+                                }
+                            }}
+                            className="space-y-3"
+                        >
+                            <input 
+                                type="email" 
+                                name="email" 
+                                placeholder="Email Address" 
+                                required
+                                className="w-full h-12 px-4 rounded-xl border border-zinc-200 bg-white/50 focus:border-orizons-teal focus:ring-1 focus:ring-orizons-teal outline-none transition-all text-sm"
+                            />
+                            <input 
+                                type="password" 
+                                name="password" 
+                                placeholder="Password" 
+                                required
+                                className="w-full h-12 px-4 rounded-xl border border-zinc-200 bg-white/50 focus:border-orizons-teal focus:ring-1 focus:ring-orizons-teal outline-none transition-all text-sm"
+                            />
+                            <Button 
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full h-12 bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-xl transition-all"
+                            >
+                                Sign in with Email
+                            </Button>
+                        </form>
                     </div>
 
                     {/* Security Note */}
