@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import DevicePendingTakeover from './DevicePendingTakeover';
+import DeviceOnboarding from './DeviceOnboarding';
 
 interface RequireAuthProps {
     children: JSX.Element;
@@ -10,7 +11,7 @@ interface RequireAuthProps {
 }
 
 export const RequireAuth = ({ children, requireGitHub = true }: RequireAuthProps) => {
-    const { user, loading, isGitHubLinked, isDevicePendingApproval } = useAuth();
+    const { user, loading, isGitHubLinked, isDevicePendingApproval, isDeviceSetupRequired } = useAuth();
     const location = useLocation();
 
     const hasError = (window.location.hash && window.location.hash.includes('error=')) || window.location.search.includes('error=');
@@ -40,9 +41,15 @@ export const RequireAuth = ({ children, requireGitHub = true }: RequireAuthProps
         return <div className="h-screen w-full flex items-center justify-center bg-orizons-void"><LoadingSpinner /></div>;
     }
 
-    if (isDevicePendingApproval) {
-        return <DevicePendingTakeover />;
-    }
+    // Device Zero-Trust Authorization (Onboarding vs Takeover)
+    // Temporarily disabled so you can work on the UI freely at /mobile
+    // if (isDeviceSetupRequired) {
+    //     return <DeviceOnboarding />;
+    // }
+
+    // if (isDevicePendingApproval) {
+    //     return <DevicePendingTakeover />;
+    // }
 
     if (!user) {
         // Not logged in -> Redirect to Auth page

@@ -1080,61 +1080,34 @@ const IntegrationHelpCenter = () => {
 };
 
 // --- PAGE LAYOUT & MAIN ENTRY ---
+import { PageLayout } from '@/components/layout/PageLayout';
+
 const OperationsContent = () => {
     const [impersonatingUser, setImpersonatingUser] = useState<{ id: string; email: string; name: string } | null>(null);
 
     return (
-        <div className="flex-1 flex flex-row h-full overflow-hidden bg-white rounded-t-[2.5rem] w-full">
-            {/* Center Area (Main Dashboard) */}
-            <main className="flex-1 flex flex-col h-full overflow-hidden relative z-0 text-slate-800 font-sans bg-white">
-                {/* Page Header */}
-                <div className="px-8 py-6 border-b border-slate-100 bg-white z-10 flex-shrink-0 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
-                    <div>
-                        <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold font-mono mb-1 uppercase tracking-widest">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                            </span>
-                            <Activity className="w-3 h-3 text-blue-500 animate-pulse" />
-                            System Operations Center
-                        </div>
-                        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
-                            Global Operations & Security
-                        </h1>
-                    </div>
+        <PageLayout title="Global Operations & Security" fullWidth={true}>
+            <div className="flex flex-col lg:flex-row gap-8 w-full">
+                {/* Main Dashboard Area */}
+                <div className="flex-1 flex flex-col gap-6 w-full">
+                    <RepositoryControl 
+                        impersonatingUser={impersonatingUser} 
+                        onStopImpersonating={() => setImpersonatingUser(null)}
+                    />
+                    <IntegrationHelpCenter />
+                    <TaskExecutor />
                 </div>
 
-                {/* Dashboard Scroll Container */}
-                <div className="flex-1 p-8 overflow-y-auto w-full max-w-5xl mx-auto flex flex-col gap-6 scrollbar-thin scrollbar-thumb-slate-200">
-                    {/* Row 1: Repository Control Plane */}
-                    <div className="flex-shrink-0">
-                        <RepositoryControl 
-                            impersonatingUser={impersonatingUser} 
-                            onStopImpersonating={() => setImpersonatingUser(null)}
-                        />
-                    </div>
-
-                    {/* Row 2: Help Center & Quick Start Guide */}
-                    <div className="flex-shrink-0 mt-2">
-                        <IntegrationHelpCenter />
-                    </div>
-
-                    {/* Row 3: Remote Tasks */}
-                    <div className="flex-shrink-0 mt-2">
-                        <TaskExecutor />
-                    </div>
-                </div>
-            </main>
-
-            {/* Right Sidebar (Light Grey) - Ghost Mode */}
-            <aside className="w-80 border-l border-slate-100 bg-slate-50/50 flex flex-col h-full overflow-hidden flex-shrink-0">
-                <UserCRM 
-                    impersonatingUser={impersonatingUser}
-                    onStartImpersonate={(u) => setImpersonatingUser(u)}
-                    onStopImpersonate={() => setImpersonatingUser(null)}
-                />
-            </aside>
-        </div>
+                {/* Right Sidebar (Ghost Mode CRM) */}
+                <aside className="w-full lg:w-96 shrink-0 border border-gray-100 rounded-3xl overflow-hidden bg-gray-50/50 flex flex-col">
+                    <UserCRM 
+                        impersonatingUser={impersonatingUser}
+                        onStartImpersonate={(u) => setImpersonatingUser(u)}
+                        onStopImpersonate={() => setImpersonatingUser(null)}
+                    />
+                </aside>
+            </div>
+        </PageLayout>
     );
 };
 
