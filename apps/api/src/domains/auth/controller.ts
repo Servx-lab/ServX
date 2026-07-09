@@ -250,18 +250,34 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
     const userAgent = req.headers['user-agent'] || 'Unknown Browser';
     const cleanName = getDeviceNameFromUA(userAgent);
 
+    // Fetch real location data (Fallback to backend's public IP if client is localhost)
+    let locationStr: string | undefined;
+    let ispStr: string | undefined;
+    try {
+      let targetIp = Array.isArray(clientIp) ? clientIp[0] : clientIp;
+      const isLocal = targetIp === '::1' || targetIp === '127.0.0.1' || targetIp.startsWith('192.168.') || targetIp.startsWith('10.');
+      const url = isLocal ? 'http://ip-api.com/json/' : `http://ip-api.com/json/${targetIp}`;
+      const geoResponse = await axios.get(url, { timeout: 3000 });
+      if (geoResponse.data && geoResponse.data.status === 'success') {
+        locationStr = geoResponse.data.city && geoResponse.data.regionName ? `${geoResponse.data.city}, ${geoResponse.data.regionName}` : undefined;
+        ispStr = geoResponse.data.isp || undefined;
+      }
+    } catch (geoErr: any) {
+      console.error('[GeoLocation] Failed to fetch IP data:', geoErr.message);
+    }
+
     if (!device) {
-      // Check if this is the user's first registered device
-      const { count, error: countError } = await supabaseAdmin
+      // Check if this user has any main device
+      const { count: mainCount, error: mainCountError } = await supabaseAdmin
         .from('user_devices')
         .select('*', { count: 'exact', head: true })
-        .eq('user_uuid', id);
+        .eq('user_uuid', id)
+        .eq('is_main_device', true);
 
-      if (countError) throw countError;
+      if (mainCountError) throw mainCountError;
 
-      const isFirst = count === 0;
-      const initialStatus = isFirst ? 'APPROVED' : 'PENDING';
-      const isMain = isFirst;
+      const hasMainDevice = mainCount !== null && mainCount > 0;
+      const initialStatus = hasMainDevice ? 'PENDING' : 'PENDING_SETUP';
 
       const { data: newDevice, error: insertError } = await supabaseAdmin
         .from('user_devices')
@@ -269,9 +285,9 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
           user_uuid: id,
           device_fingerprint: fingerprint,
           device_name: cleanName,
-          is_main_device: isMain,
+          is_main_device: false, // Never auto-promote
           status: initialStatus,
-          last_ip: clientIp,
+          last_ip: Array.isArray(clientIp) ? clientIp[0] : clientIp,
           last_login: new Date()
         })
         .select()
@@ -279,7 +295,7 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
 
       if (insertError) throw insertError;
 
-      if (!isFirst) {
+      if (hasMainDevice) {
         // Trigger Redis PubSub event to alert the main device
         const redis = await getRedisClient();
         if (redis) {
@@ -289,11 +305,16 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
               event: 'login_request',
               device_fingerprint: fingerprint,
               device_name: cleanName,
-              last_ip: clientIp
+              last_ip: Array.isArray(clientIp) ? clientIp[0] : clientIp,
+              location: locationStr,
+              isp: ispStr
             })
           );
         }
         res.status(403).json({ error: 'device_pending_approval' });
+        return;
+      } else {
+        res.status(403).json({ error: 'device_setup_required' });
         return;
       }
     } else {
@@ -302,13 +323,25 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
         res.status(403).json({ error: 'device_denied', message: 'Access from this device has been explicitly denied.' });
         return;
       }
-
+      
       if (device.status === 'PENDING') {
+        // Double check if we lost our main device
+        const { count: mainCount } = await supabaseAdmin
+          .from('user_devices')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_uuid', id)
+          .eq('is_main_device', true);
+          
+        if (!mainCount || mainCount === 0) {
+            // No main device exists! We must set up this one.
+            res.status(403).json({ error: 'device_setup_required' });
+            return;
+        }
         // Update IP and timestamp
         await supabaseAdmin
           .from('user_devices')
           .update({
-            last_ip: clientIp,
+            last_ip: Array.isArray(clientIp) ? clientIp[0] : clientIp,
             last_login: new Date()
           })
           .eq('id', device.id);
@@ -322,7 +355,9 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
               event: 'login_request',
               device_fingerprint: fingerprint,
               device_name: device.device_name,
-              last_ip: clientIp
+              last_ip: Array.isArray(clientIp) ? clientIp[0] : clientIp,
+              location: locationStr,
+              isp: ispStr
             })
           );
         }

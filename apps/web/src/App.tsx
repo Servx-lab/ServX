@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "./features/auth/RequireAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import { ServXProvider } from "@servx/react";
+import ApprovalDrawer from "./features/auth/ApprovalDrawer";
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded pages/features — each becomes its own JS chunk loaded on demand
@@ -17,7 +18,6 @@ const Index            = lazy(() => import("./pages/Index"));
 const Databases        = lazy(() => import("./features/databases"));
 const GitHub           = lazy(() => import("./features/github"));
 const HostingRender    = lazy(() => import("./features/hosting"));
-const InfraSettings    = lazy(() => import("./pages/InfraSettings"));
 const ProfileSettings  = lazy(() => import("./pages/ProfileSettings"));
 const AutoMedic        = lazy(() => import("./pages/AutoMedic"));
 const Operations       = lazy(() => import("./features/operations"));
@@ -25,6 +25,8 @@ const NotFound         = lazy(() => import("./pages/NotFound"));
 const AuthPage         = lazy(() => import("./features/auth"));
 const Bridge           = lazy(() => import("./features/auth/Bridge"));
 const Onboarding       = lazy(() => import("./features/auth/Onboarding"));
+const ProfileSetupExample = lazy(() => import("./features/auth/ProfileSetupExample").then(module => ({ default: module.ProfileSetupExample })));
+const DeviceOnboarding = lazy(() => import("./features/auth/DeviceOnboarding"));
 const Administrator    = lazy(() => import("./features/admin"));
 const AuthCallback     = lazy(() => import("./features/auth/AuthCallback"));
 const AttackPath       = lazy(() => import("./pages/AttackPath"));
@@ -69,6 +71,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <AuthProvider>
+            <ApprovalDrawer />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 {/* Public Routes */}
@@ -100,23 +103,27 @@ const App = () => (
                   <Route path="/scenarios"            element={<ComingSoon />} />
                   <Route path="/emails"               element={<Emails />} />
                   <Route path="/reports"              element={<ComingSoon />} />
-                  <Route path="/settings/profile"     element={<ProfileSettings />} />
+                  <Route path="/settings" element={<ProfileSettings />} />
                 </Route>
 
                 {/* Protected routes without sidebar */}
+                <Route
+                  path="/example"
+                  element={<ProfileSetupExample />}
+                />
+                <Route
+                  path="/mobile"
+                  element={
+                    <RequireAuth>
+                      <DeviceOnboarding />
+                    </RequireAuth>
+                  }
+                />
                 <Route
                   path="/onboarding"
                   element={
                     <RequireAuth>
                       <Onboarding />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/settings/connections"
-                  element={
-                    <RequireAuth>
-                      <InfraSettings />
                     </RequireAuth>
                   }
                 />
