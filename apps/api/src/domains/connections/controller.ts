@@ -199,3 +199,22 @@ export async function saveHostingConnection(
     next(err);
   }
 }
+
+// DELETE /api/connections/hosting/:provider
+export async function deleteHostingConnection(
+  req: any,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const providerKey = getSingleParam(req.params.provider as string | string[] | undefined).toLowerCase();
+    if (!HOSTING_PROVIDERS[providerKey]) {
+      throw new ValidationError(`Unknown hosting provider: ${providerKey}`);
+    }
+    
+    await svc.deleteHostingToken(req.user.uid, providerKey);
+    res.json({ message: 'Hosting connection deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
