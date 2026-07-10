@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { PageLayout } from '@/components/layout/PageLayout';
 import { 
   ReactFlow, 
   Background, 
@@ -279,85 +280,13 @@ const DataGovernance = () => {
   ];
 
   return (
-    <div className="flex-1 bg-[#F8FAFC] flex flex-col h-full overflow-y-auto font-sans pt-16">
-      
-      {/* Real-time Glassmorphic Device Approval Modal Overlay */}
-      {activeRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md transition-all animate-in fade-in duration-300">
-          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-[#00C2CB]/20 bg-[#0B0E14]/90 p-6 text-white shadow-2xl shadow-[#00C2CB]/10">
-            {/* Decorative HSL Gradient glow */}
-            <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-[#00C2CB]/10 blur-3xl" />
-            <div className="absolute -right-20 -bottom-20 h-40 w-40 rounded-full bg-[#00C2CB]/10 blur-3xl" />
-
-            <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
-              <div className="rounded-2xl bg-[#00C2CB]/10 p-3 text-[#00C2CB]">
-                <Laptop className="h-6 w-6 animate-bounce" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black tracking-tight flex items-center gap-1.5">
-                  Device Login Attempt
-                  <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-bold px-2 py-0.5 uppercase tracking-wider">Zero-Trust Alert</Badge>
-                </h3>
-                <p className="text-xs text-gray-400 mt-0.5">A new device is requesting dashboard authorization.</p>
-              </div>
-            </div>
-
-            <div className="my-5 space-y-3.5 text-sm">
-              <div className="flex items-center justify-between text-xs border-b border-gray-800/50 pb-2">
-                <span className="text-gray-400">Device Description</span>
-                <span className="font-semibold text-[#00C2CB]">{activeRequest.device_name}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs border-b border-gray-800/50 pb-2">
-                <span className="text-gray-400">IP Location</span>
-                <span className="font-mono text-gray-300">{activeRequest.last_ip}</span>
-              </div>
-              <div className="flex flex-col gap-1.5 pt-2">
-                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Device Nickname (Optional)</span>
-                <Input
-                  type="text"
-                  value={customDeviceName}
-                  onChange={(e) => setCustomDeviceName(e.target.value)}
-                  placeholder="e.g. MacBook Pro - Home"
-                  className="bg-[#121620] border-gray-800 text-white placeholder-gray-600 focus-visible:ring-[#00C2CB]"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => handleApproveDevice("DENIED")}
-                className="rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
-                disabled={approveDeviceMutation.isPending}
-              >
-                <X className="w-4 h-4 mr-2" /> Deny Access
-              </Button>
-              <Button
-                type="button"
-                onClick={() => handleApproveDevice("APPROVED")}
-                className="rounded-xl bg-[#00C2CB] text-white hover:bg-[#00C2CB]/80 shadow-lg shadow-[#00C2CB]/20 transition-all font-semibold"
-                disabled={approveDeviceMutation.isPending}
-              >
-                <Check className="w-4 h-4 mr-2" /> Authorize Device
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Top Header / Badge Area */}
-      <header className="p-6 flex justify-between items-center bg-white border-b border-slate-100 shadow-sm relative z-40">
-        <div>
-          <h1 className="text-2xl font-black tracking-tighter text-[#0F172A] flex items-center gap-2">
-            Data Governance & Incident Center
-            <span className="text-[10px] bg-[#00C2CB]/10 text-[#00C2CB] px-2 py-0.5 rounded-full uppercase tracking-widest font-black border border-[#00C2CB]/20">Hackathon Build</span>
-          </h1>
-          <p className="text-xs text-[#64748B] uppercase font-bold tracking-widest mt-1">Cross-platform observability & governance</p>
-        </div>
-        
-        {/* Glowing Badge */}
-        <div className="flex items-center gap-3">
+    <PageLayout 
+      title="Data Governance & Incident Center" 
+      subtitle="Cross-platform observability & governance"
+      fullWidth={true}
+      noPadding={true}
+      headerContent={
+        <div className="flex items-center gap-3 w-full justify-between lg:justify-end">
           <div className="relative">
             <div className="absolute inset-0 bg-[#34D399] blur-lg opacity-40 animate-pulse" />
             <div className="relative px-4 py-2 bg-[#10B981] text-white text-[10px] font-black rounded-lg flex items-center gap-2 shadow-xl">
@@ -366,272 +295,334 @@ const DataGovernance = () => {
             </div>
           </div>
         </div>
-      </header>
+      }
+    >
+      <div className="flex flex-col h-full font-sans">
+        {/* Real-time Glassmorphic Device Approval Modal Overlay */}
+        {activeRequest && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md transition-all animate-in fade-in duration-300">
+            <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-[#00C2CB]/20 bg-[#0B0E14]/90 p-6 text-white shadow-2xl shadow-[#00C2CB]/10">
+              {/* Decorative HSL Gradient glow */}
+              <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-[#00C2CB]/10 blur-3xl" />
+              <div className="absolute -right-20 -bottom-20 h-40 w-40 rounded-full bg-[#00C2CB]/10 blur-3xl" />
 
-      {/* Main Content Dashboard - Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 min-h-[500px]">
-        {/* Left Panel: Lineage Graph */}
-        <section className="lg:col-span-2 flex flex-col gap-4 min-h-0">
-          <div className="flex-1 bg-white rounded-3xl border border-slate-200 overflow-hidden relative shadow-md min-h-[400px]">
-            <div className="absolute top-6 left-6 z-10">
-              <h2 className="text-sm font-black text-[#0F172A] uppercase tracking-widest flex items-center gap-2">
-                <Zap size={16} className="text-[#00C2CB]" />
-                Data-Aware Blast Radius
-              </h2>
-              <span className="text-[10px] font-bold text-[#64748B] uppercase">OpenMetadata Lineage View</span>
+              <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
+                <div className="rounded-2xl bg-[#00C2CB]/10 p-3 text-[#00C2CB]">
+                  <Laptop className="h-6 w-6 animate-bounce" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black tracking-tight flex items-center gap-1.5">
+                    Device Login Attempt
+                    <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-bold px-2 py-0.5 uppercase tracking-wider">Zero-Trust Alert</Badge>
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">A new device is requesting dashboard authorization.</p>
+                </div>
+              </div>
+
+              <div className="my-5 space-y-3.5 text-sm">
+                <div className="flex items-center justify-between text-xs border-b border-gray-800/50 pb-2">
+                  <span className="text-gray-400">Device Description</span>
+                  <span className="font-semibold text-[#00C2CB]">{activeRequest.device_name}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs border-b border-gray-800/50 pb-2">
+                  <span className="text-gray-400">IP Location</span>
+                  <span className="font-mono text-gray-300">{activeRequest.last_ip}</span>
+                </div>
+                <div className="flex flex-col gap-1.5 pt-2">
+                  <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Device Nickname (Optional)</span>
+                  <Input
+                    type="text"
+                    value={customDeviceName}
+                    onChange={(e) => setCustomDeviceName(e.target.value)}
+                    placeholder="e.g. MacBook Pro - Home"
+                    className="bg-[#121620] border-gray-800 text-white placeholder-gray-600 focus-visible:ring-[#00C2CB]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => handleApproveDevice("DENIED")}
+                  className="rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                  disabled={approveDeviceMutation.isPending}
+                >
+                  <X className="w-4 h-4 mr-2" /> Deny Access
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => handleApproveDevice("APPROVED")}
+                  className="rounded-xl bg-[#00C2CB] text-white hover:bg-[#00C2CB]/80 shadow-lg shadow-[#00C2CB]/20 transition-all font-semibold"
+                  disabled={approveDeviceMutation.isPending}
+                >
+                  <Check className="w-4 h-4 mr-2" /> Authorize Device
+                </Button>
+              </div>
             </div>
-            
-            <div className="w-full h-full">
-              <ReactFlow 
-                nodes={initialNodes} 
+          </div>
+        )}
+
+        {/* Main Content Dashboard - Row 1 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 min-h-[500px]">
+          {/* Left Panel: Lineage Graph */}
+          <section className="lg:col-span-2 flex flex-col gap-4 min-h-0">
+            <div className="flex-1 bg-white rounded-3xl border border-slate-200 overflow-hidden relative shadow-md min-h-[400px]">
+              <div className="absolute top-6 left-6 z-10">
+                <h2 className="text-sm font-black text-[#0F172A] uppercase tracking-widest flex items-center gap-2">
+                  <Zap size={16} className="text-[#00C2CB]" />
+                  Data-Aware Blast Radius
+                </h2>
+                <p className="text-xs text-[#64748B] mt-1 font-bold">Simulated OpenMetadata flow</p>
+              </div>
+              <div className="absolute top-6 right-6 z-10 flex gap-2">
+                 <Badge className="bg-red-500/10 text-red-500 font-bold border border-red-500/20 shadow-sm"><AlertCircle size={12} className="mr-1"/> High Risk Area</Badge>
+              </div>
+              
+              <ReactFlow
+                nodes={initialNodes}
                 edges={initialEdges}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 fitView
-                className="bg-slate-50/30"
-                proOptions={{ hideAttribution: true }}
+                className="bg-slate-50/50"
               >
-                <Background color="#CBD5E1" variant="dots" gap={20} />
-                <Controls showInteractive={false} className="!bg-white !border-slate-200" />
+                <Background color="#E2E8F0" gap={20} size={2} />
+                <Controls showInteractive={false} className="bg-white border-slate-200 shadow-md" />
               </ReactFlow>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Right Panel: HUD */}
-        <aside className="lg:col-span-1 flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
-          
-          {/* Component 2: Tagging Table */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-md">
-            <h2 className="text-xs font-black text-[#0F172A] uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Tag size={14} className="text-[#00C2CB]" />
-              Automated Governance Tagging
-            </h2>
-            <div className="overflow-hidden border border-slate-100 rounded-xl">
-              <table className="w-full text-left text-[11px]">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>
-                    <th className="px-4 py-3 font-black text-[#64748B] uppercase tracking-tighter">Trigger</th>
-                    <th className="px-4 py-3 font-black text-[#64748B] uppercase tracking-tighter">OMD Tag</th>
-                    <th className="px-4 py-3 text-right"></th>
+          {/* Right Panel: HUD */}
+          <aside className="lg:col-span-1 flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
+            
+            {/* Component 2: Tagging Table */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-md">
+              <h2 className="text-xs font-black text-[#0F172A] uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Tag size={14} className="text-[#00C2CB]" />
+                Automated Governance Tagging
+              </h2>
+              <div className="overflow-hidden border border-slate-100 rounded-xl">
+                <table className="w-full text-left text-[11px]">
+                  <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                      <th className="px-4 py-3 font-black text-[#64748B] uppercase tracking-tighter">Trigger</th>
+                      <th className="px-4 py-3 font-black text-[#64748B] uppercase tracking-tighter">OMD Tag</th>
+                      <th className="px-4 py-3 text-right"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {taggingLogs.map((log, i) => (
+                      <tr key={i} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-[#0F172A]">{log.trigger}</div>
+                          <div className="text-[9px] text-[#A4ADB3] font-mono">{log.target}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-0.5 rounded bg-[#EF4444]/10 text-[#EF4444] font-black text-[9px] tracking-widest border border-[#EF4444]/20 uppercase">
+                            {log.tag}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className={`h-1.5 w-1.5 rounded-full ${log.status === 'Synced' ? 'bg-[#10B981]' : 'bg-amber-400'} animate-pulse`} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 flex items-center justify-between text-[10px] font-bold text-[#A4ADB3] uppercase tracking-widest">
+                <span>Sync Health: 98.2%</span>
+                <a href="#" className="text-[#00C2CB] hover:underline">View in OMD →</a>
+              </div>
+            </div>
+
+            {/* Component 3: Incident Log Terminal */}
+            <div className="bg-[#0B0E14] rounded-3xl p-6 shadow-xl flex-1 flex flex-col min-h-[300px]">
+               <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                     <Terminal size={12} className="text-[#00C2CB]" />
+                     OpenMetadata Incident Logs
+                  </h2>
+                  <div className="flex gap-1">
+                     <div className="w-1.5 h-1.5 rounded-full bg-red-500/30" />
+                     <div className="w-1.5 h-1.5 rounded-full bg-amber-500/30" />
+                     <div className="w-1.5 h-1.5 rounded-full bg-green-500/30" />
+                  </div>
+               </div>
+               
+               <div className="flex-1 font-mono text-[11px] space-y-3 overflow-y-auto leading-relaxed scrollbar-hide">
+                  {logs.map((log, i) => (
+                     <motion.div 
+                       initial={{ opacity: 0, x: -10 }}
+                       animate={{ opacity: 1, x: 0 }}
+                       transition={{ delay: i * 0.1 }}
+                       key={i} 
+                       className="flex gap-3"
+                     >
+                        <span className="text-[#475569] shrink-0 font-bold">[{log.time}]</span>
+                        <span className={`
+                           ${log.status === 'ALERT' ? 'text-red-400 font-bold' : ''}
+                           ${log.status === 'INFO' ? 'text-blue-300 italic' : ''}
+                           ${log.status === 'SUCCESS' ? 'text-green-400 font-black' : ''}
+                           ${log.status === 'WAIT' ? 'text-amber-300 animate-pulse' : ''}
+                           ${log.status === 'OK' ? 'text-[#A4ADB3]' : ''}
+                        `}>
+                           <span className="opacity-50 text-white mr-1">&gt;</span> {log.msg}
+                        </span>
+                     </motion.div>
+                  ))}
+                  
+                  {/* Blinking cursor */}
+                  <motion.div 
+                    animate={{ opacity: [1, 0] }} 
+                    transition={{ repeat: Infinity, duration: 0.8 }}
+                    className="w-2 h-4 bg-[#00C2CB] mt-2 inline-block"
+                  />
+               </div>
+            </div>
+          </aside>
+        </div>
+
+        {/* Bottom Row: Device Matrix */}
+        <div className="p-6 pt-0">
+          <section className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-md">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+              <div className="flex items-center gap-2">
+                <Laptop className="h-5 w-5 text-[#00C2CB]" />
+                <h2 className="text-sm font-black text-[#0F172A] uppercase tracking-widest">
+                  Zero-Trust Device Governance
+                </h2>
+              </div>
+              <Badge variant="outline" className="border-[#00C2CB]/20 bg-[#00C2CB]/5 text-[#00C2CB] font-bold text-xs">
+                {devices.length} registered device{devices.length === 1 ? "" : "s"}
+              </Badge>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-50/50 border-b border-slate-100 text-[#64748B] font-bold uppercase tracking-tighter text-[10px]">
+                    <th className="px-6 py-3.5">Hardware ID / Device Nickname</th>
+                    <th className="px-6 py-3.5">Authorization Status</th>
+                    <th className="px-6 py-3.5">IP Location</th>
+                    <th className="px-6 py-3.5">Last Synced</th>
+                    <th className="px-6 py-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {taggingLogs.map((log, i) => (
-                    <tr key={i} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="font-bold text-[#0F172A]">{log.trigger}</div>
-                        <div className="text-[9px] text-[#A4ADB3] font-mono">{log.target}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 rounded bg-[#EF4444]/10 text-[#EF4444] font-black text-[9px] tracking-widest border border-[#EF4444]/20 uppercase">
-                          {log.tag}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className={`h-1.5 w-1.5 rounded-full ${log.status === 'Synced' ? 'bg-[#10B981]' : 'bg-amber-400'} animate-pulse`} />
+                <tbody className="divide-y divide-slate-100">
+                  {isLoadingDevices ? (
+                    <tr key="loading-devices">
+                      <td colSpan={5} className="h-32 text-center text-[#64748B] animate-pulse">
+                        <div className="flex items-center justify-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-[#00C2CB]" />
+                          Loading registered device matrices…
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : devices.length === 0 ? (
+                    <tr key="empty-devices">
+                      <td colSpan={5} className="h-32 text-center italic text-[#64748B]">
+                        No device fingerprints verified yet. Log in to register a device.
+                      </td>
+                    </tr>
+                  ) : (
+                    devices.map((dev) => (
+                      <tr key={dev.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-xl border ${dev.is_main_device ? 'bg-[#00C2CB]/5 border-[#00C2CB]/20 text-[#00C2CB]' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+                              <Laptop className="h-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="font-bold text-[#0F172A] flex items-center gap-1.5">
+                                {dev.device_name}
+                                {dev.is_main_device && (
+                                  <Badge className="bg-[#00C2CB]/10 text-[#00C2CB] hover:bg-[#00C2CB]/10 text-[8px] font-black uppercase tracking-wider px-1.5 py-0">Main Device</Badge>
+                                )}
+                              </div>
+                              <code className="text-[10px] text-slate-400 uppercase tracking-widest font-mono">
+                                DEV-{dev.device_fingerprint.slice(0, 12)}...
+                              </code>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant="outline" className={`capitalize font-bold text-[10px] tracking-wider px-2.5 py-0.5 ${statusBadgeClass(dev.status)}`}>
+                            {dev.status}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 font-mono text-[#64748B] text-xs">
+                          {dev.last_ip || "Unknown IP"}
+                        </td>
+                        <td className="px-6 py-4 text-[#64748B]">
+                          {new Date(dev.last_login).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            {dev.status === "PENDING" && (
+                              <Button
+                                type="button"
+                                onClick={() => {
+                                  setActiveRequest({
+                                    device_fingerprint: dev.device_fingerprint,
+                                    device_name: dev.device_name,
+                                    last_ip: dev.last_ip || "Unknown IP"
+                                  });
+                                  setCustomDeviceName(`${dev.device_name} - Home`);
+                                }}
+                                variant="outline"
+                                className="rounded-xl border-[#00C2CB] text-[#00C2CB] hover:bg-[#00C2CB]/5 font-bold text-xs px-3 h-8 shadow-sm"
+                              >
+                                Approve / Deny
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-lg"
+                              title="Revoke and wipe device profile"
+                              onClick={() => handleRevokeDevice(dev.id)}
+                              disabled={revokeDeviceMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
-            <div className="mt-4 flex items-center justify-between text-[10px] font-bold text-[#A4ADB3] uppercase tracking-widest">
-              <span>Sync Health: 98.2%</span>
-              <a href="#" className="text-[#00C2CB] hover:underline">View in OMD →</a>
-            </div>
-          </div>
+          </section>
+        </div>
 
-          {/* Component 3: Incident Log Terminal */}
-          <div className="bg-[#0B0E14] rounded-3xl p-6 shadow-xl flex-1 flex flex-col min-h-[300px]">
-             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
-                   <Terminal size={12} className="text-[#00C2CB]" />
-                   OpenMetadata Incident Logs
-                </h2>
-                <div className="flex gap-1">
-                   <div className="w-1.5 h-1.5 rounded-full bg-red-500/30" />
-                   <div className="w-1.5 h-1.5 rounded-full bg-amber-500/30" />
-                   <div className="w-1.5 h-1.5 rounded-full bg-green-500/30" />
-                </div>
-             </div>
-             
-             <div className="flex-1 font-mono text-[11px] space-y-3 overflow-y-auto leading-relaxed scrollbar-hide">
-                {logs.map((log, i) => (
-                   <motion.div 
-                     initial={{ opacity: 0, x: -10 }}
-                     animate={{ opacity: 1, x: 0 }}
-                     transition={{ delay: i * 0.1 }}
-                     key={i} 
-                     className="flex gap-3"
-                   >
-                      <span className="text-[#475569] shrink-0 font-bold">[{log.time}]</span>
-                      <span className={`
-                         ${log.status === 'ALERT' ? 'text-red-400 font-bold' : ''}
-                         ${log.status === 'INFO' ? 'text-blue-300 italic' : ''}
-                         ${log.status === 'SUCCESS' ? 'text-green-400 font-black' : ''}
-                         ${log.status === 'WAIT' ? 'text-amber-300 animate-pulse' : ''}
-                         ${log.status === 'OK' ? 'text-[#A4ADB3]' : ''}
-                      `}>
-                         <span className="opacity-50 text-white mr-1">&gt;</span> {log.msg}
-                      </span>
-                   </motion.div>
-                ))}
-                
-                {/* Typing Cursor */}
-                <motion.div 
-                   animate={{ opacity: [1, 0, 1] }} 
-                   transition={{ repeat: Infinity, duration: 0.8 }}
-                   className="h-3 w-1.5 bg-[#00C2CB] shadow-[0_0_8px_#00C2CB]"
-                />
-             </div>
-             
-             <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-[9px] font-black text-[#475569] uppercase tracking-widest">
-                <Activity size={10} className="text-[#10B981]" />
-                Connection: Secure Channel (AES-256)
-             </div>
-          </div>
-        </aside>
+        {/* Global CSS for Lineage Dash */}
+        <style>{`
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #E2E8F0;
+            border-radius: 10px;
+          }
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+          @keyframes blast-edge-dash {
+            to { stroke-dashoffset: -32; }
+          }
+          .animate-blast-edge-dash {
+            animation: blast-edge-dash 0.85s linear infinite;
+          }
+        `}</style>
       </div>
-
-      {/* ─── Zero-Trust Device Governance Section - Row 2 ─── */}
-      <div className="px-6 pb-8">
-        <section className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-md">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/50 px-6 py-4">
-            <div className="flex items-center gap-2">
-              <Laptop className="h-5 w-5 text-[#00C2CB]" />
-              <h2 className="text-sm font-black text-[#0F172A] uppercase tracking-widest">
-                Zero-Trust Device Governance
-              </h2>
-            </div>
-            <Badge variant="outline" className="border-[#00C2CB]/20 bg-[#00C2CB]/5 text-[#00C2CB] font-bold text-xs">
-              {devices.length} registered device{devices.length === 1 ? "" : "s"}
-            </Badge>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100 text-[#64748B] font-bold uppercase tracking-tighter text-[10px]">
-                  <th className="px-6 py-3.5">Hardware ID / Device Nickname</th>
-                  <th className="px-6 py-3.5">Authorization Status</th>
-                  <th className="px-6 py-3.5">IP Location</th>
-                  <th className="px-6 py-3.5">Last Synced</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {isLoadingDevices ? (
-                  <tr key="loading-devices">
-                    <td colSpan={5} className="h-32 text-center text-[#64748B] animate-pulse">
-                      <div className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-[#00C2CB]" />
-                        Loading registered device matrices…
-                      </div>
-                    </td>
-                  </tr>
-                ) : devices.length === 0 ? (
-                  <tr key="empty-devices">
-                    <td colSpan={5} className="h-32 text-center italic text-[#64748B]">
-                      No device fingerprints verified yet. Log in to register a device.
-                    </td>
-                  </tr>
-                ) : (
-                  devices.map((dev) => (
-                    <tr key={dev.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-xl border ${dev.is_main_device ? 'bg-[#00C2CB]/5 border-[#00C2CB]/20 text-[#00C2CB]' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
-                            <Laptop className="h-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="font-bold text-[#0F172A] flex items-center gap-1.5">
-                              {dev.device_name}
-                              {dev.is_main_device && (
-                                <Badge className="bg-[#00C2CB]/10 text-[#00C2CB] hover:bg-[#00C2CB]/10 text-[8px] font-black uppercase tracking-wider px-1.5 py-0">Main Device</Badge>
-                              )}
-                            </div>
-                            <code className="text-[10px] text-slate-400 uppercase tracking-widest font-mono">
-                              DEV-{dev.device_fingerprint.slice(0, 12)}...
-                            </code>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="outline" className={`capitalize font-bold text-[10px] tracking-wider px-2.5 py-0.5 ${statusBadgeClass(dev.status)}`}>
-                          {dev.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-[#64748B] text-xs">
-                        {dev.last_ip || "Unknown IP"}
-                      </td>
-                      <td className="px-6 py-4 text-[#64748B]">
-                        {new Date(dev.last_login).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          {dev.status === "PENDING" && (
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                setActiveRequest({
-                                  device_fingerprint: dev.device_fingerprint,
-                                  device_name: dev.device_name,
-                                  last_ip: dev.last_ip || "Unknown IP"
-                                });
-                                setCustomDeviceName(`${dev.device_name} - Home`);
-                              }}
-                              variant="outline"
-                              className="rounded-xl border-[#00C2CB] text-[#00C2CB] hover:bg-[#00C2CB]/5 font-bold text-xs px-3 h-8 shadow-sm"
-                            >
-                              Approve / Deny
-                            </Button>
-                          )}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-lg"
-                            title="Revoke and wipe device profile"
-                            onClick={() => handleRevokeDevice(dev.id)}
-                            disabled={revokeDeviceMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-
-      {/* Global CSS for Lineage Dash */}
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #E2E8F0;
-          border-radius: 10px;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        @keyframes blast-edge-dash {
-          to { stroke-dashoffset: -32; }
-        }
-        .animate-blast-edge-dash {
-          animation: blast-edge-dash 0.85s linear infinite;
-        }
-      `}</style>
-    </div>
+    </PageLayout>
   );
 };
 
