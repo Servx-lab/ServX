@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { PageLayout } from '@/components/layout/PageLayout';
 import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { Shield, Users, Trash2, Settings, UserCheck } from "lucide-react";
 import {
@@ -42,21 +43,8 @@ const Administrator = () => {
   };
 
   return (
-    <main className="flex h-full flex-1 flex-col overflow-y-auto bg-background p-8 pt-24 font-sans text-black no-scrollbar rounded-[2rem]">
-      <div className="mx-auto w-full max-w-6xl space-y-10">
-        {/* Page header */}
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3 shadow-sm">
-            <Shield className="h-8 w-8 text-cyan-600" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-black">Team &amp; access management</h1>
-            <p className="mt-1 text-gray-500">
-              Discover users, assign global roles, and configure granular infrastructure visibility per teammate.
-            </p>
-          </div>
-        </div>
-
+    <PageLayout title="Team & access management" subtitle="Discover users, assign global roles, and configure granular infrastructure visibility per teammate." fullWidth={true} noPadding={true}>
+      <div className="mx-auto w-full max-w-6xl space-y-10 p-8">
         {/* Search & invite */}
         <section>
           <UserSearchInviteBar onInvite={handleInvite} inviting={inviteMutation.isPending} />
@@ -69,107 +57,102 @@ const Administrator = () => {
               <UserCheck className="h-5 w-5 text-cyan-600" />
               <h2 className="text-xl font-semibold text-gray-900">Active team</h2>
             </div>
-            <Badge variant="outline" className="border-cyan-200 bg-cyan-50 text-cyan-700">
-              {admins.length} member{admins.length === 1 ? "" : "s"}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-white">
+                {admins.length} Members
+              </Badge>
+            </div>
           </div>
-
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-gray-200 bg-gray-50/80 hover:bg-transparent">
-                  <TableHead className="font-medium text-gray-600">Member</TableHead>
-                  <TableHead className="font-medium text-gray-600">Global role</TableHead>
-                  <TableHead className="font-medium text-gray-600">Added</TableHead>
-                  <TableHead className="text-right font-medium text-gray-600">Actions</TableHead>
+                <TableRow className="border-gray-100 hover:bg-transparent">
+                  <TableHead className="w-[300px] text-xs font-semibold text-gray-500">User</TableHead>
+                  <TableHead className="text-xs font-semibold text-gray-500">Global Role</TableHead>
+                  <TableHead className="text-right text-xs font-semibold text-gray-500">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoadingAdmins ? (
-                  <TableRow key="loading">
-                    <TableCell colSpan={4} className="h-40 animate-pulse text-center text-gray-500">
-                      Loading team…
+                  <TableRow>
+                    <TableCell colSpan={3} className="h-32 text-center text-sm text-gray-400">
+                      Loading team members...
                     </TableCell>
                   </TableRow>
                 ) : admins.length === 0 ? (
-                  <TableRow key="empty">
-                    <TableCell colSpan={4} className="h-40 text-center italic text-gray-500">
-                      No team members yet. Invite someone above.
+                  <TableRow>
+                    <TableCell colSpan={3} className="h-32 text-center text-sm text-gray-400">
+                      No team members found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  admins.map((admin) => (
-                    <React.Fragment key={admin.id}>
-                      <TableRow className="border-gray-200 hover:bg-gray-50/80">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <ProfilePhoto
-                              src={admin.avatarUrl}
-                              alt=""
-                              label={admin.email}
-                              className="h-10 w-10 border border-gray-200"
-                              fallbackClassName="border-cyan-200 bg-cyan-100 text-cyan-700 font-bold"
-                            />
-                            <div className="min-w-0">
-                              <div className="truncate font-medium text-gray-900">{admin.email}</div>
-                              <code className="text-[10px] text-gray-500">{admin.id}</code>
+                  admins.map((admin: AdminRecord) => {
+                    const isExpanded = expandedUserUid === admin.uid;
+                    return (
+                      <React.Fragment key={admin.uid}>
+                        <TableRow className="group border-gray-100 hover:bg-gray-50/50">
+                          <TableCell className="font-medium text-gray-900">
+                            <div className="flex items-center gap-3">
+                              <ProfilePhoto
+                                url={admin.photo_url || ""}
+                                email={admin.email}
+                                size={36}
+                                className="shadow-sm"
+                              />
+                              <div className="flex flex-col">
+                                <span className="text-sm font-semibold text-black">
+                                  {admin.display_name || admin.email.split("@")[0]}
+                                </span>
+                                <span className="text-xs text-gray-500">{admin.email}</span>
+                              </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={`capitalize ${roleBadgeClass(admin.role)}`}>
-                            {admin.role}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-600">
-                          {new Date(admin.addedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className={`h-9 w-9 transition-colors ${expandedUserUid === admin.id ? 'bg-cyan-50 text-cyan-600 hover:bg-cyan-100' : 'text-gray-600 hover:bg-gray-100 hover:text-cyan-600'}`}
-                              title="Edit access"
-                              onClick={() => setExpandedUserUid(expandedUserUid === admin.id ? null : admin.id)}
-                            >
-                              <Settings className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9 text-red-600 hover:bg-red-50 hover:text-red-700"
-                              title="Revoke access"
-                              onClick={() => handleRevoke(admin.id)}
-                              disabled={revokeMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                      {expandedUserUid === admin.id && (
-                        <TableRow key={`${admin.id}-expanded`} className="bg-slate-50/20 hover:bg-transparent">
-                          <TableCell colSpan={4} className="p-4 md:p-6 border-b border-gray-200">
-                            <GranularAccessPanel
-                              userUid={admin.id}
-                              userEmail={admin.email}
-                              onClose={() => setExpandedUserUid(null)}
-                            />
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={roleBadgeClass(admin.role)}>{admin.role}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setExpandedUserUid(isExpanded ? null : admin.uid)}
+                                className={`text-gray-600 hover:text-black border-gray-200 ${isExpanded ? "bg-gray-100" : ""}`}
+                              >
+                                <Settings className="mr-2 h-3.5 w-3.5" />
+                                Access Control
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRevoke(admin.uid)}
+                                disabled={revokeMutation.isPending}
+                                className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
-                      )}
-                    </React.Fragment>
-                  ))
+                        {/* Expanded detail row */}
+                        {isExpanded && (
+                          <TableRow className="border-gray-100 bg-gray-50/30 hover:bg-gray-50/30">
+                            <TableCell colSpan={3} className="p-0">
+                              <div className="animate-in slide-in-from-top-2 fade-in duration-200">
+                                <GranularAccessPanel uid={admin.uid} userEmail={admin.email} />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
           </div>
         </section>
       </div>
-    </main>
+    </PageLayout>
   );
 };
 
