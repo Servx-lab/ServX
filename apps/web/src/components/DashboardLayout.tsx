@@ -11,7 +11,7 @@ import Sidebar from "@/components/Sidebar";
 const DashboardLayout = () => {
   return (
     <div className="box-border flex h-[100dvh] w-full overflow-hidden bg-black p-2 sm:p-3">
-      <div className="flex h-full min-h-0 w-full min-w-0 overflow-hidden rounded-[2rem] bg-zinc-950 ring-1 ring-white/[0.12] transition-all duration-300">
+      <div className="flex h-full min-h-0 w-full min-w-0 overflow-hidden rounded-[2rem] bg-zinc-950 transition-all duration-300">
         <Sidebar />
         {/* Dark gutter: lets the white panel’s rounded corners read against the frame */}
         <div className="flex min-h-0 min-w-0 flex-1 bg-zinc-950 py-2 pr-2 pl-2 pt-2">

@@ -1,57 +1,40 @@
 import { motion } from "framer-motion";
 import FlowVisualization from "@/components/FlowVisualization";
 import MetricCards from "@/components/MetricCards";
+import { PageLayout } from "@/components/layout/PageLayout";
 
 const Index = () => {
   return (
-    <main className="flex-1 p-8 flex flex-col min-h-full rounded-[2rem]">
-        {/* Breadcrumb */}
+    <PageLayout
+      title="Exposure Command Center"
+      subtitle="Dashboard › Exposure Command Center"
+      fullWidth={true}
+    >
+      <div className="flex-1 flex items-start gap-8 w-full">
+        {/* Sources label */}
         <motion.div
-          className="flex items-center gap-2 text-sm text-muted-foreground mb-2"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          className="relative flex-1"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <span>Dashboard</span>
-          <span className="text-border">›</span>
-          <span className="text-foreground">Exposure Command Center</span>
+          <p className="text-sm text-gray-500 font-bold mb-4 tracking-widest uppercase">Sources</p>
+          <div className="w-full bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden" style={{ height: "600px" }}>
+            <FlowVisualization />
+          </div>
         </motion.div>
 
-        {/* Title */}
-        <motion.h1
-          className="text-3xl font-semibold text-foreground tracking-tight mb-8"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
+        {/* Right side metric cards */}
+        <motion.div
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="w-[300px] shrink-0"
         >
-          Exposure Command Center
-        </motion.h1>
-
-        {/* Dashboard Content */}
-        <div className="flex-1 flex items-start gap-0 w-full">
-          {/* Sources label */}
-          <motion.div
-            className="relative flex-1"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            <p className="text-sm text-muted-foreground mb-2 ml-16 tracking-widest uppercase">Sources</p>
-            <div className="w-full" style={{ height: "600px" }}>
-              <FlowVisualization />
-            </div>
-          </motion.div>
-
-          {/* Right side metric cards */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            <MetricCards />
-          </motion.div>
-        </div>
-    </main>
+          <MetricCards />
+        </motion.div>
+      </div>
+    </PageLayout>
   );
 };
 
