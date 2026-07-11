@@ -63,9 +63,7 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("@tanstack")) {
             return "vendor-tanstack";
           }
-          // Everything else: react core, react-dom, react-router,
-          // axios, sonner, clsx, zod, react-hook-form, etc.
-          return "vendor-misc";
+          // Everything else (React, router, etc.) is handled automatically by Vite.
         },
       },
     },
