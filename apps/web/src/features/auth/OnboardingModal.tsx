@@ -1,15 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
-    Download, 
     Monitor, 
     ArrowRight, 
-    Check, 
     Terminal,
-    Activity
+    Activity,
+    Briefcase,
+    MapPin,
+    Loader2
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { supabase } from '@/lib/supabase';
 
 interface OnboardingModalProps {
     userName?: string | null;
@@ -30,17 +33,54 @@ const LinuxIcon = () => (
 
 export const OnboardingModal = ({ userName, authMethod = 'github' }: OnboardingModalProps) => {
     const navigate = useNavigate();
+    const [profession, setProfession] = useState('');
+    const [location, setLocation] = useState('');
+    const [fetchingLocation, setFetchingLocation] = useState(true);
+    const [saving, setSaving] = useState(false);
 
-    const handleDownload = () => {
-        // In a real scenario, this would trigger the download
-        // For now, we simulate and continue
+    useEffect(() => {
+        const fetchLocation = async () => {
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                if (data.city && data.country_name) {
+                    setLocation(`${data.city}, ${data.country_name}`);
+                }
+            } catch (err) {
+                console.error("Failed to fetch location automatically", err);
+            } finally {
+                setFetchingLocation(false);
+            }
+        };
+        fetchLocation();
+    }, []);
+
+    const saveDetails = async () => {
+        setSaving(true);
+        try {
+            await supabase.auth.updateUser({
+                data: {
+                    profession,
+                    location
+                }
+            });
+        } catch (e) {
+            console.error("Failed to save profile details", e);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDownload = async () => {
+        await saveDetails();
         window.open('https://servx.dev/download', '_blank');
         setTimeout(() => {
             navigate('/dashboard');
         }, 1000);
     };
 
-    const handleSkip = () => {
+    const handleSkip = async () => {
+        await saveDetails();
         navigate('/dashboard');
     };
 
@@ -66,9 +106,44 @@ export const OnboardingModal = ({ userName, authMethod = 'github' }: OnboardingM
                     Your Workspace is Ready{userName ? `, ${userName}` : ''}!
                 </h2>
                 
-                <p className="text-zinc-600 text-base mb-8 max-w-lg mx-auto leading-relaxed">
-                    To get the full power of the <span className="text-orizons-teal font-semibold">Auto-Medic Pipeline</span> and local server monitoring, download the ServX-Lab desktop companion.
+                <p className="text-zinc-600 text-sm mb-6 max-w-lg mx-auto leading-relaxed">
+                    Set up your professional details to personalize your experience. We've auto-detected your location to tailor your compliance and regional settings.
                 </p>
+
+                {/* Details Form */}
+                <div className="max-w-md mx-auto mb-8 space-y-4 text-left">
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-zinc-700 uppercase tracking-widest flex items-center gap-1.5">
+                            <Briefcase className="w-3.5 h-3.5" />
+                            Profession / Role
+                        </label>
+                        <Input 
+                            placeholder="e.g. Senior DevOps Engineer"
+                            value={profession}
+                            onChange={(e) => setProfession(e.target.value)}
+                            className="bg-zinc-50 border-zinc-200 text-zinc-900 h-11"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-zinc-700 uppercase tracking-widest flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5" />
+                            Location
+                        </label>
+                        <div className="relative">
+                            <Input 
+                                placeholder="City, Country"
+                                value={location}
+                                onChange={(e) => setLocation(e.target.value)}
+                                className="bg-zinc-50 border-zinc-200 text-zinc-900 h-11"
+                                disabled={fetchingLocation}
+                            />
+                            {fetchingLocation && (
+                                <Loader2 className="w-4 h-4 text-orizons-teal animate-spin absolute right-3 top-3.5" />
+                            )}
+                        </div>
+                    </div>
+                </div>
 
                 {/* Feature Highlights */}
                 <div className="grid grid-cols-2 gap-4 mb-8 text-left max-w-lg mx-auto">
@@ -92,26 +167,33 @@ export const OnboardingModal = ({ userName, authMethod = 'github' }: OnboardingM
                 <div className="space-y-4">
                     <Button 
                         onClick={handleDownload}
+                        disabled={saving}
                         className="w-full max-w-md h-14 bg-orizons-teal hover:bg-orizons-teal/90 text-white font-semibold text-lg rounded-xl shadow-[0_4px_20px_rgba(59,130,246,0.25)] transition-all duration-300 relative overflow-hidden group"
                     >
                         <span className="relative z-10 flex items-center justify-center gap-3">
-                            <span className="flex gap-2 items-center opacity-80 mr-2">
-                                <WindowsIcon />
-                                <AppleIcon />
-                                <LinuxIcon />
-                            </span>
-                            Download ServX-Lab App
+                            {saving ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <>
+                                    <span className="flex gap-2 items-center opacity-80 mr-2">
+                                        <WindowsIcon />
+                                        <AppleIcon />
+                                        <LinuxIcon />
+                                    </span>
+                                    Save & Download App
+                                </>
+                            )}
                         </span>
-                        {/* Sparkle/Pulse effect inside button */}
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[200%] group-hover:animate-shine" />
                     </Button>
 
                     <button 
                         onClick={handleSkip}
-                        className="text-zinc-500 hover:text-zinc-900 text-sm font-semibold transition-colors flex items-center justify-center gap-2 mx-auto pt-2 hover:underline"
+                        disabled={saving}
+                        className="text-zinc-500 hover:text-zinc-900 text-sm font-semibold transition-colors flex items-center justify-center gap-2 mx-auto pt-2 hover:underline disabled:opacity-50"
                     >
-                        Continue to Web Dashboard
-                        <ArrowRight className="w-4 h-4" />
+                        {saving ? 'Saving...' : 'Save & Continue to Web Dashboard'}
+                        {!saving && <ArrowRight className="w-4 h-4" />}
                     </button>
                 </div>
             </div>
