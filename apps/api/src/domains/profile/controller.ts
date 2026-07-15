@@ -2,6 +2,38 @@ import type { Response, NextFunction } from 'express';
 import { AuthError, ValidationError } from '@servx/errors';
 import * as profileService from './service';
 import { sendOTPEmailService } from '../../core/services/emailService';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+export async function getCloudinarySignature(req: any, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user.id;
+    const timestamp = Math.round((new Date).getTime() / 1000);
+    
+    const paramsToSign = {
+      timestamp,
+      public_id: userId,
+      overwrite: true,
+    };
+    
+    const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET!);
+
+    res.json({
+      timestamp,
+      signature,
+      public_id: userId,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME
+    });
+  } catch (err) {
+    next(err);
+  }
+}
 
 export async function getProfile(req: any, res: Response, next: NextFunction) {
   try {

@@ -238,8 +238,18 @@ async function performHostingStatusFetch(
       const instanceUrl = (connection.config as any)?.instanceUrl || parsedConfig?.instanceUrl;
       ({ user, services, deployments } = await fetchCoolify(instanceUrl, token));
     }
-  } catch (apiErr) {
-    console.error(`${providerInfo.label} API fetch error:`, (apiErr as Error).message);
+  } catch (apiErr: any) {
+    console.error(`${providerInfo.label} API fetch error:`, apiErr.message);
+    const status = apiErr.response?.status;
+    if (status === 401 || status === 403) {
+        // If unauthorized, return connected: false
+        return {
+            connected: false,
+            connectionId: connection.id,
+            createdAt: connection.created_at,
+            error: 'Invalid API Key',
+        };
+    }
   }
 
   const result: HostingStatusResponse = {
@@ -319,6 +329,27 @@ export async function saveHostingToken(
     config.instanceUrl = (extras as any).instanceUrl;
   }
 
+  // 1. Validate the token before saving
+  try {
+    if (providerKey === 'vercel') {
+      await fetchVercel(token);
+    } else if (providerKey === 'render') {
+      await fetchRender(token);
+    } else if (providerKey === 'railway') {
+      await fetchRailway(token);
+    } else if (providerKey === 'digitalocean') {
+      await fetchDigitalOcean(token);
+    } else if (providerKey === 'coolify') {
+      await fetchCoolify(config.instanceUrl as string, token);
+    }
+  } catch (err: any) {
+    const status = err.response?.status;
+    if (status === 401 || status === 403) {
+        throw new ValidationError('Invalid API Key provided for ' + providerInfo.label);
+    }
+    // If it's a 500 or timeout, we might still want to fail or just allow it. For now, if it's explicitly auth error, we reject it.
+  }
+
   // Re-enabling encryption for stored credentials
   const { iv, content } = encrypt(JSON.stringify(config));
 
@@ -329,7 +360,7 @@ export async function saveHostingToken(
       name,
       provider: providerInfo.dbName,
       encrypted_config: content,
-      iv: iv,
+      iv: iv
     }])
     .select()
     .single();
@@ -350,6 +381,26 @@ export async function saveHostingToken(
       createdAt: connData.created_at,
     },
   };
+}
+
+export async function deleteHostingToken(
+  ownerUid: string,
+  providerKey: string
+): Promise<void> {
+  const providerInfo = HOSTING_PROVIDERS[providerKey];
+  if (!providerInfo) {
+    throw new ValidationError(`Unknown provider: ${providerKey}`);
+  }
+
+  const { error } = await supabaseAdmin
+    .from('hosting_vault')
+    .delete()
+    .eq('user_id', ownerUid)
+    .eq('provider', providerInfo.dbName);
+
+  if (error) {
+    throw error;
+  }
 }
 
 async function fetchCoolify(instanceUrl: string | undefined, token: string): Promise<{
@@ -413,9 +464,15 @@ async function fetchVercel(token: string): Promise<{
 }> {
   const headers = { Authorization: `Bearer ${token}` };
   const [userRes, projRes, deplRes] = await Promise.all([
-    axios.get('https://api.vercel.com/v2/user', { headers, timeout: AXIOS_TIMEOUT }).catch(() => null),
-    axios.get('https://api.vercel.com/v9/projects?limit=20', { headers, timeout: AXIOS_TIMEOUT }).catch(() => null),
-    axios.get('https://api.vercel.com/v6/deployments?limit=15', { headers, timeout: AXIOS_TIMEOUT }).catch(() => null),
+    axios.get('https://api.vercel.com/v2/user', { headers, timeout: AXIOS_TIMEOUT }),
+    axios.get('https://api.vercel.com/v9/projects?limit=20', { headers, timeout: AXIOS_TIMEOUT }).catch((err) => {
+        if (err.response?.status === 401 || err.response?.status === 403) throw err;
+        return null;
+    }),
+    axios.get('https://api.vercel.com/v6/deployments?limit=15', { headers, timeout: AXIOS_TIMEOUT }).catch((err) => {
+        if (err.response?.status === 401 || err.response?.status === 403) throw err;
+        return null;
+    }),
   ]);
 
   let user: HostingUser | null = null;
@@ -461,7 +518,7 @@ async function fetchRender(token: string): Promise<{
 }> {
   const headers = { Authorization: `Bearer ${token}` };
   const [svcRes, deplData] = await Promise.all([
-    axios.get('https://api.render.com/v1/services?limit=20', { headers, timeout: AXIOS_TIMEOUT }).catch(() => null),
+    axios.get('https://api.render.com/v1/services?limit=20', { headers, timeout: AXIOS_TIMEOUT }),
     axios
       .get('https://api.render.com/v1/services?limit=5', { headers, timeout: AXIOS_TIMEOUT })
       .then(async (svcList: any) => {
@@ -477,7 +534,11 @@ async function fetchRender(token: string): Promise<{
           (r.data || []).map((d: any) => ({ ...d, serviceName: svcList.data[i].service.name }))
         );
       })
-      .catch(() => []),
+      .catch((err) => {
+          // If it's a 401/403, bubble it up so the main catch block handles it
+          if (err.response?.status === 401 || err.response?.status === 403) throw err;
+          return [];
+      }),
   ]);
 
   let user: HostingUser | null = null;

@@ -59,7 +59,7 @@ export const FloatingNav: React.FC = () => {
   return (
     <>
       <div 
-        className="fixed z-[100]"
+        className="fixed z-[9999]"
         style={{
           left: 24,
           top: 'calc(50% + 23px)'

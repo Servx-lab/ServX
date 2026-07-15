@@ -81,7 +81,12 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
             updateCache({ hostingStatuses: updatedStatuses });
         }
       } else {
-        setStatus('idle');
+        if (response.data.error && !isSilent) {
+            setStatus('error');
+            setErrorMsg(response.data.error);
+        } else {
+            setStatus('idle');
+        }
         // Clear from cache if no longer connected
         if (updateCache && cachedData?.hostingStatuses?.[config.key]) {
             const updatedStatuses = { ...cachedData.hostingStatuses };
@@ -205,7 +210,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     if (!confirm(`Are you sure you want to disconnect ${config.label}?`)) return;
     setDisconnecting(true);
     try {
-      await apiClient.delete(`/hosting/disconnect?provider=${config.key}`);
+      await apiClient.delete(`/connections/hosting/${config.key}`);
       setStatus('idle');
       setServices([]);
       setDeployments([]);

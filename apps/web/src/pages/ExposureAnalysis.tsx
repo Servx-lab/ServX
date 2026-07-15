@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { PageLayout } from '@/components/layout/PageLayout';
 import { 
   Shield, 
   Clock, 
@@ -53,13 +54,10 @@ const ExposureAnalysis = () => {
         const data = await getRepos();
         setRepositories(data);
         if (data.length > 0) {
-           // Default to first real repo if 'ServX' mock isn't appropriate
-           // or keep ServX as the architectural demonstration if preferred.
-           // For this build, we'll auto-select the first real repo.
            setSelectedRepo(data[0].name);
         }
       } catch (err) {
-        console.error('Failed to load real repositories', err);
+        console.error('Failed to fetch repositories:', err);
       } finally {
         setIsLoading(false);
       }
@@ -67,18 +65,13 @@ const ExposureAnalysis = () => {
     fetchRepos();
   }, []);
 
-  // Vulnerability Intelligence Mapper
-  const currentData = useMemo(() => {
-    // If we have manual mock data for this repo, use it.
-    if (repoData[selectedRepo]) return repoData[selectedRepo];
-    
-    // Otherwise, generate a stable baseline of mock vulnerabilities for the "Live" repo.
-    return [
-      { name: 'CVE-2024-GEN', severity: 8.4, days: 12, package: 'npm-core' },
-      { name: 'CVE-2024-GEN', severity: 6.2, days: 5, package: 'base-lib' },
-      { name: 'CVE-2023-GEN', severity: 4.1, days: 52, package: 'util-pkg' },
+  const activeData = useMemo(() => {
+    return repoData[selectedRepo] || [
+      { name: 'CVE-2024-X', severity: 5.0, days: 10, package: 'unknown' }
     ];
   }, [selectedRepo]);
+
+  const currentData = activeData;
 
   const anomalyLogs = [
     { time: '05:15 AM', module: 'auth', event: 'login successful (Lakshya) - IP: Local', style: 'normal' },
@@ -113,27 +106,23 @@ const ExposureAnalysis = () => {
   }, [selectedRepo]);
   
   return (
-    <div className="flex-1 bg-[#f8fafc] text-[#0F172A] flex flex-row h-full overflow-hidden font-sans">
-      {/* Main Command Canvas - 75% Width */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-8 flex flex-col">
-        
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div>
-            <h1 className="text-4xl font-black tracking-tighter mb-2 text-slate-900">Exposure Analysis</h1>
-            <div className="flex items-center gap-3">
-               <div className="flex items-center gap-2 px-3 py-1 bg-white border border-slate-200 rounded-full shadow-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#00C2CB] animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Intelligence Active</span>
-               </div>
-               <span className="text-[10px] items-center gap-1 font-black uppercase tracking-widest text-slate-400 flex italic underline">SLA: SOC-2 COMPLIANT</span>
-            </div>
+    <PageLayout 
+      title="Exposure Analysis"
+      fullWidth={true}
+      headerContent={
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 w-full">
+          <div className="flex items-center gap-3">
+             <div className="flex items-center gap-2 px-3 py-1 bg-white border border-slate-200 rounded-full shadow-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#00C2CB] animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Intelligence Active</span>
+             </div>
+             <span className="text-[10px] items-center gap-1 font-black uppercase tracking-widest text-slate-400 flex italic underline">SLA: SOC-2 COMPLIANT</span>
           </div>
 
           <div className="relative">
              <button 
                onClick={() => setIsRepoOpen(!isRepoOpen)}
-               className="flex items-center gap-4 bg-white border border-slate-200 px-6 py-3 rounded-2xl hover:border-[#00C2CB]/50 transition-all shadow-lg min-w-[240px] justify-between z-50 relative"
+               className="flex items-center gap-4 bg-white border border-slate-200 px-6 py-3 rounded-2xl hover:border-[#00C2CB]/50 transition-all shadow-sm min-w-[240px] justify-between z-50 relative"
              >
                 <div className="flex items-center gap-3">
                    <Github className="h-4 w-4 text-slate-400" />
@@ -187,9 +176,13 @@ const ExposureAnalysis = () => {
              </AnimatePresence>
           </div>
         </div>
-
-        {/* SLA Timers HUD */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      }
+    >
+      <div className="flex flex-col xl:flex-row w-full h-full">
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+          {/* SLA Timers HUD */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {slaMetrics.map((timer, i) => (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -323,6 +316,7 @@ const ExposureAnalysis = () => {
             </div>
          </div>
       </aside>
+      </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
@@ -330,7 +324,7 @@ const ExposureAnalysis = () => {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
       `}} />
-    </div>
+    </PageLayout>
   );
 };
 

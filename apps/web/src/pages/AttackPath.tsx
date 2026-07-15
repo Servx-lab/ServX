@@ -1,5 +1,6 @@
 import React, { useState, useEffect, Suspense, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { PageLayout } from '@/components/layout/PageLayout';
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Float, MeshDistortMaterial, Sphere, Icosahedron, Line, Stars, Text } from "@react-three/drei";
 import * as THREE from "three";
@@ -667,12 +668,13 @@ const AttackPath = () => {
   };
 
   return (
-    <div className={`flex-1 flex flex-col min-h-full bg-white text-black overflow-hidden transition-all duration-500 ${glitch ? 'filter invert brightness-150' : ''}`}>
-      {/* Holographic Scanline Overlay */}
-      <div className="fixed inset-0 pointer-events-none z-[60] opacity-[0.03]" style={{
-        backgroundImage: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))',
-        backgroundSize: '100% 2px, 3px 100%'
-      }} />
+    <PageLayout title="Attack Paths" subtitle="Simulate zero-day vulnerabilities and monitor lateral movement." fullWidth={true} noPadding={true}>
+      <div className={`relative min-h-[800px] w-full flex flex-col bg-white text-black overflow-hidden transition-all duration-500 ${glitch ? 'filter invert brightness-150' : ''}`}>
+        {/* Holographic Scanline Overlay */}
+        <div className="absolute inset-0 pointer-events-none z-[60] opacity-[0.03]" style={{
+          backgroundImage: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))',
+          backgroundSize: '100% 2px, 3px 100%'
+        }} />
 
       <main className="flex-1 relative flex flex-col items-center justify-center">
         {/* Scan Line Animation */}
@@ -962,7 +964,8 @@ const AttackPath = () => {
           )}
         </AnimatePresence>
       </main>
-    </div>
+      </div>
+    </PageLayout>
   );
 };
 

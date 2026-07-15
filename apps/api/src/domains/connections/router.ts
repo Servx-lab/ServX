@@ -9,6 +9,7 @@ import {
   getHostingStatus,
   getHostingEnvForService,
   saveHostingConnection,
+  deleteHostingConnection,
 } from './controller';
 
 const router = Router();
@@ -22,6 +23,7 @@ router.delete('/:id', requireAuth, deleteConnection);
 router.get('/hosting/:provider/env/:serviceId', requireAuth, getHostingEnvForService);
 router.get('/hosting/:provider/status', requireAuth, getHostingStatus);
 router.post('/hosting/:provider', requireAuth, saveHostingConnection);
+router.delete('/hosting/:provider', requireAuth, deleteHostingConnection);
 
 // Legacy Vercel aliases — delegate to the same handlers with provider forced to 'vercel'
 router.get('/vercel/status', requireAuth, (req, res, next) => {

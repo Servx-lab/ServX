@@ -5,7 +5,8 @@ import {
   listenApproval,
   approveDevice,
   listDevices,
-  revokeDevice
+  revokeDevice,
+  setMainDevice
 } from './controller';
 
 const router = Router();
@@ -20,5 +21,6 @@ router.delete('/:id', requireAuth, revokeDevice);
 
 // Action mutations
 router.post('/approve', requireAuth, approveDevice);
+router.post('/set-main', requireAuth, setMainDevice);
 
 export default router;

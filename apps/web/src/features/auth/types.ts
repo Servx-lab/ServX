@@ -3,6 +3,12 @@ export interface AuthUser {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
+  dateOfBirth?: string | null;
+  occupation?: string | null;
+  headline?: string | null;
+  bio?: string | null;
+  location?: string | null;
+  website?: string | null;
 }
 
 
@@ -18,6 +24,7 @@ export interface AuthContextValue {
   disconnectGitHub: () => Promise<void>;
   logout: () => Promise<void>;
   isDevicePendingApproval: boolean;
+  isDeviceSetupRequired: boolean;
 }
 
 export interface SyncUserPayload {

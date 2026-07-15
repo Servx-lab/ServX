@@ -1,4 +1,6 @@
 {
+  "name": "servx-web-app",
+  "version": "1.0.0",
   "dependencies": {
     "recharts": "^3.9.0"
   }

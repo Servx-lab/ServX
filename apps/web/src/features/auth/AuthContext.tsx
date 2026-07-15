@@ -39,6 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isGitHubLinked, setIsGitHubLinked] = useState(false);
     const [githubTokenValid, setGithubTokenValid] = useState<boolean | null>(null);
     const [isDevicePendingApproval, setIsDevicePendingApproval] = useState<boolean>(false);
+    const [isDeviceSetupRequired, setIsDeviceSetupRequired] = useState<boolean>(false);
     const navigate = useNavigate();
     const lastSyncedUid = React.useRef<string | null>(null);
     const isRefreshingRef = React.useRef(false);
@@ -115,7 +116,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             try {
                 await withTimeout(syncUser({
-                    name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+                    name: currentUser.user_metadata?.displayName || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
                     avatarUrl: currentUser.user_metadata?.avatar_url || '',
                     githubAccessToken: opts?.githubAccessToken,
                     githubRefreshToken: opts?.githubRefreshToken,
@@ -123,10 +124,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     githubId: opts?.githubId,
                 }), 12000, 'syncUser');
                 setIsDevicePendingApproval(false);
+                setIsDeviceSetupRequired(false);
             } catch (syncError: any) {
                 if (syncError.response?.status === 403 && syncError.response?.data?.error === 'device_pending_approval') {
                     console.warn('[Auth] Zero-Trust Interceptor: Device pending approval.');
                     setIsDevicePendingApproval(true);
+                } else if (syncError.response?.status === 403 && syncError.response?.data?.error === 'device_setup_required') {
+                    console.warn('[Auth] Zero-Trust Interceptor: Device setup required.');
+                    setIsDeviceSetupRequired(true);
                 } else {
                     throw syncError;
                 }
@@ -167,10 +172,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 try {
                     await syncUser(syncPayload);
                     setIsDevicePendingApproval(false);
+                    setIsDeviceSetupRequired(false);
                 } catch (syncError: any) {
                     if (syncError.response?.status === 403 && syncError.response?.data?.error === 'device_pending_approval') {
                         console.warn('[Auth] Zero-Trust Interceptor: Device pending approval.');
                         setIsDevicePendingApproval(true);
+                    } else if (syncError.response?.status === 403 && syncError.response?.data?.error === 'device_setup_required') {
+                        console.warn('[Auth] Zero-Trust Interceptor: Device setup required.');
+                        setIsDeviceSetupRequired(true);
                     } else {
                         throw syncError;
                     }
@@ -208,8 +217,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     const mappedUser: AuthUser = {
                         id: session.user.id,
                         email: session.user.email || '',
-                        displayName: session.user.user_metadata.full_name || session.user.user_metadata.name || session.user.email?.split('@')[0],
+                        displayName: session.user.user_metadata.displayName || session.user.user_metadata.full_name || session.user.user_metadata.name || session.user.email?.split('@')[0] || 'User',
                         photoURL: session.user.user_metadata.avatar_url,
+                        dateOfBirth: session.user.user_metadata.dateOfBirth || null,
+                        occupation: session.user.user_metadata.occupation || null,
+                        headline: session.user.user_metadata.headline || null,
+                        bio: session.user.user_metadata.bio || null,
+                        location: session.user.user_metadata.location || null,
+                        website: session.user.user_metadata.website || null,
                     };
                     setUser(mappedUser);
                     
@@ -244,8 +259,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const mappedUser: AuthUser = {
                     id: currentUser.id,
                     email: currentUser.email || '',
-                    displayName: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0],
+                    displayName: currentUser.user_metadata?.displayName || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
                     photoURL: currentUser.user_metadata?.avatar_url,
+                    dateOfBirth: currentUser.user_metadata?.dateOfBirth || null,
+                    occupation: currentUser.user_metadata?.occupation || null,
+                    headline: currentUser.user_metadata?.headline || null,
+                    bio: currentUser.user_metadata?.bio || null,
+                    location: currentUser.user_metadata?.location || null,
+                    website: currentUser.user_metadata?.website || null,
                 };
                 setUser(mappedUser);
                 const identities = currentUser.identities || [];
@@ -368,7 +389,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             refreshGitHubConnection,
             disconnectGitHub,
             logout,
-            isDevicePendingApproval
+            isDevicePendingApproval,
+            isDeviceSetupRequired
         }}>
             {children}
         </AuthContext.Provider>

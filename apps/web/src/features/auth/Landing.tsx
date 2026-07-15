@@ -256,90 +256,6 @@ const Hero = () => (
     </section>
 );
 
-const FloatingUI = () => (
-    <section className="relative py-24 overflow-hidden border-y border-gray-200 bg-slate-50">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-100 via-slate-50 to-slate-50 pointer-events-none" />
-        
-        <div className="container mx-auto px-6 relative h-[600px] flex items-center justify-center">
-            
-            {/* Center: Auto-Medic (Now Light Theme) */}
-            <div className="absolute z-30 w-full max-w-2xl bg-white border border-gray-200 rounded-xl shadow-2xl p-6">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-                    <div className="flex items-center gap-3 text-black">
-                        <Activity className="w-5 h-5 text-red-500" />
-                        <span className="font-bold text-sm tracking-wider uppercase">Auto-Medic Pipeline</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-green-500 rounded-full" />
-                        <span className="text-xs text-gray-500 font-mono">SYSTEM_NOMINAL</span>
-                    </div>
-                </div>
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="flex items-center gap-3">
-                            <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                            <span className="text-sm font-mono text-gray-700">ERR_OOM_PRODUCTION_API - Memory Limit Exceeded</span>
-                        </div>
-                        <span className="px-2 py-1 bg-green-50 text-green-700 text-xs font-bold rounded border border-green-200">RESOLVED</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="flex items-center gap-3">
-                            <Terminal className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm font-mono text-gray-800">RESTART_CLUSTER (eu-west-1)</span>
-                        </div>
-                        <span className="text-xs text-gray-500 font-mono">1.2ms</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-                        <Cpu className="w-4 h-4 text-blue-500" />
-                        <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="w-[34%] h-full bg-blue-500" />
-                        </div>
-                        <span className="text-xs text-gray-500 font-mono">34% LOAD</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Left/Back: Security War Room */}
-            <div className="absolute z-20 left-4 lg:left-24 top-12 w-80 bg-white/80 backdrop-blur-md border border-gray-200 rounded-xl p-5 shadow-xl hidden sm:block">
-                <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
-                    <Shield className="w-4 h-4 text-orange-500" />
-                    <span className="font-bold text-gray-900 text-xs tracking-wider uppercase">Security War Room</span>
-                </div>
-                <div className="space-y-3">
-                    <div className="text-xs text-gray-500 font-mono flex justify-between">
-                        <span>ATTACK_VECTOR</span>
-                        <span className="text-red-500 font-bold">BLOCKED</span>
-                    </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full mb-3">
-                        <div className="h-full bg-red-500 w-[88%] rounded-full" />
-                    </div>
-                    <div className="text-xs text-gray-500 font-mono flex justify-between">
-                        <span>RATE_LIMITER</span>
-                        <span className="text-green-500 font-bold">ACTIVE</span>
-                    </div>
-                     <div className="h-1.5 bg-gray-100 rounded-full">
-                        <div className="h-full bg-green-500 w-[100%] rounded-full" />
-                    </div>
-                </div>
-            </div>
-
-            {/* Right/Back: Remote Tasks */}
-            <div className="absolute z-20 right-4 lg:right-24 bottom-12 w-80 bg-white/80 backdrop-blur-md border border-gray-200 rounded-xl p-5 shadow-xl hidden sm:block">
-                <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
-                    <Zap className="w-4 h-4 text-yellow-500" />
-                    <span className="font-bold text-gray-900 text-xs tracking-wider uppercase">Remote Tasks</span>
-                </div>
-                <div className="font-mono text-xs text-gray-600 space-y-1.5">
-                    <div><span className="text-blue-500">$</span> servx deploy --production</div>
-                    <div>[+] Initializing cluster...</div>
-                    <div>[+] Validating environment...</div>
-                    <div className="text-green-600 font-bold">[✓] Deployment successful</div>
-                </div>
-            </div>
-
-        </div>
-    </section>
-);
 
 const BentoGrid = () => (
     <section className="py-24 container mx-auto px-6 bg-white">
@@ -515,7 +431,7 @@ const Footer = () => (
 const Landing = () => {
     return (
         <div className="min-h-screen bg-white text-gray-900 selection:bg-blue-200 font-sans">
-            <main>
+            <main className="md:pl-28">
                 <Hero />
                 
                 {/* 3D Showcase Section */}
@@ -586,7 +502,6 @@ const Landing = () => {
                 </section>
 
                 <FloatingNav />
-                <FloatingUI />
                 <BentoGrid />
                 <FeatureDeepDives />
             </main>

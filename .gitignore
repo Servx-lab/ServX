@@ -35,3 +35,6 @@ ServX.json
 apps/*/.env
 apps/*/.env.*
 !apps/*/.env.example
+
+# PWA Mobile App (Has its own detached git repo)
+apps/mobile/
