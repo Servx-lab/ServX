@@ -17,6 +17,7 @@ import { NotFoundError, ValidationError } from '@servx/errors';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
 import { cacheGet, cacheSet } from '../../core/services/redisCache';
 import { encrypt, decrypt } from '@servx/crypto';
+import cloudinary from '../../config/cloudinary';
 
 export { supabaseAdmin };
 
@@ -101,7 +102,7 @@ export async function saveConnection(
 export async function getUserConnections(ownerUid: string): Promise<ConnectionListItem[]> {
   const [dbRes, hostingRes] = await Promise.all([
     supabaseAdmin.from('db_vault').select('id, name, provider, created_at, status').eq('user_id', ownerUid),
-    supabaseAdmin.from('hosting_vault').select('id, name, provider, created_at').eq('user_id', ownerUid),
+    supabaseAdmin.from('hosting_vault').select('*').eq('user_id', ownerUid),
   ]);
 
   const dbConns: ConnectionListItem[] = (dbRes.data || []).map(d => ({
@@ -116,12 +117,34 @@ export async function getUserConnections(ownerUid: string): Promise<ConnectionLi
   const hostingConns: ConnectionListItem[] = (hostingRes.data || []).map(d => ({
     _id: d.id,
     name: d.name,
+    alias: d.alias,
     provider: d.provider as UserConnectionProvider,
     isActive: true,
     createdAt: d.created_at,
+    avatarUrl: d.avatar_url,
   }));
 
   return [...dbConns, ...hostingConns];
+}
+
+export async function updateConnectionAlias(id: string, ownerUid: string, alias: string): Promise<void> {
+  if (!alias || alias.trim() === '') {
+      throw new ValidationError('Alias cannot be empty');
+  }
+
+  // Assuming alias is currently only on hosting_vault
+  const { error } = await supabaseAdmin
+    .from('hosting_vault')
+    .update({ alias: alias.trim() })
+    .eq('id', id)
+    .eq('user_id', ownerUid);
+    
+  if (error) {
+    if (error.code === '23505') { // Unique constraint violation
+        throw new ValidationError('An API key with this alias already exists for this provider.');
+    }
+    throw new Error('Failed to update alias');
+  }
 }
 
 export async function deleteConnection(id: string, ownerUid: string): Promise<void> {
@@ -134,6 +157,58 @@ export async function deleteConnection(id: string, ownerUid: string): Promise<vo
   if (dbError && hostingError) {
     throw new NotFoundError('Connection not found or already deleted');
   }
+
+  // Attempt to delete any associated avatar from Cloudinary
+  try {
+    const publicId = `servx/avatars/${ownerUid}/${id}`;
+    await cloudinary.uploader.destroy(publicId);
+  } catch (err: any) {
+    console.warn('[Cloudinary Delete Error] Could not delete avatar for', id, err.message);
+  }
+}
+
+export async function uploadAvatar(
+  id: string,
+  ownerUid: string,
+  fileBuffer: Buffer
+): Promise<{ avatarUrl: string }> {
+  // We stream the buffer to Cloudinary
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: `servx/avatars/${ownerUid}`,
+        public_id: id,
+        overwrite: true,
+        resource_type: 'image',
+      },
+      async (error, result) => {
+        if (error) {
+          console.error('[Cloudinary Upload Error]', error);
+          return reject(new Error('Failed to upload image'));
+        }
+        if (!result) {
+          return reject(new Error('No result from Cloudinary'));
+        }
+        
+        // Save URL to Supabase
+        const avatarUrl = result.secure_url;
+        const { error: dbError } = await supabaseAdmin
+          .from('hosting_vault')
+          .update({ avatar_url: avatarUrl })
+          .eq('id', id)
+          .eq('user_id', ownerUid);
+
+        if (dbError) {
+          console.error('[Supabase Update Error]', dbError);
+          return reject(new Error('Failed to update avatar in database'));
+        }
+
+        resolve({ avatarUrl });
+      }
+    );
+
+    uploadStream.end(fileBuffer);
+  });
 }
 
 // ─── Hosting providers ────────────────────────────────────────────────────────
@@ -181,84 +256,91 @@ async function performHostingStatusFetch(
     console.warn(`[Hosting] Cache check failed:`, err.message);
   }
 
-  // 2. Fetch connection from Supabase
+  // 2. Fetch connections from Supabase
   const { data: connections, error } = await supabaseAdmin
     .from('hosting_vault')
     .select('*')
     .eq('user_id', ownerUid)
     .eq('provider', providerInfo.dbName)
-    .order('created_at', { ascending: false })
-    .limit(1);
+    .order('created_at', { ascending: false });
 
-  const connection = (connections && connections.length > 0) ? connections[0] : null;
-
-  if (!connection || error) {
+  if (!connections || connections.length === 0 || error) {
     return { connected: false };
   }
 
-  let parsedConfig: any;
-  let token: string;
-  try {
-    let rawConfig = connection.encrypted_config;
-    
-    // Hybrid Decryption: If IV exists, decrypt. Otherwise, assume plaintext (transitional).
-    if (connection.iv && connection.iv !== '') {
-      rawConfig = decrypt({ iv: connection.iv, content: connection.encrypted_config });
-    }
-    
-    parsedConfig = JSON.parse(rawConfig) as { token?: string; apiKey?: string; instanceUrl?: string };
-    token = (parsedConfig.token ?? parsedConfig.apiKey) as string;
-  } catch (err: any) {
-    console.error('[Connections] Decryption failed:', err.message);
-    return {
-      connected: true,
-      connectionId: connection.id,
-      createdAt: connection.created_at,
-      services: [],
-      deployments: [],
-      error: 'Failed to decrypt token',
-    };
-  }
-
-  // 4. Fetch from External API
-  let services: HostingService[] = [];
-  let deployments: HostingDeployment[] = [];
-  let user: HostingUser | null = null;
-
-  try {
-    if (providerKey === 'vercel') {
-      ({ user, services, deployments } = await fetchVercel(token));
-    } else if (providerKey === 'render') {
-      ({ user, services, deployments } = await fetchRender(token));
-    } else if (providerKey === 'railway') {
-      ({ user, services } = await fetchRailway(token));
-    } else if (providerKey === 'digitalocean') {
-      ({ user, services } = await fetchDigitalOcean(token));
-    } else if (providerKey === 'coolify') {
-      const instanceUrl = (connection.config as any)?.instanceUrl || parsedConfig?.instanceUrl;
-      ({ user, services, deployments } = await fetchCoolify(instanceUrl, token));
-    }
-  } catch (apiErr: any) {
-    console.error(`${providerInfo.label} API fetch error:`, apiErr.message);
-    const status = apiErr.response?.status;
-    if (status === 401 || status === 403) {
-        // If unauthorized, return connected: false
+  const accounts = await Promise.all(
+    connections.map(async (connection) => {
+      let parsedConfig: any;
+      let token: string;
+      try {
+        let rawConfig = connection.encrypted_config;
+        if (connection.iv && connection.iv !== '') {
+          rawConfig = decrypt({ iv: connection.iv, content: connection.encrypted_config });
+        }
+        parsedConfig = JSON.parse(rawConfig) as { token?: string; apiKey?: string; instanceUrl?: string };
+        token = (parsedConfig.token ?? parsedConfig.apiKey) as string;
+      } catch (err: any) {
+        console.error('[Connections] Decryption failed:', err.message);
         return {
-            connected: false,
-            connectionId: connection.id,
-            createdAt: connection.created_at,
-            error: 'Invalid API Key',
+          connectionId: connection.id,
+          alias: connection.alias || connection.name || 'Default',
+          createdAt: connection.created_at,
+          services: [],
+          deployments: [],
+          error: 'Failed to decrypt token',
         };
-    }
-  }
+      }
+
+      let services: HostingService[] = [];
+      let deployments: HostingDeployment[] = [];
+      let user: HostingUser | null = null;
+
+      try {
+        if (providerKey === 'vercel') {
+          ({ user, services, deployments } = await fetchVercel(token));
+        } else if (providerKey === 'render') {
+          ({ user, services, deployments } = await fetchRender(token));
+        } else if (providerKey === 'railway') {
+          ({ user, services } = await fetchRailway(token));
+        } else if (providerKey === 'digitalocean') {
+          ({ user, services } = await fetchDigitalOcean(token));
+        } else if (providerKey === 'coolify') {
+          const instanceUrl = (connection.config as any)?.instanceUrl || parsedConfig?.instanceUrl;
+          ({ user, services, deployments } = await fetchCoolify(instanceUrl, token));
+        }
+      } catch (apiErr: any) {
+        console.error(`${providerInfo.label} API fetch error:`, apiErr.message);
+        const status = apiErr.response?.status;
+        let errorMsg = 'Failed to fetch data from provider';
+        if (status === 401 || status === 403) {
+            errorMsg = 'Invalid API Key. Please reconnect.';
+        } else if (apiErr.message) {
+            errorMsg = `API Error: ${apiErr.message}`;
+        }
+        return {
+            connectionId: connection.id,
+            alias: connection.alias || connection.name || 'Default',
+            createdAt: connection.created_at,
+            services: [],
+            deployments: [],
+            error: errorMsg,
+        };
+      }
+
+      return {
+        connectionId: connection.id,
+        alias: connection.alias || connection.name || 'Default',
+        createdAt: connection.created_at,
+        user,
+        services,
+        deployments,
+      };
+    })
+  );
 
   const result: HostingStatusResponse = {
     connected: true,
-    connectionId: connection.id,
-    createdAt: connection.created_at,
-    user,
-    services,
-    deployments,
+    accounts,
   };
 
   // 5. Update Cache (Updates RAM and Redis)
@@ -315,6 +397,7 @@ export async function saveHostingToken(
   email: string,
   providerKey: HostingProviderKey,
   name: string,
+  alias: string,
   token: string,
   extras: { edgeConfigId?: string } = {}
 ): Promise<ConnectionResponse> {
@@ -358,6 +441,7 @@ export async function saveHostingToken(
     .insert([{
       user_id: ownerUid,
       name,
+      alias,
       provider: providerInfo.dbName,
       encrypted_config: content,
       iv: iv
@@ -390,6 +474,23 @@ export async function deleteHostingToken(
   const providerInfo = HOSTING_PROVIDERS[providerKey];
   if (!providerInfo) {
     throw new ValidationError(`Unknown provider: ${providerKey}`);
+  }
+
+  // First fetch the connections so we can delete their avatars
+  const { data: connectionsToDel } = await supabaseAdmin
+    .from('hosting_vault')
+    .select('id')
+    .eq('user_id', ownerUid)
+    .eq('provider', providerInfo.dbName);
+
+  if (connectionsToDel && connectionsToDel.length > 0) {
+    for (const c of connectionsToDel) {
+      try {
+        await cloudinary.uploader.destroy(`servx/avatars/${ownerUid}/${c.id}`);
+      } catch (err: any) {
+        console.warn('[Cloudinary Bulk Delete Error]', c.id, err.message);
+      }
+    }
   }
 
   const { error } = await supabaseAdmin

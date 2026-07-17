@@ -18,6 +18,8 @@ interface ConnectedDashboardProps {
   onDisconnect: () => void;
   timeAgo: (ts: number) => string;
   getStateColor: (state: string) => string;
+  accounts?: any[];
+  selectedAccountId?: string;
 }
 
 export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
@@ -30,7 +32,9 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
   onRefresh,
   onDisconnect,
   timeAgo,
-  getStateColor
+  getStateColor,
+  accounts,
+  selectedAccountId,
 }) => {
   const readyCount = [...services, ...deployments].filter(i => ['READY', 'ACTIVE', 'RUNNING', 'LIVE', 'DEPLOYED'].includes((('state' in i ? (i as DeploymentItem).state : (i as ServiceItem).status) || '').toUpperCase())).length;
   const errorCount = [...services, ...deployments].filter(i => ['ERROR', 'FAILED', 'CRASHED'].includes((('state' in i ? (i as DeploymentItem).state : (i as ServiceItem).status) || '').toUpperCase())).length;
@@ -65,7 +69,11 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-black">{providerUser?.name || config.label}</h3>
+                <h3 className="text-lg font-bold text-black">
+                   {accounts && accounts.find(a => a.connectionId === selectedAccountId)?.alias !== 'Default' 
+                     ? accounts.find(a => a.connectionId === selectedAccountId)?.alias 
+                     : (providerUser?.name || config.label)}
+                </h3>
                 <Badge variant="outline" className="text-[10px] bg-green-50 text-green-600 border-green-200 font-medium">Connected</Badge>
               </div>
               <p className="text-xs text-gray-500">{providerUser?.email || `Monitoring ${config.label} resources`}</p>
@@ -73,16 +81,6 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRefresh}
-              disabled={refreshing}
-              className="h-9 px-3 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-black transition-all"
-            >
-              <RefreshCw size={14} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Syncing...' : 'Sync Now'}
-            </Button>
 
             <Button
               variant="outline"
@@ -108,18 +106,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
               </a>
             )}
 
-            {config.tokenPageUrl && (
-              <a href={config.tokenPageUrl} target="_blank" rel="noopener noreferrer" title={config.tokenPageLabel || "API Settings"}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 px-3 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-black transition-all flex items-center gap-1.5"
-                >
-                  <Key size={14} className="text-gray-400" />
-                  <span>API Settings</span>
-                </Button>
-              </a>
-            )}
+
           </div>
         </div>
 
@@ -155,30 +142,29 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
 
           {/* Core Infrastructure & Failures Layout */}
           <div className="space-y-8">
-            {/* Top Row: Services (2/3) and Global Failure (1/3) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-              <div className="lg:col-span-2 min-w-0">
-                <ServicesTable 
-                    services={services}
-                    providerKey={config.key}
-                    supportsEnvManager={['vercel', 'render'].includes(config.key)}
-                    timeAgo={timeAgo}
-                    getStateColor={getStateColor}
-                />
-              </div>
-              
-              <div className="lg:col-span-1 min-w-0">
-                <CriticalFailuresSection 
-                    timeAgo={timeAgo}
-                    getStateColor={getStateColor}
-                />
-              </div>
+            {/* Top Row: Services (Full Width) */}
+            <div className="w-full min-w-0">
+              <ServicesTable 
+                  services={services}
+                  providerKey={config.key}
+                  supportsEnvManager={['vercel', 'render'].includes(config.key)}
+                  timeAgo={timeAgo}
+                  getStateColor={getStateColor}
+              />
             </div>
 
-            {/* Bottom Row: Recent Deployments (Full Width) */}
+            {/* Middle Row: Recent Deployments (Full Width) */}
             <div className="w-full min-w-0">
               <DeploymentsTable 
                   deployments={deployments}
+                  timeAgo={timeAgo}
+                  getStateColor={getStateColor}
+              />
+            </div>
+
+            {/* Bottom Row: Incident Records */}
+            <div className="w-full min-w-0">
+              <CriticalFailuresSection 
                   timeAgo={timeAgo}
                   getStateColor={getStateColor}
               />

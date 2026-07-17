@@ -125,6 +125,51 @@ export async function deleteConnection(
   }
 }
 
+// PUT /api/connections/:id/alias
+export async function updateConnectionAlias(
+  req: any,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const id = getSingleParam(req.params.id as string | string[] | undefined);
+    const { alias } = req.body;
+    
+    if (!alias) {
+        throw new ValidationError('Alias is required');
+    }
+
+    await svc.updateConnectionAlias(id, req.user.uid, alias);
+    res.json({ message: 'Alias updated successfully' });
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      res.status(404).json({ code: err.code, message: err.message });
+      return;
+    }
+    next(err);
+  }
+}
+
+// POST /api/connections/hosting/:id/avatar
+export async function uploadAvatar(
+  req: any,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const id = getSingleParam(req.params.id as string | string[] | undefined);
+    
+    if (!req.file || !req.file.buffer) {
+      throw new ValidationError('No image file provided');
+    }
+
+    const result = await svc.uploadAvatar(id, req.user.uid, req.file.buffer);
+    res.json({ message: 'Avatar updated successfully', avatarUrl: result.avatarUrl });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/connections/hosting/:provider/status
 export async function getHostingStatus(
   req: any,
@@ -177,8 +222,9 @@ export async function saveHostingConnection(
       throw new ValidationError(`Unknown hosting provider: ${providerKey}`);
     }
 
-    const { name, token, edgeConfigId } = req.body as {
+    const { name, alias, token, edgeConfigId } = req.body as {
       name?: string;
+      alias?: string;
       token?: string;
       edgeConfigId?: string;
     };
@@ -189,12 +235,20 @@ export async function saveHostingConnection(
     }
 
     const connectionName = name || providerLabel;
+    const connectionAlias = alias ? alias.trim() : 'Default';
 
-    const result = await svc.saveHostingToken(req.user.uid, req.user.email, providerKey, connectionName, token, {
-      edgeConfigId,
-    });
-    const statusCode = result.message.includes('updated') ? 200 : 201;
-    res.status(statusCode).json(result);
+    try {
+      const result = await svc.saveHostingToken(req.user.uid, req.user.email, providerKey, connectionName, connectionAlias, token, {
+        edgeConfigId,
+      });
+      const statusCode = result.message.includes('updated') ? 200 : 201;
+      res.status(statusCode).json(result);
+    } catch (dbErr: any) {
+      if (dbErr.code === '23505') { // Postgres duplicate key error
+        throw new ValidationError(`An account with the name '${connectionAlias}' already exists. Please rename your existing key in the sidebar first.`);
+      }
+      throw dbErr;
+    }
   } catch (err) {
     next(err);
   }

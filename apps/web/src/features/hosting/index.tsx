@@ -1,11 +1,12 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import HostingSidebar from './HostingSidebar';
+import HostingAccountsList from './HostingAccountsList';
 import HostingIntegrationCard from './HostingIntegrationCard';
 import { PageLayout } from '@/components/layout/PageLayout';
 
 const HostingRender = () => {
-    const { providerId } = useParams();
+    const { providerId, connectionId } = useParams();
 
     const getProviderName = (id: string | undefined): 'Render' | 'Vercel' | 'AWS' | 'Railway' | 'DigitalOcean' | 'Fly.io' | 'Coolify' => {
         switch (id?.toLowerCase()) {
@@ -22,13 +23,6 @@ const HostingRender = () => {
 
     const providerName = getProviderName(providerId);
 
-    const handleConnect = async (apiKey: string) => {
-        console.log(`Connecting to ${providerName} with API key: ${apiKey}`);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        alert(`Connected successfully to ${providerName}!`);
-    };
-
     return (
         <PageLayout 
             title="Hosting Integration" 
@@ -36,11 +30,16 @@ const HostingRender = () => {
             fullWidth={true}
         >
             <div className="flex flex-col lg:flex-row gap-8 w-full">
-                <div className="flex-1 w-full">
-                    <HostingIntegrationCard key={providerName} provider={providerName} />
+                <div className="flex-1 min-w-0">
+                    <HostingIntegrationCard 
+                        key={connectionId || providerName} 
+                        provider={providerName} 
+                        connectionId={connectionId} 
+                    />
                 </div>
                 
-                <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-8 h-fit">
+                <aside className="w-full lg:w-64 shrink-0 lg:sticky lg:top-8 h-fit flex flex-col gap-6">
+                    <HostingAccountsList activeConnectionId={connectionId} />
                     <HostingSidebar />
                 </aside>
             </div>

@@ -118,6 +118,7 @@ export interface CreateConnectionBody {
 export interface ConnectionListItem {
 	_id: string;
 	name: string;
+	alias?: string;
 	provider: UserConnectionProvider;
 	createdAt: string;
 	isActive: boolean;
@@ -180,18 +181,26 @@ export interface Project {
 	framework: string;
 }
 
+export interface HostingAccountStatus {
+	connectionId: string;
+	alias: string;
+	createdAt: string;
+	user?: HostingUser | null;
+	services: HostingService[];
+	deployments: HostingDeployment[];
+	error?: string;
+}
+
 export type HostingStatusResponse =
 	| {
 			connected: false;
+			error?: string;
+			connectionId?: string;
+			createdAt?: string;
 		}
 	| {
 			connected: true;
-			connectionId: string;
-			createdAt: string;
-			user?: HostingUser | null;
-			services: HostingService[];
-			deployments: HostingDeployment[];
-			error?: string;
+			accounts: HostingAccountStatus[];
 		};
 
 export interface AdapterDatabase {
