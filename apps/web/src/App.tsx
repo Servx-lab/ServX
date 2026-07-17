@@ -93,7 +93,7 @@ const App = () => (
                   <Route path="/dashboard"            element={<Index />} />
                   <Route path="/databases"            element={<Databases />} />
                   <Route path="/github"               element={<GitHub />} />
-                  <Route path="/hosting/:providerId"  element={<HostingRender />} />
+                  <Route path="/hosting/:providerId/:connectionId?"  element={<HostingRender />} />
                   <Route path="/auto-medic"           element={<AutoMedic />} />
                   <Route path="/operations"           element={<Operations />} />
                   <Route path="/admin"                element={<Administrator />} />

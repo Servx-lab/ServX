@@ -24,23 +24,23 @@ const providers: {
   Icon: IconType | React.FC<{ className?: string }>;
   brandColor: string;
 }[] = [
-    { name: 'Render', path: '/hosting/render', Icon: SiRender, brandColor: '#000000' },
-    { name: 'Vercel', path: '/hosting/vercel', Icon: SiVercel, brandColor: '#000000' },
-    { name: 'AWS', path: '/hosting/aws', Icon: FaAws, brandColor: '#FF9900' },
-    { name: 'Railway', path: '/hosting/railway', Icon: SiRailway, brandColor: '#0B0D0E' },
+    { name: 'Render', path: '/hosting/render/new', Icon: SiRender, brandColor: '#000000' },
+    { name: 'Vercel', path: '/hosting/vercel/new', Icon: SiVercel, brandColor: '#000000' },
+    { name: 'AWS', path: '/hosting/aws/new', Icon: FaAws, brandColor: '#FF9900' },
+    { name: 'Railway', path: '/hosting/railway/new', Icon: SiRailway, brandColor: '#0B0D0E' },
     {
       name: 'DigitalOcean',
-      path: '/hosting/digitalocean',
+      path: '/hosting/digitalocean/new',
       Icon: SiDigitalocean,
       brandColor: '#0080FF',
     },
-    { name: 'Fly.io', path: '/hosting/fly', Icon: SiFlydotio, brandColor: '#7B36ED' },
-    { name: 'Coolify', path: '/hosting/coolify', Icon: CoolifyLogoSVG, brandColor: '#6B16ED' },
+    { name: 'Fly.io', path: '/hosting/fly/new', Icon: SiFlydotio, brandColor: '#7B36ED' },
+    { name: 'Coolify', path: '/hosting/coolify/new', Icon: CoolifyLogoSVG, brandColor: '#6B16ED' },
   ];
 
 const HostingSidebar = () => {
   return (
-    <div className="w-64 h-full border-l border-gray-200 bg-gray-50 flex flex-col pt-6 pb-4">
+    <div className="w-full rounded-xl border border-gray-200 bg-white/50 flex flex-col py-6">
       <div className="px-6 mb-6">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Providers</h2>
       </div>

@@ -9,12 +9,17 @@
     "sync-users": "tsx scripts/syncUsersToSheets.js"
   },
   "dependencies": {
+    "@servx/config": "*",
+    "@servx/crypto": "*",
+    "@servx/errors": "*",
+    "@servx/types": "*",
     "@langchain/textsplitters": "^1.0.1",
     "@octokit/graphql": "^9.0.3",
     "@octokit/rest": "^22.0.1",
     "@pinecone-database/pinecone": "^8.0.0",
     "@supabase/supabase-js": "^2.103.0",
     "@types/dockerode": "^4.0.1",
+    "@types/multer": "^2.2.0",
     "axios": "^1.13.6",
     "cloudinary": "^2.10.0",
     "cors": "^2.8.5",
@@ -26,6 +31,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.1.0",
     "mongoose": "^9.2.4",
+    "multer": "^2.2.0",
     "mysql2": "^3.21.0",
     "node-oracledb": "^1.0.2",
     "openai": "^6.37.0",
@@ -37,6 +43,6 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/pg": "^8.20.0",
-    "tsx": "^4.21.0"
+    "tsx": "^4.23.1"
   }
 }

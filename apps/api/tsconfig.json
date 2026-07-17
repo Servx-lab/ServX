@@ -8,6 +8,10 @@
     "strict": false,
     "skipLibCheck": true,
     "rootDir": "../..",
+    "baseUrl": ".",
+    "paths": {
+      "@servx/*": ["../../packages/*"]
+    },
     "outDir": "dist"
   },
   "include": ["src/**/*"],

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '@/lib/apiClient';
 import { useLocalCache } from '@/hooks/useLocalCache';
+import { useConnections } from '@/features/databases/hooks';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { 
@@ -15,24 +17,31 @@ import { ConnectedDashboard } from './views/ConnectedDashboard';
 
 interface HostingIntegrationCardProps {
   provider?: 'Render' | 'Vercel' | 'AWS' | 'Railway' | 'DigitalOcean' | 'Fly.io' | 'Coolify';
+  connectionId?: string;
 }
 
 const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
   provider = 'Render',
+  connectionId,
 }) => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'connecting' | 'connected' | 'error'>('loading');
   const [tokenInput, setTokenInput] = useState('');
   const [urlInput, setUrlInput] = useState('');
+  const [aliasInput, setAliasInput] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [providerUser, setProviderUser] = useState<ProviderUser | null>(null);
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [deployments, setDeployments] = useState<DeploymentItem[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [disconnecting, setDisconnecting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   
   const loadingTimeoutRef = React.useRef<NodeJS.Timeout|null>(null);
   const { data: cachedData, updateCache } = useLocalCache();
+  const navigate = useNavigate();
+  const { refetch: refetchGlobalConnections } = useConnections();
 
   const config = useMemo(() => PROVIDER_CONFIGS[provider] || PROVIDER_CONFIGS.Render, [provider]);
 
@@ -54,44 +63,64 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
    * Fetches the latest status and data for the current hosting provider.
    * @param isSilent - If true, prevents showing a full-screen loading state or error message.
    */
-  const fetchData = useCallback(async (isSilent = false) => {
+  const fetchData = useCallback(async (isSilent = false, forceRefresh = false) => {
     let cancelled = false;
     if (!isSilent) setErrorMsg('');
 
+    if (connectionId === 'new') {
+        setStatus('idle');
+        return () => { cancelled = true; };
+    }
+
     try {
-      const response = await apiClient.get(`/connections/hosting/${config.key}/status`);
+      // Phase 1: Granular Discovery - get lightweight list of all connections for this provider
+      const listResponse = await apiClient.get(`/connections/hosting/${config.key}/list`);
       if (cancelled) return;
 
-      if (response.data.connected) {
-        setProviderUser(response.data.user);
-        setServices(response.data.services || []);
-        setDeployments(response.data.deployments || []);
-        setStatus('connected');
+      if (listResponse.data.connected && listResponse.data.accounts && listResponse.data.accounts.length > 0) {
+        const fullAccountsList = listResponse.data.accounts;
+        setAccounts(fullAccountsList);
         
-        // Update cache with full data for SWR (Stale-While-Revalidate)
-        if (updateCache && cachedData) {
-            const updatedStatuses = { 
-                ...(cachedData.hostingStatuses || {}),
-                [config.key]: {
-                    user: response.data.user,
-                    services: response.data.services || [],
-                    deployments: response.data.deployments || []
-                }
-            };
-            updateCache({ hostingStatuses: updatedStatuses });
-        }
-      } else {
-        if (response.data.error && !isSilent) {
-            setStatus('error');
-            setErrorMsg(response.data.error);
+        const targetId = connectionId || selectedAccountId || fullAccountsList[0].connectionId;
+        
+        // Phase 2: Granular Fetch - only pull heavy external API data for the specific active connection
+        const queryStr = forceRefresh ? `&refresh=true` : '';
+        const response = await apiClient.get(`/connections/hosting/${config.key}/status?connectionId=${encodeURIComponent(targetId)}${queryStr}`);
+        if (cancelled) return;
+
+        if (response.data.connected && response.data.accounts && response.data.accounts.length > 0) {
+            // The backend returns an array, but with our granular fetch it only contains the 1 targeted account
+            const activeAccount = response.data.accounts[0];
+            
+            setSelectedAccountId(targetId);
+            setProviderUser(activeAccount.user);
+            setServices(activeAccount.services || []);
+            setDeployments(activeAccount.deployments || []);
+            setStatus('connected');
+            
+            // SWR Caching - we cache the list, and we can cache the specific account data separately if needed.
+            // For now, we just cache what we have to prevent loading spinners.
+            if (updateCache) {
+                const updatedStatuses = { 
+                    ...(cachedData?.hostingStatuses || {}),
+                    [config.key]: {
+                        accounts: fullAccountsList,
+                        activeAccountCache: {
+                           [targetId]: activeAccount
+                        }
+                    }
+                };
+                updateCache({ hostingStatuses: updatedStatuses });
+            }
         } else {
             setStatus('idle');
         }
-        // Clear from cache if no longer connected
-        if (updateCache && cachedData?.hostingStatuses?.[config.key]) {
-            const updatedStatuses = { ...cachedData.hostingStatuses };
-            delete updatedStatuses[config.key];
-            updateCache({ hostingStatuses: updatedStatuses });
+      } else {
+        if (listResponse.data.error && !isSilent) {
+            setStatus('error');
+            setErrorMsg(listResponse.data.error);
+        } else {
+            setStatus('idle');
         }
       }
     } catch (err: any) {
@@ -110,7 +139,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     }
 
     return () => { cancelled = true; };
-  }, [config.key, updateCache]);
+  }, [config.key, connectionId, selectedAccountId, updateCache]);
 
   /**
    * Effect to handle provider switching and initial data loading with SWR pattern.
@@ -119,12 +148,17 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     let cancelled = false;
     if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
 
-    // Initial state reset for new provider
+    // Initial state reset for new provider or connection switch
     setProviderUser(null);
     setServices([]);
     setDeployments([]);
     setDisconnecting(false);
     setRefreshing(false);
+    
+    if (connectionId === 'new') {
+        setStatus('idle');
+        return;
+    }
     
     if (!config) { 
         setStatus('idle'); 
@@ -148,11 +182,21 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
         if (!cancelled) setStatus('connected');
     };
 
-    if (cachedProviderData) {
+    if (cachedProviderData?.accounts && cachedProviderData?.accounts.length > 0) {
         // We have data! Show it but stay in loading state briefly for animations
-        setProviderUser(cachedProviderData.user);
-        setServices(cachedProviderData.services || []);
-        setDeployments(cachedProviderData.deployments || []);
+        setAccounts(cachedProviderData.accounts);
+        
+        const targetId = connectionId || selectedAccountId || cachedProviderData.accounts[0].connectionId;
+        
+        // If we have granular cache for this specific connection, load it immediately
+        const activeAccount = cachedProviderData.activeAccountCache?.[targetId];
+        
+        if (activeAccount) {
+            setSelectedAccountId(targetId);
+            setProviderUser(activeAccount.user);
+            setServices(activeAccount.services || []);
+            setDeployments(activeAccount.deployments || []);
+        }
         
         setStatus('loading'); // Stay in loading to show skeleton
         
@@ -181,6 +225,17 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     };
   }, [provider, config.key, isConnectedInCache, fetchData]);
 
+  useEffect(() => {
+    if (accounts.length > 0 && selectedAccountId) {
+        const activeAccount = accounts.find((a: any) => a.connectionId === selectedAccountId);
+        if (activeAccount) {
+            setProviderUser(activeAccount.user);
+            setServices(activeAccount.services || []);
+            setDeployments(activeAccount.deployments || []);
+        }
+    }
+  }, [selectedAccountId, accounts]);
+
   const handleConnect = async () => {
     if (!tokenInput.trim()) return;
     setStatus('connecting');
@@ -188,7 +243,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
 
     try {
       // For Coolify, we might need to send the instance URL
-      const payload: any = { provider: config.key, token: tokenInput, name: config.label };
+      const payload: any = { provider: config.key, token: tokenInput, name: config.label, alias: aliasInput };
       if (config.key === 'coolify' && urlInput) {
           payload.instanceUrl = urlInput;
       }
@@ -198,7 +253,16 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
       if (res.data.message.includes('successfully')) {
         setTokenInput('');
         setUrlInput('');
-        await fetchData();
+        
+        // Refresh the sidebar immediately
+        await refetchGlobalConnections();
+        
+        // Redirect to the newly connected provider ID
+        if (res.data.connection && res.data.connection._id) {
+           navigate(`/hosting/${config.key}/${res.data.connection._id}`);
+        } else {
+           await fetchData();
+        }
       }
     } catch (err: any) {
       setStatus('error');
@@ -227,6 +291,11 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     } finally {
       setDisconnecting(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchData(true, true);
   };
 
   const timeAgo = (timestamp: number) => {
@@ -291,9 +360,18 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
             providerUser={providerUser}
             services={services}
             deployments={deployments}
+            accounts={accounts}
+            selectedAccountId={selectedAccountId}
+            onAccountChange={setSelectedAccountId}
+            onAddAccount={() => {
+                setTokenInput('');
+                setAliasInput('');
+                setUrlInput('');
+                setStatus('idle');
+            }}
             refreshing={refreshing}
             disconnecting={disconnecting}
-            onRefresh={() => { setRefreshing(true); fetchData(); }}
+            onRefresh={handleRefresh}
             onDisconnect={handleDisconnect}
             timeAgo={timeAgo}
             getStateColor={getStateColor}
@@ -309,6 +387,8 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
         setTokenInput={setTokenInput}
         urlInput={urlInput}
         setUrlInput={setUrlInput}
+        aliasInput={aliasInput}
+        setAliasInput={setAliasInput}
         showToken={showToken}
         setShowToken={setShowToken}
         status={status}

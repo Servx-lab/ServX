@@ -43,7 +43,7 @@ export const DeploymentsTable: React.FC<DeploymentsTableProps> = ({
               <tr>
                 <td colSpan={4} className="px-5 py-8 text-center text-xs text-gray-400">No deployments found</td>
               </tr>
-            ) : deployments.map(dep => (
+            ) : deployments.slice(0, 4).map(dep => (
               <tr key={dep.id} className="hover:bg-gray-50 transition-colors group">
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-2">

@@ -47,6 +47,7 @@ const navItems = [
   { icon: Mail, label: "Emails", to: "/emails" },
   { icon: Shield, label: "Administration", to: "/admin" },
   { icon: FileText, label: "Governance Center", to: "/reports" },
+  { icon: Settings, label: "Settings", to: "/settings" },
 ];
 
 const Sidebar = () => {
@@ -83,20 +84,6 @@ const Sidebar = () => {
           </NavLink>
         ))}
       </nav>
-
-      <div className="mt-auto pt-4 border-t border-border/50">
-        <NavLink
-          to="/settings"
-          className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 w-full text-left ${
-            isActive
-              ? "pill-active"
-              : "text-muted-foreground hover:text-foreground hover:bg-white/10"
-          }`}
-        >
-          <Settings className="w-4.5 h-4.5 flex-shrink-0" />
-          <span>Settings</span>
-        </NavLink>
-      </div>
 
     </div>
   );

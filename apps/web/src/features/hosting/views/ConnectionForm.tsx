@@ -12,6 +12,8 @@ interface ConnectionFormProps {
   setTokenInput: (val: string) => void;
   urlInput: string;
   setUrlInput: (val: string) => void;
+  aliasInput: string;
+  setAliasInput: (val: string) => void;
   showToken: boolean;
   setShowToken: (val: boolean) => void;
   status: string;
@@ -26,6 +28,8 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   setTokenInput,
   urlInput,
   setUrlInput,
+  aliasInput,
+  setAliasInput,
   showToken,
   setShowToken,
   status,

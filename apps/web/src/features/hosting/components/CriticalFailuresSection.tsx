@@ -45,7 +45,7 @@ export const CriticalFailuresSection: React.FC<CriticalFailuresSectionProps> = (
   };
 
   return (
-    <div className="bg-white border border-red-100 rounded-xl overflow-hidden flex flex-col shadow-sm h-[480px]">
+    <div className="bg-white border border-red-100 rounded-xl overflow-hidden flex flex-col shadow-sm">
       <div className="p-5 border-b border-red-50 bg-red-50/30 flex items-center justify-between">
         <h4 className="text-sm font-semibold text-red-900 flex items-center gap-2">
           <ShieldAlert size={14} className="text-red-500" /> Incident Records
@@ -53,7 +53,7 @@ export const CriticalFailuresSection: React.FC<CriticalFailuresSectionProps> = (
         <Badge className="bg-red-500 text-white border-none text-[10px] font-bold shadow-sm">{failures.length}</Badge>
       </div>
       
-      <div className="flex-1 overflow-auto p-4 space-y-3">
+      <div className={`flex-1 p-4 ${failures.length > 0 && !isLoading ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : ''}`}>
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
              <Activity className="animate-spin text-red-200 w-8 h-8" />
@@ -68,7 +68,7 @@ export const CriticalFailuresSection: React.FC<CriticalFailuresSectionProps> = (
             <p className="text-[10px] text-gray-400 mt-2 px-6 leading-relaxed">No historical critical incidents detected across connected providers.</p>
           </div>
         ) : (
-          failures.map((fail, idx) => (
+          failures.slice(0, 4).map((fail, idx) => (
             <motion.div 
               key={fail.id}
               initial={{ opacity: 0, x: 20 }}

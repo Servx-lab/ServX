@@ -15,14 +15,16 @@ import type {
 } from '@servx/types';
 import { NotFoundError, ValidationError } from '@servx/errors';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
-import { cacheGet, cacheSet } from '../../core/services/redisCache';
+import { cacheGet, cacheSet, cacheDel } from '../../core/services/redisCache';
 import { encrypt, decrypt } from '@servx/crypto';
+import cloudinary from '../../config/cloudinary';
 
 export { supabaseAdmin };
 
 const HOSTING_CACHE_TTL = 300; // 5 minutes
 const AXIOS_TIMEOUT = 5000; // 5 seconds
-const hostingStatusKey = (uid: string, provider: string) => `hosting:status:${uid}:${provider}`;
+const hostingStatusKey = (uid: string, provider: string, connectionId?: string) => 
+  connectionId ? `hosting:status:${uid}:${provider}:${connectionId}` : `hosting:status:${uid}:${provider}`;
 
 // Deduplication Map to prevent "Cache Stampede"
 const pendingRequests = new Map<string, Promise<HostingStatusResponse>>();
@@ -101,7 +103,7 @@ export async function saveConnection(
 export async function getUserConnections(ownerUid: string): Promise<ConnectionListItem[]> {
   const [dbRes, hostingRes] = await Promise.all([
     supabaseAdmin.from('db_vault').select('id, name, provider, created_at, status').eq('user_id', ownerUid),
-    supabaseAdmin.from('hosting_vault').select('id, name, provider, created_at').eq('user_id', ownerUid),
+    supabaseAdmin.from('hosting_vault').select('*').eq('user_id', ownerUid),
   ]);
 
   const dbConns: ConnectionListItem[] = (dbRes.data || []).map(d => ({
@@ -116,12 +118,34 @@ export async function getUserConnections(ownerUid: string): Promise<ConnectionLi
   const hostingConns: ConnectionListItem[] = (hostingRes.data || []).map(d => ({
     _id: d.id,
     name: d.name,
+    alias: d.alias,
     provider: d.provider as UserConnectionProvider,
     isActive: true,
     createdAt: d.created_at,
+    avatarUrl: d.avatar_url,
   }));
 
   return [...dbConns, ...hostingConns];
+}
+
+export async function updateConnectionAlias(id: string, ownerUid: string, alias: string): Promise<void> {
+  if (!alias || alias.trim() === '') {
+      throw new ValidationError('Alias cannot be empty');
+  }
+
+  // Assuming alias is currently only on hosting_vault
+  const { error } = await supabaseAdmin
+    .from('hosting_vault')
+    .update({ alias: alias.trim() })
+    .eq('id', id)
+    .eq('user_id', ownerUid);
+    
+  if (error) {
+    if (error.code === '23505') { // Unique constraint violation
+        throw new ValidationError('An API key with this alias already exists for this provider.');
+    }
+    throw new Error('Failed to update alias');
+  }
 }
 
 export async function deleteConnection(id: string, ownerUid: string): Promise<void> {
@@ -134,25 +158,122 @@ export async function deleteConnection(id: string, ownerUid: string): Promise<vo
   if (dbError && hostingError) {
     throw new NotFoundError('Connection not found or already deleted');
   }
+
+  // Attempt to delete any associated avatar from Cloudinary
+  try {
+    const publicId = `servx/avatars/${ownerUid}/${id}`;
+    await cloudinary.uploader.destroy(publicId);
+  } catch (err: any) {
+    console.warn('[Cloudinary Delete Error] Could not delete avatar for', id, err.message);
+  }
+}
+
+export async function uploadAvatar(
+  id: string,
+  ownerUid: string,
+  fileBuffer: Buffer
+): Promise<{ avatarUrl: string }> {
+  // 1. Fetch existing connection to check for an old avatar
+  const { data: connection } = await supabaseAdmin
+    .from('hosting_vault')
+    .select('avatar_url')
+    .eq('id', id)
+    .eq('user_id', ownerUid)
+    .single();
+
+  // 2. Explicitly destroy the old avatar to prevent storage leaks from format changes
+  if (connection?.avatar_url) {
+    try {
+      // The publicId pattern we use is: servx/avatars/{ownerUid}/{id}
+      const publicId = `servx/avatars/${ownerUid}/${id}`;
+      await cloudinary.uploader.destroy(publicId);
+      console.log(`[Cloudinary] Successfully destroyed old avatar: ${publicId}`);
+    } catch (err: any) {
+      console.warn('[Cloudinary] Failed to delete previous avatar during replacement:', err.message);
+    }
+  }
+
+  // 3. We stream the new buffer to Cloudinary
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: `servx/avatars/${ownerUid}`,
+        public_id: id,
+        overwrite: true,
+        resource_type: 'image',
+      },
+      async (error, result) => {
+        if (error) {
+          console.error('[Cloudinary Upload Error]', error);
+          return reject(new Error('Failed to upload image'));
+        }
+        if (!result) {
+          return reject(new Error('No result from Cloudinary'));
+        }
+        
+        // Save URL to Supabase
+        const avatarUrl = result.secure_url;
+        const { error: dbError } = await supabaseAdmin
+          .from('hosting_vault')
+          .update({ avatar_url: avatarUrl })
+          .eq('id', id)
+          .eq('user_id', ownerUid);
+
+        if (dbError) {
+          console.error('[Supabase Update Error]', dbError);
+          return reject(new Error('Failed to update avatar in database'));
+        }
+
+        resolve({ avatarUrl });
+      }
+    );
+
+    uploadStream.end(fileBuffer);
+  });
 }
 
 // ─── Hosting providers ────────────────────────────────────────────────────────
 
-export async function getHostingProviderStatus(
+export async function getHostingProviderAccountsList(
   ownerUid: string,
   providerKey: HostingProviderKey
+): Promise<any[]> {
+  const providerInfo = HOSTING_PROVIDERS[providerKey];
+  if (!providerInfo) return [];
+
+  const { data: connections, error } = await supabaseAdmin
+    .from('hosting_vault')
+    .select('id, name, alias, created_at')
+    .eq('user_id', ownerUid)
+    .eq('provider', providerInfo.dbName)
+    .order('created_at', { ascending: false });
+
+  if (error || !connections) return [];
+  
+  return connections.map(c => ({
+    connectionId: c.id,
+    alias: c.alias || c.name || 'Default',
+    createdAt: c.created_at
+  }));
+}
+
+export async function getHostingProviderStatus(
+  ownerUid: string,
+  providerKey: HostingProviderKey,
+  forceRefresh: boolean = false,
+  connectionId?: string
 ): Promise<HostingStatusResponse> {
-  const cacheKey = hostingStatusKey(ownerUid, providerKey);
+  const cacheKey = hostingStatusKey(ownerUid, providerKey, connectionId);
   
   // 0. Request Deduplication (Layer 0)
-  // If a request for this user+provider is already in-flight, return that promise.
+  // If a request for this user+provider+connection is already in-flight, return that promise.
   const existing = pendingRequests.get(cacheKey);
-  if (existing) {
-    console.log(`[Hosting] Joining pending request for ${providerKey}`);
+  if (existing && !forceRefresh) {
+    console.log(`[Hosting] Joining pending request for ${providerKey}:${connectionId}`);
     return existing;
   }
 
-  const promise = performHostingStatusFetch(ownerUid, providerKey);
+  const promise = performHostingStatusFetch(ownerUid, providerKey, forceRefresh, connectionId);
   pendingRequests.set(cacheKey, promise);
 
   try {
@@ -165,100 +286,127 @@ export async function getHostingProviderStatus(
 
 async function performHostingStatusFetch(
   ownerUid: string,
-  providerKey: HostingProviderKey
+  providerKey: HostingProviderKey,
+  forceRefresh: boolean = false,
+  connectionId?: string
 ): Promise<HostingStatusResponse> {
-  const cacheKey = hostingStatusKey(ownerUid, providerKey);
+  const cacheKey = hostingStatusKey(ownerUid, providerKey, connectionId);
   const providerInfo = HOSTING_PROVIDERS[providerKey];
 
-  // 1. Try Cache First (Now checks RAM first)
-  try {
-    const cached = await cacheGet<HostingStatusResponse>(cacheKey);
-    if (cached) {
-      console.log(`[Hosting] Cache Hit: ${providerKey} for ${ownerUid}`);
-      return cached;
+  // 1. Try Cache First
+  if (!forceRefresh) {
+    try {
+      const cached = await cacheGet<HostingStatusResponse>(cacheKey);
+      if (cached) {
+        console.log(`[Hosting] Cache Hit: ${providerKey}:${connectionId} for ${ownerUid}`);
+        return cached;
+      }
+    } catch (err: any) {
+      console.warn(`[Hosting] Cache check failed:`, err.message);
     }
-  } catch (err: any) {
-    console.warn(`[Hosting] Cache check failed:`, err.message);
+  } else {
+    try {
+      await cacheDel(cacheKey);
+      console.log(`[Hosting] Force Refresh: Cleared cache for ${providerKey}:${connectionId}`);
+    } catch (err) {
+      console.warn(`[Hosting] Force Refresh cache delete failed:`, err);
+    }
   }
 
-  // 2. Fetch connection from Supabase
-  const { data: connections, error } = await supabaseAdmin
+  // 2. Fetch connections from Supabase
+  let query = supabaseAdmin
     .from('hosting_vault')
     .select('*')
     .eq('user_id', ownerUid)
-    .eq('provider', providerInfo.dbName)
-    .order('created_at', { ascending: false })
-    .limit(1);
+    .eq('provider', providerInfo.dbName);
+    
+  // Granular Fetch: If connectionId is provided, ONLY fetch that connection!
+  if (connectionId) {
+    query = query.eq('id', connectionId);
+  } else {
+    // If not provided, fallback to the latest one (or limit to a small number to prevent 429)
+    query = query.limit(3);
+  }
 
-  const connection = (connections && connections.length > 0) ? connections[0] : null;
+  const { data: connections, error } = await query.order('created_at', { ascending: false });
 
-  if (!connection || error) {
+  if (!connections || connections.length === 0 || error) {
     return { connected: false };
   }
 
-  let parsedConfig: any;
-  let token: string;
-  try {
-    let rawConfig = connection.encrypted_config;
-    
-    // Hybrid Decryption: If IV exists, decrypt. Otherwise, assume plaintext (transitional).
-    if (connection.iv && connection.iv !== '') {
-      rawConfig = decrypt({ iv: connection.iv, content: connection.encrypted_config });
-    }
-    
-    parsedConfig = JSON.parse(rawConfig) as { token?: string; apiKey?: string; instanceUrl?: string };
-    token = (parsedConfig.token ?? parsedConfig.apiKey) as string;
-  } catch (err: any) {
-    console.error('[Connections] Decryption failed:', err.message);
-    return {
-      connected: true,
-      connectionId: connection.id,
-      createdAt: connection.created_at,
-      services: [],
-      deployments: [],
-      error: 'Failed to decrypt token',
-    };
-  }
-
-  // 4. Fetch from External API
-  let services: HostingService[] = [];
-  let deployments: HostingDeployment[] = [];
-  let user: HostingUser | null = null;
-
-  try {
-    if (providerKey === 'vercel') {
-      ({ user, services, deployments } = await fetchVercel(token));
-    } else if (providerKey === 'render') {
-      ({ user, services, deployments } = await fetchRender(token));
-    } else if (providerKey === 'railway') {
-      ({ user, services } = await fetchRailway(token));
-    } else if (providerKey === 'digitalocean') {
-      ({ user, services } = await fetchDigitalOcean(token));
-    } else if (providerKey === 'coolify') {
-      const instanceUrl = (connection.config as any)?.instanceUrl || parsedConfig?.instanceUrl;
-      ({ user, services, deployments } = await fetchCoolify(instanceUrl, token));
-    }
-  } catch (apiErr: any) {
-    console.error(`${providerInfo.label} API fetch error:`, apiErr.message);
-    const status = apiErr.response?.status;
-    if (status === 401 || status === 403) {
-        // If unauthorized, return connected: false
+  const accounts = await Promise.all(
+    connections.map(async (connection) => {
+      let parsedConfig: any;
+      let token: string;
+      try {
+        let rawConfig = connection.encrypted_config;
+        if (connection.iv && connection.iv !== '') {
+          rawConfig = decrypt({ iv: connection.iv, content: connection.encrypted_config });
+        }
+        parsedConfig = JSON.parse(rawConfig) as { token?: string; apiKey?: string; instanceUrl?: string };
+        token = (parsedConfig.token ?? parsedConfig.apiKey) as string;
+      } catch (err: any) {
+        console.error('[Connections] Decryption failed:', err.message);
         return {
-            connected: false,
-            connectionId: connection.id,
-            createdAt: connection.created_at,
-            error: 'Invalid API Key',
+          connectionId: connection.id,
+          alias: connection.alias || connection.name || 'Default',
+          createdAt: connection.created_at,
+          services: [],
+          deployments: [],
+          error: 'Failed to decrypt token',
         };
-    }
-  }
+      }
+
+      let services: HostingService[] = [];
+      let deployments: HostingDeployment[] = [];
+      let user: HostingUser | null = null;
+
+      try {
+        if (providerKey === 'vercel') {
+          ({ user, services, deployments } = await fetchVercel(token));
+        } else if (providerKey === 'render') {
+          ({ user, services, deployments } = await fetchRender(token));
+        } else if (providerKey === 'railway') {
+          ({ user, services } = await fetchRailway(token));
+        } else if (providerKey === 'digitalocean') {
+          ({ user, services } = await fetchDigitalOcean(token));
+        } else if (providerKey === 'coolify') {
+          const instanceUrl = (connection.config as any)?.instanceUrl || parsedConfig?.instanceUrl;
+          ({ user, services, deployments } = await fetchCoolify(instanceUrl, token));
+        }
+      } catch (apiErr: any) {
+        console.error(`${providerInfo.label} API fetch error:`, apiErr.message);
+        const status = apiErr.response?.status;
+        let errorMsg = 'Failed to fetch data from provider';
+        if (status === 401 || status === 403) {
+            errorMsg = 'Invalid API Key. Please reconnect.';
+        } else if (apiErr.message) {
+            errorMsg = `API Error: ${apiErr.message}`;
+        }
+        return {
+            connectionId: connection.id,
+            alias: connection.alias || connection.name || 'Default',
+            createdAt: connection.created_at,
+            services: [],
+            deployments: [],
+            error: errorMsg,
+        };
+      }
+
+      return {
+        connectionId: connection.id,
+        alias: connection.alias || connection.name || 'Default',
+        createdAt: connection.created_at,
+        user,
+        services,
+        deployments,
+      };
+    })
+  );
 
   const result: HostingStatusResponse = {
     connected: true,
-    connectionId: connection.id,
-    createdAt: connection.created_at,
-    user,
-    services,
-    deployments,
+    accounts,
   };
 
   // 5. Update Cache (Updates RAM and Redis)
@@ -315,6 +463,7 @@ export async function saveHostingToken(
   email: string,
   providerKey: HostingProviderKey,
   name: string,
+  alias: string,
   token: string,
   extras: { edgeConfigId?: string } = {}
 ): Promise<ConnectionResponse> {
@@ -358,6 +507,7 @@ export async function saveHostingToken(
     .insert([{
       user_id: ownerUid,
       name,
+      alias,
       provider: providerInfo.dbName,
       encrypted_config: content,
       iv: iv
@@ -390,6 +540,23 @@ export async function deleteHostingToken(
   const providerInfo = HOSTING_PROVIDERS[providerKey];
   if (!providerInfo) {
     throw new ValidationError(`Unknown provider: ${providerKey}`);
+  }
+
+  // First fetch the connections so we can delete their avatars
+  const { data: connectionsToDel } = await supabaseAdmin
+    .from('hosting_vault')
+    .select('id')
+    .eq('user_id', ownerUid)
+    .eq('provider', providerInfo.dbName);
+
+  if (connectionsToDel && connectionsToDel.length > 0) {
+    for (const c of connectionsToDel) {
+      try {
+        await cloudinary.uploader.destroy(`servx/avatars/${ownerUid}/${c.id}`);
+      } catch (err: any) {
+        console.warn('[Cloudinary Bulk Delete Error]', c.id, err.message);
+      }
+    }
   }
 
   const { error } = await supabaseAdmin
@@ -819,17 +986,24 @@ export async function getHostingEnvironmentVariables(
 
 export async function getHostingCredentials(
   ownerUid: string,
-  provider: 'vercel' | 'render'
+  provider: 'vercel' | 'render',
+  connectionId?: string
 ): Promise<{ token: string; edgeConfigId?: string } | null> {
   const providerInfo = HOSTING_PROVIDERS[provider as keyof typeof HOSTING_PROVIDERS];
   if (!providerInfo) return null;
 
-  const { data, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from('hosting_vault')
     .select('*')
     .eq('user_id', ownerUid)
-    .eq('provider', providerInfo.dbName)
-    .single();
+    .eq('provider', providerInfo.dbName);
+
+  if (connectionId) {
+    query = query.eq('id', connectionId);
+  }
+
+  // Use limit(1).single() to prevent multiple rows crashing the backend if connectionId is missing
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(1).single();
 
   if (!data || error) return null;
 
@@ -845,5 +1019,82 @@ export async function getHostingCredentials(
     };
   } catch {
     return null;
+  }
+}
+
+export async function getHostingLogs(
+  ownerUid: string,
+  providerKey: string,
+  serviceId: string,
+  connectionId?: string
+): Promise<string[]> {
+  const pk = providerKey.toLowerCase();
+  const trimmedId = (serviceId || '').trim();
+  if (!trimmedId) {
+    throw new ValidationError('Service ID is required.');
+  }
+
+  // We reuse getHostingCredentials which works for vercel/render
+  const creds = await getHostingCredentials(ownerUid, pk as 'vercel' | 'render', connectionId);
+  const token = creds?.token || (creds as any)?.apiKey;
+
+  if (!token) {
+    throw new ValidationError(`Connect your account to view logs.`);
+  }
+
+  try {
+    if (pk === 'render') {
+      // Step 1: Fetch service metadata to retrieve the strict ownerId required by Render's Log API
+      const serviceRes = await axios.get(`https://api.render.com/v1/services/${encodeURIComponent(trimmedId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: AXIOS_TIMEOUT
+      });
+      
+      const type = serviceRes.data?.type;
+      if (type === 'static_site') {
+        return ['[system] Connection established. However, Static Sites do not emit runtime logs.'];
+      }
+      
+      const ownerId = serviceRes.data?.ownerId || serviceRes.data?.owner?.id;
+      if (!ownerId) {
+        throw new Error('Could not determine Workspace/Owner ID for this Render service.');
+      }
+
+      // Step 2: Fetch logs using both resource ID and ownerId
+      // Deep fetch: Expand Render's default 1-hour window to the last 7 days
+      const startTimeISO = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const res = await axios.get(`https://api.render.com/v1/logs?resource=${encodeURIComponent(trimmedId)}&ownerId=${encodeURIComponent(ownerId)}&limit=100&startTime=${startTimeISO}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: AXIOS_TIMEOUT
+      });
+      
+      const logsArray = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      
+      if (logsArray.length === 0) {
+        return ['[system] Connection established. No recent logs emitted by this service.'];
+      }
+
+      // Render returns newest logs first usually, we map and reverse for terminal
+      const logsList = logsArray.map((entry: any) => {
+        const timestamp = entry.log?.timestamp ? new Date(entry.log.timestamp).toLocaleTimeString([], { hour12: false }) : '';
+        const text = entry.log?.text || '';
+        return `[${timestamp}] ${text}`;
+      });
+      
+      return logsList.reverse();
+    }
+    
+    if (pk === 'vercel') {
+      return [
+        '[system] Real-time Vercel logs require a Log Drain configuration.',
+        '[system] Please visit the Vercel Dashboard for live invocation logs.'
+      ];
+    }
+
+    return [`[system] Live logs not supported via API for ${pk}.`];
+  } catch (err: any) {
+    console.error(`[Hosting Logs] Error fetching logs for ${pk}:`, err.message);
+    return [`[error] Failed to fetch logs from ${pk}: ${err.message}`];
   }
 }

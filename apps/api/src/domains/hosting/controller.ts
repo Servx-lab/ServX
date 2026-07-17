@@ -79,6 +79,7 @@ export async function handleVercelCallback(
         email,
         'vercel',
         'Vercel Account',
+        'Default',
         accessToken
     );
 
