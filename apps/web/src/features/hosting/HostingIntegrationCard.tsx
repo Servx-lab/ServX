@@ -63,7 +63,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
    * Fetches the latest status and data for the current hosting provider.
    * @param isSilent - If true, prevents showing a full-screen loading state or error message.
    */
-  const fetchData = useCallback(async (isSilent = false) => {
+  const fetchData = useCallback(async (isSilent = false, forceRefresh = false) => {
     let cancelled = false;
     if (!isSilent) setErrorMsg('');
 
@@ -73,48 +73,54 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     }
 
     try {
-      const response = await apiClient.get(`/connections/hosting/${config.key}/status`);
+      // Phase 1: Granular Discovery - get lightweight list of all connections for this provider
+      const listResponse = await apiClient.get(`/connections/hosting/${config.key}/list`);
       if (cancelled) return;
 
-      if (response.data.connected && response.data.accounts) {
-        setAccounts(response.data.accounts);
+      if (listResponse.data.connected && listResponse.data.accounts && listResponse.data.accounts.length > 0) {
+        const fullAccountsList = listResponse.data.accounts;
+        setAccounts(fullAccountsList);
         
-        // Since we have a useEffect watching accounts + selectedAccountId, it will update the other states
-        // Use connectionId prop if provided, else fallback to selectedAccountId or first account
-        const targetId = connectionId || selectedAccountId;
-        const activeAccount = response.data.accounts.find((a: any) => a.connectionId === targetId) || response.data.accounts[0];
-        if (activeAccount) {
-            setSelectedAccountId(activeAccount.connectionId);
+        const targetId = connectionId || selectedAccountId || fullAccountsList[0].connectionId;
+        
+        // Phase 2: Granular Fetch - only pull heavy external API data for the specific active connection
+        const queryStr = forceRefresh ? `&refresh=true` : '';
+        const response = await apiClient.get(`/connections/hosting/${config.key}/status?connectionId=${encodeURIComponent(targetId)}${queryStr}`);
+        if (cancelled) return;
+
+        if (response.data.connected && response.data.accounts && response.data.accounts.length > 0) {
+            // The backend returns an array, but with our granular fetch it only contains the 1 targeted account
+            const activeAccount = response.data.accounts[0];
+            
+            setSelectedAccountId(targetId);
             setProviderUser(activeAccount.user);
             setServices(activeAccount.services || []);
             setDeployments(activeAccount.deployments || []);
             setStatus('connected');
+            
+            // SWR Caching - we cache the list, and we can cache the specific account data separately if needed.
+            // For now, we just cache what we have to prevent loading spinners.
+            if (updateCache) {
+                const updatedStatuses = { 
+                    ...(cachedData?.hostingStatuses || {}),
+                    [config.key]: {
+                        accounts: fullAccountsList,
+                        activeAccountCache: {
+                           [targetId]: activeAccount
+                        }
+                    }
+                };
+                updateCache({ hostingStatuses: updatedStatuses });
+            }
         } else {
             setStatus('idle');
-        }
-        
-        // Update cache with full data for SWR (Stale-While-Revalidate)
-        if (updateCache) {
-            const updatedStatuses = { 
-                ...(cachedData?.hostingStatuses || {}),
-                [config.key]: {
-                    accounts: response.data.accounts
-                }
-            };
-            updateCache({ hostingStatuses: updatedStatuses });
         }
       } else {
-        if (response.data.error && !isSilent) {
+        if (listResponse.data.error && !isSilent) {
             setStatus('error');
-            setErrorMsg(response.data.error);
+            setErrorMsg(listResponse.data.error);
         } else {
             setStatus('idle');
-        }
-        // Clear from cache if no longer connected
-        if (updateCache && cachedData?.hostingStatuses?.[config.key]) {
-            const updatedStatuses = { ...cachedData.hostingStatuses };
-            delete updatedStatuses[config.key];
-            updateCache({ hostingStatuses: updatedStatuses });
         }
       }
     } catch (err: any) {
@@ -133,7 +139,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     }
 
     return () => { cancelled = true; };
-  }, [config.key, updateCache]);
+  }, [config.key, connectionId, selectedAccountId, updateCache]);
 
   /**
    * Effect to handle provider switching and initial data loading with SWR pattern.
@@ -176,12 +182,17 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
         if (!cancelled) setStatus('connected');
     };
 
-    if (cachedProviderData?.accounts) {
+    if (cachedProviderData?.accounts && cachedProviderData?.accounts.length > 0) {
         // We have data! Show it but stay in loading state briefly for animations
         setAccounts(cachedProviderData.accounts);
-        const activeAccount = cachedProviderData.accounts.find((a: any) => a.connectionId === selectedAccountId) || cachedProviderData.accounts[0];
+        
+        const targetId = connectionId || selectedAccountId || cachedProviderData.accounts[0].connectionId;
+        
+        // If we have granular cache for this specific connection, load it immediately
+        const activeAccount = cachedProviderData.activeAccountCache?.[targetId];
+        
         if (activeAccount) {
-            setSelectedAccountId(activeAccount.connectionId);
+            setSelectedAccountId(targetId);
             setProviderUser(activeAccount.user);
             setServices(activeAccount.services || []);
             setDeployments(activeAccount.deployments || []);
@@ -282,6 +293,11 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchData(true, true);
+  };
+
   const timeAgo = (timestamp: number) => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
     if (seconds < 60) return 'Just now';
@@ -355,7 +371,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
             }}
             refreshing={refreshing}
             disconnecting={disconnecting}
-            onRefresh={() => { setRefreshing(true); fetchData(); }}
+            onRefresh={handleRefresh}
             onDisconnect={handleDisconnect}
             timeAgo={timeAgo}
             getStateColor={getStateColor}

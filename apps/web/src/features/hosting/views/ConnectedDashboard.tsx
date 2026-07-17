@@ -81,6 +81,17 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRefresh}
+              disabled={refreshing || disconnecting}
+              className="h-9 px-3 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-black transition-all flex items-center gap-1.5"
+            >
+              <RefreshCw size={14} className={refreshing ? "animate-spin text-gray-400" : "text-gray-400"} />
+              <span className="hidden sm:inline">{refreshing ? 'Refreshing...' : 'Force Refresh'}</span>
+            </Button>
 
             <Button
               variant="outline"
@@ -147,6 +158,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
               <ServicesTable 
                   services={services}
                   providerKey={config.key}
+                  connectionId={selectedAccountId || ''}
                   supportsEnvManager={['vercel', 'render'].includes(config.key)}
                   timeAgo={timeAgo}
                   getStateColor={getStateColor}

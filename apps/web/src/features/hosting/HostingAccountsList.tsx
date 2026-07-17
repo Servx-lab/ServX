@@ -195,7 +195,7 @@ const HostingAccountsList: React.FC<HostingAccountsListProps> = ({ activeConnect
           );
 
           return (
-            <div key={conn._id} className={`relative group flex items-center rounded-lg transition-all duration-200 ${isActive ? 'bg-white ring-1 ring-gray-200 shadow-sm' : 'hover:bg-gray-100'}`}>
+            <div key={conn._id} className={`relative group flex items-center rounded-lg transition-all duration-200 ${isActive ? 'bg-white border border-gray-200 shadow-sm' : 'hover:bg-gray-100 border border-transparent'}`}>
               {editingId === conn._id ? (
                 <div className="flex-1 flex items-center gap-3 px-3 py-2.5 min-w-0 cursor-default">
                   {avatarBlock}

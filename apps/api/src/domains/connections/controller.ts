@@ -170,6 +170,24 @@ export async function uploadAvatar(
   }
 }
 
+// GET /api/connections/hosting/:provider/list
+export async function getHostingConnectionsList(
+  req: any,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const providerKey = getSingleParam(req.params.provider as string | string[] | undefined).toLowerCase();
+    if (!HOSTING_PROVIDERS[providerKey]) {
+      throw new ValidationError(`Unknown hosting provider: ${providerKey}`);
+    }
+    const accounts = await svc.getHostingProviderAccountsList(req.user.uid, providerKey);
+    res.json({ connected: accounts.length > 0, accounts });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/connections/hosting/:provider/status
 export async function getHostingStatus(
   req: any,
@@ -181,7 +199,9 @@ export async function getHostingStatus(
     if (!HOSTING_PROVIDERS[providerKey]) {
       throw new ValidationError(`Unknown hosting provider: ${providerKey}`);
     }
-    const result = await svc.getHostingProviderStatus(req.user.uid, providerKey);
+    const forceRefresh = req.query.refresh === 'true';
+    const connectionId = getSingleParam(req.query.connectionId as string | string[] | undefined);
+    const result = await svc.getHostingProviderStatus(req.user.uid, providerKey, forceRefresh, connectionId);
     // svc.getHostingProviderStatus handles cache internal to service, 
     // but we can infer MISS if the service logs a fetch. 
     // For now, we mark as HIT if it returns promptly and contains data, 
@@ -205,6 +225,23 @@ export async function getHostingEnvForService(
     const serviceId = getSingleParam(req.params.serviceId as string | string[] | undefined);
     const variables = await svc.getHostingEnvironmentVariables(req.user.uid, providerKey, serviceId);
     res.json({ variables });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/connections/hosting/:provider/logs/:serviceId
+export async function getHostingServiceLogs(
+  req: any,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const providerKey = getSingleParam(req.params.provider as string | string[] | undefined).toLowerCase();
+    const serviceId = getSingleParam(req.params.serviceId as string | string[] | undefined);
+    const connectionId = getSingleParam(req.query.connectionId as string | string[] | undefined);
+    const logs = await svc.getHostingLogs(req.user.uid, providerKey, serviceId, connectionId);
+    res.json({ logs });
   } catch (err) {
     next(err);
   }

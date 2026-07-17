@@ -9,10 +9,12 @@ import {
   deleteConnection,
   updateConnectionAlias,
   getHostingStatus,
+  getHostingConnectionsList,
   getHostingEnvForService,
   saveHostingConnection,
   deleteHostingConnection,
   uploadAvatar,
+  getHostingServiceLogs,
 } from './controller';
 
 const upload = multer({ 
@@ -31,6 +33,8 @@ router.post('/:id/avatar', requireAuth, upload.single('avatar'), uploadAvatar);
 
 // Hosting provider routes (generic)
 router.get('/hosting/:provider/env/:serviceId', requireAuth, getHostingEnvForService);
+router.get('/hosting/:provider/logs/:serviceId', requireAuth, getHostingServiceLogs);
+router.get('/hosting/:provider/list', requireAuth, getHostingConnectionsList);
 router.get('/hosting/:provider/status', requireAuth, getHostingStatus);
 router.post('/hosting/:provider', requireAuth, saveHostingConnection);
 router.delete('/hosting/:provider', requireAuth, deleteHostingConnection);

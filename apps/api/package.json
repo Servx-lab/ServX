@@ -9,6 +9,10 @@
     "sync-users": "tsx scripts/syncUsersToSheets.js"
   },
   "dependencies": {
+    "@servx/config": "*",
+    "@servx/crypto": "*",
+    "@servx/errors": "*",
+    "@servx/types": "*",
     "@langchain/textsplitters": "^1.0.1",
     "@octokit/graphql": "^9.0.3",
     "@octokit/rest": "^22.0.1",

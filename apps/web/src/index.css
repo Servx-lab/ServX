@@ -108,7 +108,7 @@
   }
 
   .pill-active {
-    @apply bg-primary/20 text-white rounded-lg;
+    @apply bg-white/5 border border-white/20 text-white rounded-lg;
   }
 
   .text-cyber-stat {

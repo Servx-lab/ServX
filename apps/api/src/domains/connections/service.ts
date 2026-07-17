@@ -15,7 +15,7 @@ import type {
 } from '@servx/types';
 import { NotFoundError, ValidationError } from '@servx/errors';
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
-import { cacheGet, cacheSet } from '../../core/services/redisCache';
+import { cacheGet, cacheSet, cacheDel } from '../../core/services/redisCache';
 import { encrypt, decrypt } from '@servx/crypto';
 import cloudinary from '../../config/cloudinary';
 
@@ -23,7 +23,8 @@ export { supabaseAdmin };
 
 const HOSTING_CACHE_TTL = 300; // 5 minutes
 const AXIOS_TIMEOUT = 5000; // 5 seconds
-const hostingStatusKey = (uid: string, provider: string) => `hosting:status:${uid}:${provider}`;
+const hostingStatusKey = (uid: string, provider: string, connectionId?: string) => 
+  connectionId ? `hosting:status:${uid}:${provider}:${connectionId}` : `hosting:status:${uid}:${provider}`;
 
 // Deduplication Map to prevent "Cache Stampede"
 const pendingRequests = new Map<string, Promise<HostingStatusResponse>>();
@@ -172,7 +173,27 @@ export async function uploadAvatar(
   ownerUid: string,
   fileBuffer: Buffer
 ): Promise<{ avatarUrl: string }> {
-  // We stream the buffer to Cloudinary
+  // 1. Fetch existing connection to check for an old avatar
+  const { data: connection } = await supabaseAdmin
+    .from('hosting_vault')
+    .select('avatar_url')
+    .eq('id', id)
+    .eq('user_id', ownerUid)
+    .single();
+
+  // 2. Explicitly destroy the old avatar to prevent storage leaks from format changes
+  if (connection?.avatar_url) {
+    try {
+      // The publicId pattern we use is: servx/avatars/{ownerUid}/{id}
+      const publicId = `servx/avatars/${ownerUid}/${id}`;
+      await cloudinary.uploader.destroy(publicId);
+      console.log(`[Cloudinary] Successfully destroyed old avatar: ${publicId}`);
+    } catch (err: any) {
+      console.warn('[Cloudinary] Failed to delete previous avatar during replacement:', err.message);
+    }
+  }
+
+  // 3. We stream the new buffer to Cloudinary
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -213,21 +234,46 @@ export async function uploadAvatar(
 
 // ─── Hosting providers ────────────────────────────────────────────────────────
 
-export async function getHostingProviderStatus(
+export async function getHostingProviderAccountsList(
   ownerUid: string,
   providerKey: HostingProviderKey
+): Promise<any[]> {
+  const providerInfo = HOSTING_PROVIDERS[providerKey];
+  if (!providerInfo) return [];
+
+  const { data: connections, error } = await supabaseAdmin
+    .from('hosting_vault')
+    .select('id, name, alias, created_at')
+    .eq('user_id', ownerUid)
+    .eq('provider', providerInfo.dbName)
+    .order('created_at', { ascending: false });
+
+  if (error || !connections) return [];
+  
+  return connections.map(c => ({
+    connectionId: c.id,
+    alias: c.alias || c.name || 'Default',
+    createdAt: c.created_at
+  }));
+}
+
+export async function getHostingProviderStatus(
+  ownerUid: string,
+  providerKey: HostingProviderKey,
+  forceRefresh: boolean = false,
+  connectionId?: string
 ): Promise<HostingStatusResponse> {
-  const cacheKey = hostingStatusKey(ownerUid, providerKey);
+  const cacheKey = hostingStatusKey(ownerUid, providerKey, connectionId);
   
   // 0. Request Deduplication (Layer 0)
-  // If a request for this user+provider is already in-flight, return that promise.
+  // If a request for this user+provider+connection is already in-flight, return that promise.
   const existing = pendingRequests.get(cacheKey);
-  if (existing) {
-    console.log(`[Hosting] Joining pending request for ${providerKey}`);
+  if (existing && !forceRefresh) {
+    console.log(`[Hosting] Joining pending request for ${providerKey}:${connectionId}`);
     return existing;
   }
 
-  const promise = performHostingStatusFetch(ownerUid, providerKey);
+  const promise = performHostingStatusFetch(ownerUid, providerKey, forceRefresh, connectionId);
   pendingRequests.set(cacheKey, promise);
 
   try {
@@ -240,29 +286,49 @@ export async function getHostingProviderStatus(
 
 async function performHostingStatusFetch(
   ownerUid: string,
-  providerKey: HostingProviderKey
+  providerKey: HostingProviderKey,
+  forceRefresh: boolean = false,
+  connectionId?: string
 ): Promise<HostingStatusResponse> {
-  const cacheKey = hostingStatusKey(ownerUid, providerKey);
+  const cacheKey = hostingStatusKey(ownerUid, providerKey, connectionId);
   const providerInfo = HOSTING_PROVIDERS[providerKey];
 
-  // 1. Try Cache First (Now checks RAM first)
-  try {
-    const cached = await cacheGet<HostingStatusResponse>(cacheKey);
-    if (cached) {
-      console.log(`[Hosting] Cache Hit: ${providerKey} for ${ownerUid}`);
-      return cached;
+  // 1. Try Cache First
+  if (!forceRefresh) {
+    try {
+      const cached = await cacheGet<HostingStatusResponse>(cacheKey);
+      if (cached) {
+        console.log(`[Hosting] Cache Hit: ${providerKey}:${connectionId} for ${ownerUid}`);
+        return cached;
+      }
+    } catch (err: any) {
+      console.warn(`[Hosting] Cache check failed:`, err.message);
     }
-  } catch (err: any) {
-    console.warn(`[Hosting] Cache check failed:`, err.message);
+  } else {
+    try {
+      await cacheDel(cacheKey);
+      console.log(`[Hosting] Force Refresh: Cleared cache for ${providerKey}:${connectionId}`);
+    } catch (err) {
+      console.warn(`[Hosting] Force Refresh cache delete failed:`, err);
+    }
   }
 
   // 2. Fetch connections from Supabase
-  const { data: connections, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from('hosting_vault')
     .select('*')
     .eq('user_id', ownerUid)
-    .eq('provider', providerInfo.dbName)
-    .order('created_at', { ascending: false });
+    .eq('provider', providerInfo.dbName);
+    
+  // Granular Fetch: If connectionId is provided, ONLY fetch that connection!
+  if (connectionId) {
+    query = query.eq('id', connectionId);
+  } else {
+    // If not provided, fallback to the latest one (or limit to a small number to prevent 429)
+    query = query.limit(3);
+  }
+
+  const { data: connections, error } = await query.order('created_at', { ascending: false });
 
   if (!connections || connections.length === 0 || error) {
     return { connected: false };
@@ -920,17 +986,24 @@ export async function getHostingEnvironmentVariables(
 
 export async function getHostingCredentials(
   ownerUid: string,
-  provider: 'vercel' | 'render'
+  provider: 'vercel' | 'render',
+  connectionId?: string
 ): Promise<{ token: string; edgeConfigId?: string } | null> {
   const providerInfo = HOSTING_PROVIDERS[provider as keyof typeof HOSTING_PROVIDERS];
   if (!providerInfo) return null;
 
-  const { data, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from('hosting_vault')
     .select('*')
     .eq('user_id', ownerUid)
-    .eq('provider', providerInfo.dbName)
-    .single();
+    .eq('provider', providerInfo.dbName);
+
+  if (connectionId) {
+    query = query.eq('id', connectionId);
+  }
+
+  // Use limit(1).single() to prevent multiple rows crashing the backend if connectionId is missing
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(1).single();
 
   if (!data || error) return null;
 
@@ -946,5 +1019,82 @@ export async function getHostingCredentials(
     };
   } catch {
     return null;
+  }
+}
+
+export async function getHostingLogs(
+  ownerUid: string,
+  providerKey: string,
+  serviceId: string,
+  connectionId?: string
+): Promise<string[]> {
+  const pk = providerKey.toLowerCase();
+  const trimmedId = (serviceId || '').trim();
+  if (!trimmedId) {
+    throw new ValidationError('Service ID is required.');
+  }
+
+  // We reuse getHostingCredentials which works for vercel/render
+  const creds = await getHostingCredentials(ownerUid, pk as 'vercel' | 'render', connectionId);
+  const token = creds?.token || (creds as any)?.apiKey;
+
+  if (!token) {
+    throw new ValidationError(`Connect your account to view logs.`);
+  }
+
+  try {
+    if (pk === 'render') {
+      // Step 1: Fetch service metadata to retrieve the strict ownerId required by Render's Log API
+      const serviceRes = await axios.get(`https://api.render.com/v1/services/${encodeURIComponent(trimmedId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: AXIOS_TIMEOUT
+      });
+      
+      const type = serviceRes.data?.type;
+      if (type === 'static_site') {
+        return ['[system] Connection established. However, Static Sites do not emit runtime logs.'];
+      }
+      
+      const ownerId = serviceRes.data?.ownerId || serviceRes.data?.owner?.id;
+      if (!ownerId) {
+        throw new Error('Could not determine Workspace/Owner ID for this Render service.');
+      }
+
+      // Step 2: Fetch logs using both resource ID and ownerId
+      // Deep fetch: Expand Render's default 1-hour window to the last 7 days
+      const startTimeISO = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const res = await axios.get(`https://api.render.com/v1/logs?resource=${encodeURIComponent(trimmedId)}&ownerId=${encodeURIComponent(ownerId)}&limit=100&startTime=${startTimeISO}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: AXIOS_TIMEOUT
+      });
+      
+      const logsArray = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      
+      if (logsArray.length === 0) {
+        return ['[system] Connection established. No recent logs emitted by this service.'];
+      }
+
+      // Render returns newest logs first usually, we map and reverse for terminal
+      const logsList = logsArray.map((entry: any) => {
+        const timestamp = entry.log?.timestamp ? new Date(entry.log.timestamp).toLocaleTimeString([], { hour12: false }) : '';
+        const text = entry.log?.text || '';
+        return `[${timestamp}] ${text}`;
+      });
+      
+      return logsList.reverse();
+    }
+    
+    if (pk === 'vercel') {
+      return [
+        '[system] Real-time Vercel logs require a Log Drain configuration.',
+        '[system] Please visit the Vercel Dashboard for live invocation logs.'
+      ];
+    }
+
+    return [`[system] Live logs not supported via API for ${pk}.`];
+  } catch (err: any) {
+    console.error(`[Hosting Logs] Error fetching logs for ${pk}:`, err.message);
+    return [`[error] Failed to fetch logs from ${pk}: ${err.message}`];
   }
 }
