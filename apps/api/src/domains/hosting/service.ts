@@ -87,6 +87,7 @@ export async function getGlobalFailureHistory(userId: string) {
   const { data, error } = await supabaseAdmin
     .from('incidents')
     .select('*')
+    .eq('user_id', userId)
     // Filter for common failure indicators or high severity
     .or('severity.eq.HIGH,severity.eq.CRITICAL,error_message.ilike.%failed%,error_message.ilike.%error%,error_message.ilike.%crash%')
     .order('timestamp', { ascending: false })

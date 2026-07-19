@@ -43,8 +43,12 @@ export async function executeTask(
 /**
  * Fetches the most recent server-side incident.
  */
-export async function getLatestIncident(): Promise<{ incident: Incident | null }> {
-  const res = await apiClient.get<{ incident: Incident | null }>('/operations/incidents/latest');
+export async function getLatestIncident(deploymentId?: string | null): Promise<{ incident: Incident | null }> {
+  let url = '/operations/incidents/latest';
+  if (deploymentId) {
+    url += `?deploymentId=${encodeURIComponent(deploymentId)}`;
+  }
+  const res = await apiClient.get<{ incident: Incident | null }>(url);
   return res.data;
 }
 

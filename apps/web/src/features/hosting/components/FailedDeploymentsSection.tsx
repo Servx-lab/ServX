@@ -19,9 +19,12 @@ export const FailedDeploymentsSection: React.FC<FailedDeploymentsSectionProps> =
 }) => {
   const navigate = useNavigate();
   
-  const failedDeployments = deployments.filter(dep => 
-    ['ERROR', 'FAILED', 'CRASHED', 'DOWN', 'UNHEALTHY'].includes((dep.state || '').toUpperCase())
-  ).slice(0, 5); // Show only top 5
+  const failedDeployments = deployments.filter(dep => {
+    const s = (dep.state || '').toUpperCase();
+    return ['ERROR', 'FAILED', 'CRASHED', 'DOWN', 'UNHEALTHY'].includes(s) || 
+           s.includes('FAIL') || 
+           s.includes('ERR');
+  }).slice(0, 5); // Show only top 5
 
   return (
     <div className="bg-white border border-red-100 rounded-xl overflow-hidden flex flex-col shadow-sm h-full">

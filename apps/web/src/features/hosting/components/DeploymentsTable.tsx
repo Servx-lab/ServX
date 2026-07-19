@@ -60,7 +60,10 @@ export const DeploymentsTable: React.FC<DeploymentsTableProps> = ({
                 <td className="px-5 py-3 text-gray-500 text-xs">{timeAgo(dep.created)}</td>
                 <td className="px-5 py-3 text-right">
                   <div className="flex items-center justify-end gap-3">
-                    {['ERROR', 'FAILED', 'CRASHED'].includes((dep.state || '').toUpperCase()) && (
+                    {(() => {
+                      const s = (dep.state || '').toUpperCase();
+                      const isFailed = ['ERROR', 'FAILED', 'CRASHED', 'DOWN', 'UNHEALTHY'].includes(s) || s.includes('FAIL') || s.includes('ERR');
+                      return isFailed && (
                       <motion.button
                         onClick={() => navigate(`/auto-medic?deploymentId=${dep.id}`)}
                         title="Run Auto-Medic"
@@ -80,7 +83,8 @@ export const DeploymentsTable: React.FC<DeploymentsTableProps> = ({
                       >
                         <Activity size={12} />
                       </motion.button>
-                    )}
+                      );
+                    })()}
                     <Badge variant="outline" className={`text-[10px] ${getStateColor(dep.state)}`}>{dep.state}</Badge>
                     {dep.url ? (
                       <a href={dep.url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-black transition-colors">

@@ -128,7 +128,7 @@ export function startRailwayOAuth(
 // GET /api/hosting/failures/history
 export async function getFailuresHistory(req: any, res: Response, next: NextFunction) {
   try {
-    const history = await getGlobalFailureHistory(req.user?.uid || 'mock-user-123');
+    const history = await getGlobalFailureHistory(req.user.uid);
     res.json({ history });
   } catch (err) {
     next(err);

@@ -32,6 +32,15 @@ const HostingAccountsList: React.FC<HostingAccountsListProps> = ({ activeConnect
 
   // Removed manual useEffect autofocus, using React's native autoFocus on the input
 
+  // Listen for global connection updates from other components
+  useEffect(() => {
+    const handleUpdate = () => {
+      refetch();
+    };
+    window.addEventListener('servx-connection-updated', handleUpdate);
+    return () => window.removeEventListener('servx-connection-updated', handleUpdate);
+  }, [refetch]);
+
   // Filter only hosting connections
   const hostingConnections = connections.filter(c => 
     Object.values(PROVIDER_CONFIGS).some(config => config.key.toLowerCase() === c.provider.toLowerCase() || config.label.toLowerCase() === c.provider.toLowerCase())
@@ -50,6 +59,7 @@ const HostingAccountsList: React.FC<HostingAccountsListProps> = ({ activeConnect
     try {
       await apiClient.put(`/connections/${id}/alias`, { alias: editValue.trim() });
       await refetch();
+      window.dispatchEvent(new Event('servx-connection-updated'));
       toast({ title: 'Account Renamed', description: 'The API key has been renamed successfully.' });
     } catch (err: any) {
       toast({ 
@@ -98,6 +108,7 @@ const HostingAccountsList: React.FC<HostingAccountsListProps> = ({ activeConnect
       
       toast({ title: 'Avatar Updated', description: 'Your profile photo was successfully uploaded to Cloudinary.' });
       await refetch();
+      window.dispatchEvent(new Event('servx-connection-updated'));
     } catch (err: any) {
       let errorMessage = err.response?.data?.message || 'Could not upload avatar. Please try again.';
       
@@ -125,6 +136,7 @@ const HostingAccountsList: React.FC<HostingAccountsListProps> = ({ activeConnect
       try {
         await apiClient.delete(`/connections/${id}`);
         await refetch();
+        window.dispatchEvent(new Event('servx-connection-updated'));
         toast({ title: 'Connection Deleted', description: 'The API key has been removed successfully.' });
       } catch (err: any) {
         toast({ title: 'Error', description: 'Could not delete the connection.', variant: 'destructive' });

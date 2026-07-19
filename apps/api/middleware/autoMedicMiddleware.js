@@ -27,7 +27,9 @@ const autoMedicMiddleware = async (err, req, res, next) => {
       diagnosis: analysis.diagnosis,
       suggested_fix: analysis.suggestedFix,
       severity: analysis.severity,
-      cached: analysis.cached
+      cached: analysis.cached,
+      user_id: req.user?.uid || req.user?.id || null,
+      connection_id: req.headers['x-connection-id'] || null
     };
 
     // 3. Save to Supabase (Replacing fs.writeFile)
@@ -44,6 +46,7 @@ const autoMedicMiddleware = async (err, req, res, next) => {
         const { data: excess } = await supabaseAdmin
           .from('incidents')
           .select('id')
+          .neq('method', 'DEPLOY')
           .order('timestamp', { ascending: false })
           .range(20, 50); // Identify records starting from the 21st
 

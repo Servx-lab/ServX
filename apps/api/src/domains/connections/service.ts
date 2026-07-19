@@ -1,4 +1,5 @@
 import axios from 'axios';
+import crypto from 'crypto';
 
 
 import { HOSTING_PROVIDERS } from '@servx/config';
@@ -243,7 +244,7 @@ export async function getHostingProviderAccountsList(
 
   const { data: connections, error } = await supabaseAdmin
     .from('hosting_vault')
-    .select('id, name, alias, created_at')
+    .select('id, name, alias, avatar_url, created_at')
     .eq('user_id', ownerUid)
     .eq('provider', providerInfo.dbName)
     .order('created_at', { ascending: false });
@@ -253,6 +254,7 @@ export async function getHostingProviderAccountsList(
   return connections.map(c => ({
     connectionId: c.id,
     alias: c.alias || c.name || 'Default',
+    avatarUrl: c.avatar_url,
     createdAt: c.created_at
   }));
 }
@@ -350,6 +352,7 @@ async function performHostingStatusFetch(
         return {
           connectionId: connection.id,
           alias: connection.alias || connection.name || 'Default',
+          avatarUrl: connection.avatar_url,
           createdAt: connection.created_at,
           services: [],
           deployments: [],
@@ -393,14 +396,29 @@ async function performHostingStatusFetch(
         };
       }
 
-      return {
-        connectionId: connection.id,
-        alias: connection.alias || connection.name || 'Default',
-        createdAt: connection.created_at,
-        user,
-        services,
-        deployments,
-      };
+        // --- Sync Failed Deployments to Incidents Table ---
+        if (deployments && deployments.length > 0) {
+          const failedDeploys = deployments.filter(dep => {
+            const state = (dep.state || '').toUpperCase();
+            return ['ERROR', 'FAILED', 'CRASHED', 'DOWN', 'UNHEALTHY'].includes(state) || 
+                   state.includes('FAIL') || 
+                   state.includes('ERR');
+          });
+          
+          if (failedDeploys.length > 0) {
+            await syncDeploymentIncidents(ownerUid, connection.id, providerKey, failedDeploys);
+          }
+        }
+
+        return {
+          connectionId: connection.id,
+          alias: connection.alias || connection.name || 'Default',
+          avatarUrl: connection.avatar_url,
+          createdAt: connection.created_at,
+          user,
+          services,
+          deployments,
+        };
     })
   );
 
@@ -416,6 +434,69 @@ async function performHostingStatusFetch(
 
   console.log(`[Hosting] ${providerKey} status ready for ${ownerUid}.`);
   return result;
+}
+
+/**
+ * Syncs failed deployments to the incidents table.
+ * Used by UI polling, background polling, and webhooks.
+ * Returns the number of new incidents inserted/updated.
+ */
+export async function syncDeploymentIncidents(
+  ownerUid: string,
+  connectionId: string,
+  providerKey: string,
+  failedDeploys: any[]
+): Promise<number> {
+  if (!failedDeploys || failedDeploys.length === 0) return 0;
+  
+  let insertedCount = 0;
+  try {
+    const incidentRecords = failedDeploys.map(dep => ({
+      id: `DEP-${connectionId}-${dep.id}`,
+      timestamp: new Date(dep.created || Date.now()).toISOString(),
+      method: 'DEPLOY',
+      path: `${providerKey} - ${dep.name}`,
+      error_message: `Deployment failed with status: ${dep.state}`,
+      error_stack: dep.commit || '',
+      error_code: 500,
+      diagnosis: `Deployment ${dep.id} failed in state ${dep.state}.`,
+      suggested_fix: `Check build logs on ${providerKey} console.`,
+      severity: 'critical',
+      cached: false,
+      user_id: ownerUid,
+      connection_id: connectionId
+    }));
+
+    const { data: upsertData, error: syncError } = await supabaseAdmin
+      .from('incidents')
+      .upsert(incidentRecords, { onConflict: 'id' })
+      .select('id');
+
+    if (syncError) {
+      console.error('[Hosting] Failed to sync deployments to incidents:', syncError.message);
+    } else {
+      insertedCount = upsertData?.length || 0;
+      
+      // Enforce FIFO limit of 7 per connection for DEPLOY incidents
+      const { data: excessDeploys } = await supabaseAdmin
+        .from('incidents')
+        .select('id')
+        .eq('method', 'DEPLOY')
+        .eq('user_id', ownerUid)
+        .eq('connection_id', connectionId)
+        .order('timestamp', { ascending: false })
+        .range(7, 50);
+
+      if (excessDeploys && excessDeploys.length > 0) {
+        const idsToDelete = excessDeploys.map(e => e.id);
+        await supabaseAdmin.from('incidents').delete().in('id', idsToDelete);
+        console.log(`[Hosting] Pruned ${idsToDelete.length} old deployment failures for connection ${connectionId}.`);
+      }
+    }
+  } catch (syncErr: any) {
+    console.error('[Hosting] Error in deployment sync hook:', syncErr.message);
+  }
+  return insertedCount;
 }
 
 
@@ -500,6 +581,30 @@ export async function saveHostingToken(
   }
 
   // Re-enabling encryption for stored credentials
+  let webhookSecret = crypto.randomBytes(16).toString('hex');
+  
+  // 1.5 Auto-register webhook (fire-and-forget fallback)
+  try {
+    const baseUrl = process.env.API_BASE_URL || 'https://api.servx.dev';
+    if (providerKey === 'vercel') {
+      await axios.post('https://api.vercel.com/v1/webhooks', {
+        url: `${baseUrl}/api/webhooks/vercel/deploy`,
+        events: ['deployment.error', 'deployment.failed']
+      }, { headers: { Authorization: `Bearer ${token}` } });
+    } else if (providerKey === 'render') {
+      // Assuming a hypothetical global webhook API for Render, or similar
+      // Note: If this fails (e.g. free tier), the catch block will ignore it and fallback to poller
+      await axios.post('https://api.render.com/v1/webhooks', {
+        url: `${baseUrl}/api/webhooks/render/deploy`,
+        secret: webhookSecret,
+        events: ['deploy_ended', 'deploy_failed']
+      }, { headers: { Authorization: `Bearer ${token}` } });
+    }
+  } catch (err: any) {
+    console.warn(`[Hosting] Webhook auto-registration failed for ${providerInfo.label}:`, err.message);
+  }
+
+  config.webhookSecret = webhookSecret;
   const { iv, content } = encrypt(JSON.stringify(config));
 
   const { data: connData, error: dbError } = await supabaseAdmin
@@ -702,22 +807,33 @@ async function fetchRender(token: string): Promise<{
         );
       })
       .catch((err) => {
-          // If it's a 401/403, bubble it up so the main catch block handles it
-          if (err.response?.status === 401 || err.response?.status === 403) throw err;
+          // Bubble up authentication OR rate limit OR server errors so they don't get swallowed
+          if (err.response?.status === 401 || err.response?.status === 403 || err.response?.status === 429 || err.response?.status >= 500) {
+              throw err;
+          }
           return [];
       }),
   ]);
 
   let user: HostingUser | null = null;
   const services: HostingService[] = svcRes?.data
-    ? svcRes.data.map((s: any) => ({
-        id: s.service.id,
-        name: s.service.name,
-        type: s.service.type || 'web_service',
-        status: s.service.suspended === 'suspended' ? 'suspended' : 'active',
-        url: s.service.serviceDetails?.url || null,
-        updatedAt: new Date(s.service.updatedAt).getTime(),
-      }))
+    ? svcRes.data.map((s: any) => {
+        let mappedStatus = 'active';
+        if (s.service.suspended === 'suspended') {
+            mappedStatus = 'suspended';
+        } else if (['build_failed', 'crashed', 'failed'].includes(s.service.status || '')) {
+            mappedStatus = 'error';
+        }
+        
+        return {
+            id: s.service.id,
+            name: s.service.name,
+            type: s.service.type || 'web_service',
+            status: mappedStatus,
+            url: s.service.serviceDetails?.url || null,
+            updatedAt: new Date(s.service.updatedAt).getTime(),
+        };
+      })
     : [];
 
   if (svcRes?.data?.[0]?.service?.ownerId) {
@@ -725,15 +841,33 @@ async function fetchRender(token: string): Promise<{
   }
 
   const deployments: HostingDeployment[] = Array.isArray(deplData)
-    ? deplData.map((d: any) => ({
-        id: d.deploy?.id || d.id,
-        name: d.serviceName || '',
-        url: null,
-        state: d.deploy?.status || 'unknown',
-        created: new Date(d.deploy?.createdAt || d.deploy?.finishedAt || Date.now()).getTime(),
-        commit: d.deploy?.commit?.message || null,
-        branch: null,
-      }))
+    ? deplData.map((d: any) => {
+        let state = 'UNKNOWN';
+        const rawStatus = d.deploy?.status || '';
+        if (['build_failed', 'update_failed', 'pre_deploy_failed', 'canceled'].includes(rawStatus)) {
+            state = 'ERROR';
+        } else if (['build_in_progress', 'update_in_progress', 'pre_deploy_in_progress'].includes(rawStatus)) {
+            state = 'BUILDING';
+        } else if (rawStatus === 'live') {
+            state = 'READY';
+        } else if (rawStatus === 'deactivated') {
+            state = 'CANCELED';
+        } else if (rawStatus === 'created') {
+            state = 'QUEUED';
+        } else {
+            state = rawStatus.toUpperCase();
+        }
+
+        return {
+          id: d.deploy?.id || d.id,
+          name: d.serviceName || '',
+          url: null,
+          state: state,
+          created: new Date(d.deploy?.createdAt || d.deploy?.finishedAt || Date.now()).getTime(),
+          commit: d.deploy?.commit?.message || null,
+          branch: null,
+        };
+      })
     : [];
 
   return { user, services, deployments };

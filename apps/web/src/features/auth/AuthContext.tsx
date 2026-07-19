@@ -53,7 +53,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 return true;
             }
             setGithubTokenValid(false);
-            console.log('[Auth] GitHub token missing or expired on backend.');
             return false;
         } catch {
             setGithubTokenValid(false);
@@ -63,7 +62,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const prefetchUserData = useCallback(async (skipGitHub: boolean) => {
         await new Promise(resolve => setTimeout(resolve, 300));
-        console.log(`[Auth] Prefetching user data...`);
         try {
             // 1. Fetch connections first to know what to prefetch
             const connections = await getConnections().catch(() => []);
@@ -91,7 +89,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
 
             updateCache(cacheUpdate);
-            console.log('[Auth] Local cache populated.');
         } catch (err) {
             console.error('[Auth] Failed to prefetch user data:', err);
         }
@@ -170,15 +167,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 }
 
                 try {
-                    await syncUser(syncPayload);
-                    setIsDevicePendingApproval(false);
-                    setIsDeviceSetupRequired(false);
+                    const res = await syncUser(syncPayload);
+                    
+                    // The backend now returns 202 Accepted for zero-trust interceptions 
+                    // instead of 403 to prevent red console errors
+                    if ((res as any)?.error === 'device_pending_approval') {
+                        setIsDevicePendingApproval(true);
+                        setIsDeviceSetupRequired(false);
+                    } else if ((res as any)?.error === 'device_setup_required') {
+                        setIsDeviceSetupRequired(true);
+                        setIsDevicePendingApproval(false);
+                    } else {
+                        setIsDevicePendingApproval(false);
+                        setIsDeviceSetupRequired(false);
+                    }
                 } catch (syncError: any) {
+                    // Fallback for any unexpected 403s just in case
                     if (syncError.response?.status === 403 && syncError.response?.data?.error === 'device_pending_approval') {
-                        console.warn('[Auth] Zero-Trust Interceptor: Device pending approval.');
                         setIsDevicePendingApproval(true);
                     } else if (syncError.response?.status === 403 && syncError.response?.data?.error === 'device_setup_required') {
-                        console.warn('[Auth] Zero-Trust Interceptor: Device setup required.');
                         setIsDeviceSetupRequired(true);
                     } else {
                         throw syncError;

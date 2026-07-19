@@ -35,13 +35,24 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
   const [deployments, setDeployments] = useState<DeploymentItem[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [activeAccountError, setActiveAccountError] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   
   const loadingTimeoutRef = React.useRef<NodeJS.Timeout|null>(null);
+  const statusRef = React.useRef(status);
+  React.useEffect(() => { statusRef.current = status; }, [status]);
   const { data: cachedData, updateCache } = useLocalCache();
   const navigate = useNavigate();
-  const { refetch: refetchGlobalConnections } = useConnections();
+  const { connections: globalConnections, refetch: refetchGlobalConnections } = useConnections();
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      refetchGlobalConnections();
+    };
+    window.addEventListener('servx-connection-updated', handleUpdate);
+    return () => window.removeEventListener('servx-connection-updated', handleUpdate);
+  }, [refetchGlobalConnections]);
 
   const config = useMemo(() => PROVIDER_CONFIGS[provider] || PROVIDER_CONFIGS.Render, [provider]);
 
@@ -57,7 +68,21 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
       'coolify': 'Coolify'
     }[config.key];
     return cachedData.connections.some((c: any) => c.provider === dbName);
-  }, [config, cachedData]);
+  }, [cachedData, config.key, config.label]);
+
+  const accountsWithAvatars = useMemo(() => {
+    return accounts.map(acc => {
+      const globalConn = globalConnections?.find(c => c._id === (acc.connectionId || acc._id));
+      if (globalConn) {
+        return {
+          ...acc,
+          avatarUrl: globalConn.avatarUrl || acc.avatarUrl,
+          alias: globalConn.alias || acc.alias,
+        };
+      }
+      return acc;
+    });
+  }, [accounts, globalConnections]);
 
   /**
    * Fetches the latest status and data for the current hosting provider.
@@ -96,6 +121,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
             setProviderUser(activeAccount.user);
             setServices(activeAccount.services || []);
             setDeployments(activeAccount.deployments || []);
+            setActiveAccountError(activeAccount.error || null);
             setStatus('connected');
             
             // SWR Caching - we cache the list, and we can cache the specific account data separately if needed.
@@ -152,6 +178,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     setProviderUser(null);
     setServices([]);
     setDeployments([]);
+    setActiveAccountError(null);
     setDisconnecting(false);
     setRefreshing(false);
     
@@ -179,7 +206,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
         if (elapsed < MIN_LOADING_MS) {
             await new Promise(resolve => setTimeout(resolve, MIN_LOADING_MS - elapsed));
         }
-        if (!cancelled) setStatus('connected');
+        // Do NOT override status here — let fetchData be the sole authority
     };
 
     if (cachedProviderData?.accounts && cachedProviderData?.accounts.length > 0) {
@@ -196,6 +223,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
             setProviderUser(activeAccount.user);
             setServices(activeAccount.services || []);
             setDeployments(activeAccount.deployments || []);
+            setActiveAccountError(activeAccount.error || null);
         }
         
         setStatus('loading'); // Stay in loading to show skeleton
@@ -214,7 +242,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     
     // Safety timeout
     loadingTimeoutRef.current = setTimeout(() => {
-       if (!cancelled && status === 'loading') setStatus('idle');
+       if (!cancelled && statusRef.current === 'loading') setStatus('idle');
     }, 8000);
 
     handleDataFetch(false);
@@ -232,6 +260,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
             setProviderUser(activeAccount.user);
             setServices(activeAccount.services || []);
             setDeployments(activeAccount.deployments || []);
+            setActiveAccountError(activeAccount.error || null);
         }
     }
   }, [selectedAccountId, accounts]);
@@ -256,12 +285,31 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
         
         // Refresh the sidebar immediately
         await refetchGlobalConnections();
+        window.dispatchEvent(new Event('servx-connection-updated'));
         
-        // Redirect to the newly connected provider ID
+        // Optimistically update the cache so `isConnectedInCache` becomes true instantly
+        if (cachedData && updateCache) {
+            const newConn = {
+                id: res.data.connection._id,
+                name: res.data.connection.name,
+                provider: res.data.connection.provider,
+                createdAt: res.data.connection.createdAt || new Date().toISOString()
+            };
+            
+            updateCache({
+                ...cachedData,
+                connections: [newConn, ...(cachedData.connections || [])]
+            });
+        }
+        
+        // Now force the dashboard into loading state and fetch live data
+        setStatus('loading');
+        
         if (res.data.connection && res.data.connection._id) {
-           navigate(`/hosting/${config.key}/${res.data.connection._id}`);
+            // Because isConnectedInCache is now true, navigate won't cause it to fall back to 'idle'
+            navigate(`/hosting/${config.key}/${res.data.connection._id}`);
         } else {
-           await fetchData();
+            await fetchData();
         }
       }
     } catch (err: any) {
@@ -286,6 +334,8 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
               connections: cachedData.connections.filter((c: any) => c.provider !== config.label)
           });
       }
+      
+      window.dispatchEvent(new Event('servx-connection-updated'));
     } catch (err) {
       alert('Failed to disconnect. Please try again.');
     } finally {
@@ -310,9 +360,9 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
 
   const getStateColor = (state: string) => {
     const s = (state || '').toUpperCase();
-    if (['READY', 'ACTIVE', 'RUNNING', 'LIVE', 'DEPLOYED', 'HEALTHY', 'SUCCESS'].includes(s)) return 'bg-green-50 text-green-600 border-green-200';
-    if (['BUILDING', 'INITIALIZING', 'CONNECTING', 'WAITING', 'PENDING'].includes(s)) return 'bg-blue-50 text-blue-600 border-blue-200';
-    if (['ERROR', 'FAILED', 'CRASHED', 'DOWN', 'UNHEALTHY'].includes(s)) return 'bg-red-50 text-red-600 border-red-200';
+    if (['READY', 'ACTIVE', 'RUNNING', 'LIVE', 'DEPLOYED', 'HEALTHY', 'SUCCESS'].includes(s) || s.includes('SUCC')) return 'bg-green-50 text-green-600 border-green-200';
+    if (['BUILDING', 'INITIALIZING', 'CONNECTING', 'WAITING', 'PENDING'].includes(s) || s.includes('PROG')) return 'bg-blue-50 text-blue-600 border-blue-200';
+    if (['ERROR', 'FAILED', 'CRASHED', 'DOWN', 'UNHEALTHY'].includes(s) || s.includes('FAIL') || s.includes('ERR')) return 'bg-red-50 text-red-600 border-red-200';
     return 'bg-gray-50 text-gray-600 border-gray-200';
   };
 
@@ -360,8 +410,9 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
             providerUser={providerUser}
             services={services}
             deployments={deployments}
-            accounts={accounts}
+            accounts={accountsWithAvatars}
             selectedAccountId={selectedAccountId}
+            activeAccountError={activeAccountError}
             onAccountChange={setSelectedAccountId}
             onAddAccount={() => {
                 setTokenInput('');

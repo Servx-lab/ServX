@@ -1,4 +1,4 @@
-import { RefreshCw, Trash2, ExternalLink, Activity, Globe, Shield, Clock, Box, Zap, Key } from 'lucide-react';
+import { RefreshCw, Trash2, ExternalLink, Activity, Globe, Shield, Clock, Box, Zap, Key, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ProviderConfig, ProviderUser, ServiceItem, DeploymentItem } from '../types';
@@ -20,6 +20,7 @@ interface ConnectedDashboardProps {
   getStateColor: (state: string) => string;
   accounts?: any[];
   selectedAccountId?: string;
+  activeAccountError?: string | null;
 }
 
 export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
@@ -35,9 +36,17 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
   getStateColor,
   accounts,
   selectedAccountId,
+  activeAccountError,
 }) => {
-  const readyCount = [...services, ...deployments].filter(i => ['READY', 'ACTIVE', 'RUNNING', 'LIVE', 'DEPLOYED'].includes((('state' in i ? (i as DeploymentItem).state : (i as ServiceItem).status) || '').toUpperCase())).length;
-  const errorCount = [...services, ...deployments].filter(i => ['ERROR', 'FAILED', 'CRASHED'].includes((('state' in i ? (i as DeploymentItem).state : (i as ServiceItem).status) || '').toUpperCase())).length;
+  const readyCount = [...services, ...deployments].filter(i => {
+    const s = (('state' in i ? (i as DeploymentItem).state : (i as ServiceItem).status) || '').toUpperCase();
+    return ['READY', 'ACTIVE', 'RUNNING', 'LIVE', 'DEPLOYED'].includes(s) || s.includes('SUCC');
+  }).length;
+  
+  const errorCount = [...services, ...deployments].filter(i => {
+    const s = (('state' in i ? (i as DeploymentItem).state : (i as ServiceItem).status) || '').toUpperCase();
+    return ['ERROR', 'FAILED', 'CRASHED'].includes(s) || s.includes('FAIL') || s.includes('ERR');
+  }).length;
 
   // Process timeline data for charts
   const timelineMap: Record<string, number> = {};
@@ -54,6 +63,13 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
   });
   const serviceStatusData = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
 
+  const activeAccount = accounts?.find(a => a.connectionId === selectedAccountId || a._id === selectedAccountId);
+  const customAvatar = activeAccount?.avatarUrl;
+  let resolvedAvatarUrl = customAvatar || providerUser?.avatar;
+  if (resolvedAvatarUrl && !resolvedAvatarUrl.startsWith('http')) {
+      resolvedAvatarUrl = `https://vercel.com/api/www/avatar/${resolvedAvatarUrl}?s=120`;
+  }
+
   return (
     <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white min-h-[calc(100vh-12rem)] animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">{config.logo}</div>
@@ -62,10 +78,12 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
         {/* Header Bar */}
         <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center overflow-hidden">
-              {providerUser?.avatar ? (
-                <img src={providerUser.avatar} alt="Avatar" className="w-full h-full object-cover" />
-              ) : config.logoSmall}
+            <div className="relative h-12 w-12 shrink-0">
+              <div className="w-full h-full rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center overflow-hidden">
+                {resolvedAvatarUrl ? (
+                  <img src={resolvedAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : config.logoSmall}
+              </div>
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -74,7 +92,11 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
                      ? accounts.find(a => a.connectionId === selectedAccountId)?.alias 
                      : (providerUser?.name || config.label)}
                 </h3>
-                <Badge variant="outline" className="text-[10px] bg-green-50 text-green-600 border-green-200 font-medium">Connected</Badge>
+                {activeAccountError ? (
+                  <Badge variant="outline" className="text-[10px] bg-red-50 text-red-600 border-red-200 font-medium animate-pulse">API Error</Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] bg-green-50 text-green-600 border-green-200 font-medium">Connected</Badge>
+                )}
               </div>
               <p className="text-xs text-gray-500">{providerUser?.email || `Monitoring ${config.label} resources`}</p>
             </div>
@@ -122,13 +144,31 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
         </div>
 
         {/* Status Dashboard Area */}
-        <div className="p-8 space-y-8 flex-1">
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { label: 'Active Services', value: services.length, icon: Box, color: 'text-blue-500', bg: 'bg-blue-50' },
-              { label: 'Total Deploys', value: deployments.length, icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-50' },
-              { label: 'Healthy Nodes', value: readyCount, icon: Activity, color: 'text-green-500', bg: 'bg-green-50' },
+        <div className="p-8 flex-1 flex flex-col">
+          {activeAccountError ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-4">
+                <AlertCircle size={32} />
+              </div>
+              <h4 className="text-lg font-bold text-gray-900 mb-2">Connection Failed</h4>
+              <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
+                We couldn't fetch data from {config.label}. The provider returned the following error:
+              </p>
+              <div className="px-4 py-3 bg-red-50/50 border border-red-100 rounded-lg text-red-600 text-sm font-mono text-left w-full max-w-lg mb-8 shadow-sm">
+                {activeAccountError}
+              </div>
+              <p className="text-xs text-gray-400 max-w-sm">
+                Try forcing a refresh or check your API key permissions. If the API key is expired, please disconnect and reconnect.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-8 animate-in fade-in duration-700">
+              {/* Quick Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Active Services', value: services.length, icon: Box, color: 'text-blue-500', bg: 'bg-blue-50' },
+                  { label: 'Total Deploys', value: deployments.length, icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+                  { label: 'Healthy Nodes', value: readyCount, icon: Activity, color: 'text-green-500', bg: 'bg-green-50' },
               { label: 'Uptime Score', value: '100%', icon: Shield, color: 'text-purple-500', bg: 'bg-purple-50' },
             ].map((stat, i) => (
               <div key={i} className="p-4 rounded-xl border border-gray-100 bg-white shadow-sm flex items-center gap-4">
@@ -182,6 +222,8 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
               />
             </div>
           </div>
+          </div>
+          )}
         </div>
 
         {/* Footer info */}

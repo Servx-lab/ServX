@@ -109,7 +109,7 @@ const AutoMedic = () => {
       }
     >
       <div className="flex-1 w-full">
-          <AutoMedicPipeline onCheck={handleCheckClick} />
+          <AutoMedicPipeline onCheck={handleCheckClick} deploymentId={deploymentId} />
           
           {showDiagnostic && (
               <div ref={diagnosticRef} className="border-t border-gray-100 mt-12 pt-12 min-h-[600px] flex flex-col">

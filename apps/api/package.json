@@ -8,6 +8,9 @@
     "dev": "tsx --watch server.js",
     "sync-users": "tsx scripts/syncUsersToSheets.js"
   },
+  "overrides": {
+    "uuid": "^11.1.1"
+  },
   "dependencies": {
     "@langchain/textsplitters": "^1.0.1",
     "@octokit/graphql": "^9.0.3",

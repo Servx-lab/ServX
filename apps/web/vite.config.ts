@@ -74,5 +74,6 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
       "@servx/types": path.resolve(__dirname, "../../packages/types/index.ts"),
     },
+    dedupe: ["three", "@react-three/fiber", "@react-three/drei"],
   },
 }));

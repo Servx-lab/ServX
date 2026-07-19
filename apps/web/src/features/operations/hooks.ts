@@ -54,14 +54,13 @@ export function useExecuteTask() {
 }
 
 /**
- * Hook to poll for the latest server incident every 5 seconds.
+ * Hook to poll for the most recent incident.
  */
-export function useLatestIncident() {
+export function useLatestIncident(deploymentId?: string | null) {
   return useQuery({
-    queryKey: ['operations', 'incidents', 'latest'],
-    queryFn: getLatestIncident,
-    refetchInterval: 5000, // Poll every 5 seconds
-    staleTime: 4000,
+    queryKey: ['operations', 'incident', 'latest', deploymentId],
+    queryFn: () => getLatestIncident(deploymentId),
+    refetchInterval: 5000,
   });
 }
 

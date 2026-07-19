@@ -26,7 +26,7 @@ router.get('/digitalocean/callback', handleDigitalOceanCallback);
 router.get('/railway', startRailwayOAuth);
 
 // Failure History
-router.get('/failures/history', getFailuresHistory);
+router.get('/failures/history', requireAuth, getFailuresHistory);
 
 // Disconnect Hosting Provider
 router.delete('/disconnect', requireAuth, disconnectHosting);

@@ -39,6 +39,8 @@ export interface ConnectionListItem {
   provider: string;
   status: 'connected' | 'error' | 'pending';
   isActive: boolean;
+  avatarUrl?: string;
+  alias?: string;
   createdAt?: string;
   updatedAt?: string;
 }

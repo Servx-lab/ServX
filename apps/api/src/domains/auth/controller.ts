@@ -311,10 +311,10 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
             })
           );
         }
-        res.status(403).json({ error: 'device_pending_approval' });
+        res.status(202).json({ error: 'device_pending_approval' });
         return;
       } else {
-        res.status(403).json({ error: 'device_setup_required' });
+        res.status(202).json({ error: 'device_setup_required' });
         return;
       }
     } else {
@@ -334,7 +334,7 @@ export async function syncUser(req: any, res: any, next: any): Promise<void> {
           
         if (!mainCount || mainCount === 0) {
             // No main device exists! We must set up this one.
-            res.status(403).json({ error: 'device_setup_required' });
+            res.status(202).json({ error: 'device_setup_required' });
             return;
         }
         // Update IP and timestamp

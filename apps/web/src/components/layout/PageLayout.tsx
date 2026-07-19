@@ -32,7 +32,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
         </div>
 
         {/* Content Card */}
-        <div className={`bg-white rounded-3xl ${noPadding ? 'overflow-hidden' : 'p-8'} shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-white/50 animate-in slide-in-from-bottom-4 duration-500 ${fullWidth ? 'w-full' : ''}`}>
+        <div className={`bg-white rounded-3xl ${noPadding ? 'overflow-hidden' : 'p-8'} shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-white/50 ${fullWidth ? 'w-full' : ''}`}>
             {children}
         </div>
 

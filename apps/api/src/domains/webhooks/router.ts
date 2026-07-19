@@ -3,6 +3,8 @@ import { verifyGitHubSignature } from '../../core/middleware/verifyGithub';
 import { anomalyDetector, feedEmitter } from '../../services/securityFeeds';
 import ActivityLog from '../../../models/ActivityLog';
 import UserConnection from '../../../models/UserConnection';
+import { handleRenderDeployWebhook } from './renderWebhook';
+import { handleVercelDeployWebhook } from './vercelWebhook';
 
 const router = Router();
 
@@ -59,5 +61,9 @@ router.post('/github', verifyGitHubSignature, async (req, res) => {
 
   res.json({ success: true });
 });
+
+// --- Hosting Deploy Webhooks ---
+router.post('/render/deploy', handleRenderDeployWebhook);
+router.post('/vercel/deploy', handleVercelDeployWebhook);
 
 export default router;

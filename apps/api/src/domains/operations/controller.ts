@@ -142,12 +142,21 @@ export async function getLatestIncident(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { data, error } = await supabaseAdmin
+    const deploymentId = req.query.deploymentId as string | undefined;
+    
+    let query = supabaseAdmin
       .from('incidents')
       .select('*')
-      .order('timestamp', { ascending: false })
-      .limit(1)
-      .single();
+      .eq('user_id', req.user.uid)
+      .order('timestamp', { ascending: false });
+      
+    if (deploymentId) {
+      // The deployment ID in the database is DEP-${connection.id}-${dep.id}
+      // Since we don't know the connection ID here cleanly, we can use ilike
+      query = query.ilike('id', `%${deploymentId}`);
+    }
+    
+    const { data, error } = await query.limit(1).single();
 
     // PGRST116 is the code for "JSON object requested, but no rows returned"
     if (error && error.code !== 'PGRST116') {
@@ -203,7 +212,10 @@ export async function getAuditStream(
   })}\n\n`);
 
   const onLog = (payload: any) => {
-    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    // Only send the payload if it belongs to the authenticated user, or if they are the system admin.
+    if (payload.user === userEmail || payload.user === 'System' || userEmail === 'system@servx.dev') {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    }
   };
 
   auditEmitter.on('log', onLog);

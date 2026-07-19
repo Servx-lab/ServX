@@ -76,6 +76,14 @@ async function connectRedis() {
     } catch (err) {
       console.error('❌ Failed to boot DEFCON service:', err.message);
     }
+
+    // Boot the background incident reconciliation poller
+    try {
+      const { startIncidentPoller } = require('./src/workers/incidentPoller');
+      startIncidentPoller();
+    } catch (err) {
+      console.error('❌ Failed to boot incident poller:', err.message);
+    }
   }
 }
 

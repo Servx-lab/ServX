@@ -25,7 +25,7 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '@/lib/apiClient';
 import { useLatestIncident } from './hooks';
 
-export const AutoMedicPipeline = ({ onCheck }: { onCheck?: () => void }) => {
+export const AutoMedicPipeline = ({ onCheck, deploymentId }: { onCheck?: () => void, deploymentId?: string | null }) => {
     const navigate = useNavigate();
     const [isHudOpen, setIsHudOpen] = useState(false);
     const [activeStep, setActiveStep] = useState(0);
@@ -33,7 +33,7 @@ export const AutoMedicPipeline = ({ onCheck }: { onCheck?: () => void }) => {
     const [lastHandledIncidentId, setLastHandledIncidentId] = useState<string | null>(null);
     
     // --- REAL DATA POLLING ---
-    const { data: incidentData, isLoading: isIncidentLoading } = useLatestIncident();
+    const { data: incidentData, isLoading: isIncidentLoading } = useLatestIncident(deploymentId);
     const activeIncident = incidentData?.incident;
 
     // --- INFRASTRUCTURE STATE ---
