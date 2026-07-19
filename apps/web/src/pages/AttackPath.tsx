@@ -1,41 +1,35 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  Shield,
   AlertTriangle,
-  ChevronDown,
-  Crosshair,
-  Bug,
-  FileWarning,
   ArrowRight,
-  Loader2,
-  Target,
-  Scan,
-  Copy,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   ClipboardCopy,
+  Copy,
+  Crosshair,
   ExternalLink,
+  FileWarning,
+  Github,
+  Loader2,
+  Scan,
+  Server,
+  Shield,
+  ShieldCheck,
+  Target,
   X,
   Zap,
-  Server,
-  Globe,
-  Github,
-  Activity,
-  CheckCircle2,
-  ShieldCheck,
 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/features/auth/AuthContext";
-
-// ─── Types ──────────────────────────────────────────────────────
 
 interface RepoSummary {
   id: number;
   name: string;
   full_name: string;
   language: string | null;
-  owner?: { login: string };
 }
 
 interface Vulnerability {
@@ -47,25 +41,61 @@ interface Vulnerability {
   source?: string;
 }
 
-interface ToolArtifact {
-  path: string;
-  kind: string;
-  sizeBytes?: number;
-}
-
 interface ToolStatus {
   tool: string;
   status: "ran" | "skipped" | "failed";
   findingsCount: number;
   error?: string | null;
-  rawExitCode?: number | null;
-  artifacts: ToolArtifact[];
 }
 
-type ScanKind = "repo" | "live" | null;
-type ScanStatus = "idle" | "scanning" | "reporting";
+interface AttackPathCandidate {
+  id: string;
+  route: string;
+  routeFile: string;
+  authBoundary: "present" | "not_detected";
+  findingId: string;
+  findingTitle: string;
+  findingFile?: string;
+  severity: Vulnerability["severity"];
+  confidence: "partial";
+  note: string;
+}
 
-// ─── Helpers ────────────────────────────────────────────────────
+type ScanLifecycle = "idle" | "warming" | "queued" | "running" | "completed" | "cancelled" | "failed";
+
+interface ScanJob {
+  jobId: string;
+  repoFullName: string;
+  status: string;
+  progressPct: number;
+  phaseMessage: string;
+  queuePosition: number;
+  queueReason: string;
+  lastError: string;
+  quotaRemaining?: number;
+  toolStatuses: ToolStatus[];
+  scanMetrics?: Record<string, unknown>;
+}
+
+interface ScanAllowance {
+  limit: number;
+  used: number;
+  remaining: number;
+  resetAt: string | null;
+}
+
+const ACTIVE_JOB_STORAGE_KEY = "servx_attack_paths_active_job";
+const LAST_JOB_STORAGE_KEY = "servx_attack_paths_last_job";
+
+const STAGES = [
+  { id: "queued", label: "Queue", detail: "Waiting for the shared executor" },
+  { id: "repository", label: "Repository", detail: "Preparing the authorized source" },
+  { id: "secrets", label: "Secrets", detail: "Checking source and history" },
+  { id: "code", label: "Code", detail: "Applying source-security rules" },
+  { id: "dependencies", label: "Dependencies & IaC", detail: "Checking packages and configuration" },
+  { id: "inventory", label: "Inventory", detail: "Building the software inventory" },
+  { id: "report", label: "Report", detail: "Normalizing evidence for review" },
+] as const;
 
 function normalizeSeverity(value: unknown): Vulnerability["severity"] {
   const upper = String(value || "").toUpperCase();
@@ -76,871 +106,634 @@ function normalizeSeverity(value: unknown): Vulnerability["severity"] {
 
 function normalizeFindings(input: unknown): Vulnerability[] {
   if (!Array.isArray(input)) return [];
-
   return input
     .map((item, index) => {
       const row = item as Record<string, unknown>;
-      const title = String(row.title || row.packageName || `Finding ${index + 1}`).trim();
-      const detail = String(
-        row.detail || row.summary || row.advisorySummary || "Security issue detected during scan."
-      ).trim();
-
       return {
         id: String(row.id || row.findingId || `finding-${index + 1}`),
         severity: normalizeSeverity(row.severity),
-        title,
-        detail,
+        title: String(row.title || row.packageName || `Finding ${index + 1}`).trim(),
+        detail: String(row.detail || row.summary || row.advisorySummary || "Security issue detected during scan.").trim(),
         file: typeof row.file === "string" ? row.file : undefined,
         source: typeof row.source === "string" ? row.source : undefined,
       } satisfies Vulnerability;
     })
-    .filter((item) => item.title.length > 0);
+    .filter((finding) => finding.title.length > 0);
 }
 
 function normalizeToolStatuses(input: unknown): ToolStatus[] {
   if (!Array.isArray(input)) return [];
-
   return input.map((item) => {
     const row = item as Record<string, unknown>;
+    const rawStatus = String(row.status || "skipped");
     return {
       tool: String(row.tool || "unknown"),
-      status: (String(row.status || "skipped") as ToolStatus["status"]),
+      status: rawStatus === "ran" || rawStatus === "failed" ? rawStatus : "skipped",
       findingsCount: Number(row.findingsCount || 0),
       error: row.error ? String(row.error) : null,
-      rawExitCode: typeof row.rawExitCode === "number" ? row.rawExitCode : null,
-      artifacts: Array.isArray(row.artifacts)
-        ? row.artifacts.map((artifact) => {
-            const a = artifact as Record<string, unknown>;
-            return {
-              path: String(a.path || ""),
-              kind: String(a.kind || "report"),
-              sizeBytes: typeof a.sizeBytes === "number" ? a.sizeBytes : undefined,
-            } satisfies ToolArtifact;
-          })
-        : [],
     } satisfies ToolStatus;
   });
 }
 
-function buildStreamUrl(jobId: string): string {
+function normalizeAttackPathCandidates(input: unknown): AttackPathCandidate[] {
+  if (!Array.isArray(input)) return [];
+  return input.map((item, index) => {
+    const row = item as Record<string, unknown>;
+    return {
+      id: String(row.id || `candidate-${index + 1}`),
+      route: String(row.route || "unknown route"),
+      routeFile: String(row.routeFile || "repository source"),
+      authBoundary: row.authBoundary === "present" ? "present" : "not_detected",
+      findingId: String(row.findingId || ""),
+      findingTitle: String(row.findingTitle || "Source finding"),
+      findingFile: typeof row.findingFile === "string" ? row.findingFile : undefined,
+      severity: normalizeSeverity(row.severity),
+      confidence: "partial",
+      note: String(row.note || "Source-local candidate; reachability and deployment exposure are not verified."),
+    } satisfies AttackPathCandidate;
+  });
+}
+
+function normalizeScanAllowance(input: unknown): ScanAllowance | null {
+  if (!input || typeof input !== "object") return null;
+  const row = input as Record<string, unknown>;
+  const remaining = Number(row.remaining);
+  if (!Number.isFinite(remaining)) return null;
+  const limit = Number(row.limit);
+  const used = Number(row.used);
+  return {
+    limit: Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 3,
+    used: Number.isFinite(used) && used >= 0 ? Math.floor(used) : 0,
+    remaining: Math.max(0, Math.floor(remaining)),
+    resetAt: typeof row.resetAt === "string" ? row.resetAt : null,
+  };
+}
+
+function lifecycleForStatus(status: string): ScanLifecycle {
+  if (status === "completed") return "completed";
+  if (status === "cancelled") return "cancelled";
+  if (status === "failed") return "failed";
+  if (status === "warming" || status === "retrying") return "warming";
+  if (status === "queued") return "queued";
+  return "running";
+}
+
+function isTerminal(status: string): boolean {
+  return ["completed", "cancelled", "failed"].includes(status);
+}
+
+function activeStageIndex(job: ScanJob | null): number {
+  if (!job) return -1;
+  if (job.status === "completed") return STAGES.length - 1;
+  if (["warming", "queued", "retrying"].includes(job.status)) return 0;
+  const message = job.phaseMessage.toLowerCase();
+  if (message.includes("secret")) return 2;
+  if (message.includes("semgrep") || message.includes("source code")) return 3;
+  if (message.includes("dependenc") || message.includes("infrastructure") || message.includes("configuration")) return 4;
+  if (message.includes("inventory") || message.includes("sbom")) return 5;
+  if (message.includes("normalizing") || message.includes("report")) return 6;
+  if (job.progressPct < 20) return 1;
+  if (job.progressPct < 40) return 2;
+  if (job.progressPct < 55) return 3;
+  if (job.progressPct < 65) return 4;
+  if (job.progressPct < 85) return 5;
+  return 6;
+}
+
+function formatDuration(value: unknown): string | null {
+  const milliseconds = Number(value);
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) return null;
+  const seconds = Math.round(milliseconds / 1000);
+  const minutes = Math.floor(seconds / 60);
+  return minutes > 0 ? `${minutes}m ${seconds % 60}s` : `${seconds}s`;
+}
+
+function streamUrl(jobId: string): string {
   const baseUrl = String(apiClient.defaults.baseURL || "").replace(/\/+$/, "");
   return `${baseUrl}/attack-paths/jobs/${jobId}/stream`;
 }
 
-function getRemediation(vuln: Vulnerability): string {
-  const source = String(vuln.source || "").toLowerCase();
-  const title = String(vuln.title || "").toLowerCase();
-
-  if (source.includes("github_security_alert") || source.includes("package_scan") || title.includes("dependency")) {
-    return `Upgrade the affected package to a patched version, review the advisory, run tests, and rerun the scan to confirm the finding closes.`;
-  }
-  if (source.includes("secret_scan")) {
-    return `Rotate the exposed credential immediately, remove it from source control, store it in a secrets manager, and verify the leak no longer appears in responses.`;
-  }
-  if (source.includes("sast_scan")) {
-    return `Review the reported code pattern, replace unsafe APIs with safer equivalents, add input validation, and rerun the scan.`;
-  }
-  if (source.includes("iac_scan")) {
-    return `Update the infrastructure config to remove overly permissive access, add required security headers or health checks, and rerun the scan.`;
-  }
-  if (source.includes("dast_scan")) {
-    return `Update the application or hosting configuration to add the missing headers/policy, validate inputs, and verify on the live target with another scan.`;
-  }
-  if (source.includes("sbom_scan")) {
-    return `Keep dependencies up to date, remove unused packages, activate security advisories, and rerun the scan.`;
-  }
-  if (source.includes("cspm_scan")) {
-    return `Review cloud or hosting config for least privilege, remove public exposure where not needed, and verify provider security settings.`;
-  }
-  if (source.includes("live_deployment_scan")) {
-    return `Rotate the exposed credential, remove it from source control, store it in a secrets manager, and verify the leak no longer appears in production responses.`;
-  }
-  return `Review the reported issue in context, apply a targeted code or configuration fix, and rerun a security scan to verify remediation.`;
+function remediationFor(finding: Vulnerability): string {
+  const source = String(finding.source || "").toLowerCase();
+  if (source.includes("package") || source.includes("github_security")) return "Upgrade to a patched version, review the advisory, and rerun the scan.";
+  if (source.includes("secret")) return "Rotate the credential, remove it from source, and rerun the scan to confirm the finding closes.";
+  if (source.includes("sast")) return "Replace the unsafe pattern, validate untrusted input, and add a regression test.";
+  if (source.includes("iac")) return "Restrict the configuration, apply least privilege, and rerun the scan.";
+  return "Review the evidence in context, apply a targeted fix, and rerun the scan.";
 }
 
-function formatVulnerabilityForCopy(vuln: Vulnerability): string {
-  const lines = [
-    `Title: ${vuln.title}`,
-    `Severity: ${vuln.severity.toUpperCase()}`,
-    vuln.source ? `Source: ${vuln.source.replace(/_/g, " ")}` : null,
-    vuln.file ? `Location: ${vuln.file}` : null,
-    `Detail: ${vuln.detail}`,
-    `Suggested fix: ${getRemediation(vuln)}`,
-  ];
-  return lines.filter(Boolean).join("\n");
+function severityClass(severity: Vulnerability["severity"]): string {
+  if (severity === "critical") return "border-[#E5B6B4] bg-[#FFF4F3] text-[#B12926]";
+  if (severity === "medium") return "border-[#E8CE9C] bg-[#FFF9EA] text-[#A05B00]";
+  return "border-[#B9D5DC] bg-[#F0FAFC] text-[#286778]";
 }
 
-// ─── UI Components ──────────────────────────────────────────────
+function sourceLabel(source?: string): string {
+  return source ? source.replace(/_/g, " ") : "repository evidence";
+}
 
-const StatusBadge = ({ status }: { status: ScanStatus }) => {
-  const config = {
-    idle: { label: "Ready", icon: ShieldCheck, className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-    scanning: { label: "Scanning", icon: Loader2, className: "bg-blue-50 text-blue-700 border-blue-200" },
-    reporting: { label: "Report", icon: CheckCircle2, className: "bg-[#6C63FF]/10 text-[#6C63FF] border-[#6C63FF]/20" },
-  }[status];
-
-  const Icon = config.icon;
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-mono ${config.className}`}>
-      <Icon className={`h-3.5 w-3.5 ${status === "scanning" ? "animate-spin" : ""}`} />
-      {config.label}
-    </span>
-  );
-};
-
-const SeverityBadge = ({ severity }: { severity: Vulnerability["severity"] }) => {
-  const config = {
-    critical: "bg-[#6C63FF]/10 text-[#6C63FF] border-[#6C63FF]/20",
-    medium: "bg-[#00C2CB]/10 text-[#00C2CB] border-[#00C2CB]/20",
-    low: "bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20",
-  }[severity];
-
-  return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-mono font-semibold ${config}`}>
-      {severity.toUpperCase()}
-    </span>
-  );
-};
-
-const RepoDropdown = ({
+const RepoSelect = ({
   repos,
   selectedRepo,
-  onSelect,
-  isOpen,
-  setIsOpen,
   disabled,
+  onSelect,
 }: {
   repos: RepoSummary[];
   selectedRepo: RepoSummary | null;
+  disabled: boolean;
   onSelect: (repo: RepoSummary) => void;
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
-  disabled?: boolean;
 }) => {
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+    const close = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [setIsOpen]);
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
 
   return (
-    <div ref={dropdownRef} className="relative">
+    <div ref={rootRef} className="relative min-w-0">
       <button
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls="attack-paths-repositories"
         disabled={disabled}
-        className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left text-sm transition hover:border-[#00C2CB] disabled:opacity-50"
+        onClick={() => setOpen((current) => !current)}
+        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-left outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <div className="flex items-center gap-3">
-          <Github className="h-4 w-4 text-gray-500" />
-          <div className="min-w-0">
-            <p className="truncate font-medium text-gray-900">
-              {selectedRepo ? selectedRepo.full_name : "Select a repository"}
-            </p>
-            {selectedRepo?.language && (
-              <p className="text-[11px] text-gray-500">{selectedRepo.language}</p>
-            )}
-          </div>
-        </div>
-        <ChevronDown className={`h-4 w-4 text-gray-400 transition ${isOpen ? "rotate-180" : ""}`} />
+        <span className="flex min-w-0 items-center gap-3">
+          <Github className="h-4 w-4 shrink-0 text-[#53656D]" />
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold text-[#17262D]">{selectedRepo?.full_name || "Select a connected repository"}</span>
+            <span className="block truncate font-mono text-[10px] text-[#53656D]">{selectedRepo?.language || "GitHub authorization required"}</span>
+          </span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-[#53656D] transition ${open ? "rotate-180" : ""}`} />
       </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.98 }}
-            transition={{ duration: 0.12 }}
-            className="absolute z-20 mt-2 w-full rounded-xl border border-gray-200 bg-white shadow-xl"
-          >
-            <div className="max-h-64 overflow-auto">
-              {repos.length === 0 ? (
-                <div className="px-4 py-6 text-center text-xs text-gray-500">No repositories linked.</div>
-              ) : (
-                repos.map((repo) => (
-                  <button
-                    key={repo.id}
-                    onSelect={() => {}}
-                    onClick={() => {
-                      onSelect(repo);
-                      setIsOpen(false);
-                    }}
-                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-gray-50 ${
-                      selectedRepo?.id === repo.id ? "border-l-2 border-l-[#00C2CB] bg-gray-50" : "border-l-2 border-l-transparent"
-                    }`}
-                  >
-                    <Crosshair className={`h-3.5 w-3.5 ${selectedRepo?.id === repo.id ? "text-[#00C2CB]" : "text-gray-400"}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-gray-900">{repo.name}</p>
-                      <p className="truncate text-[11px] text-gray-500">{repo.full_name}</p>
-                    </div>
-                    {repo.language && (
-                      <span className="text-[10px] text-gray-500 font-mono">{repo.language}</span>
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {open && (
+        <div id="attack-paths-repositories" role="listbox" className="absolute z-30 mt-2 max-h-72 w-full overflow-auto rounded-xl border border-[#D4E0E3] bg-[#FCFEFE] p-1 shadow-[0_12px_32px_rgb(23_38_45_/_0.08)]">
+          {repos.length === 0 ? (
+            <p className="px-3 py-4 text-sm text-[#53656D]">No connected repositories were found.</p>
+          ) : repos.map((repo) => (
+            <button
+              key={repo.id}
+              type="button"
+              role="option"
+              aria-selected={selectedRepo?.id === repo.id}
+              onClick={() => { onSelect(repo); setOpen(false); }}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left outline-none transition hover:bg-[#EDF4F5] focus-visible:bg-[#EDF4F5] ${selectedRepo?.id === repo.id ? "bg-[#EDF4F5]" : ""}`}
+            >
+              <Crosshair className="h-4 w-4 shrink-0 text-[#008E9A]" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-[#17262D]">{repo.full_name}</span>
+                <span className="block truncate font-mono text-[10px] text-[#53656D]">{repo.language || "repository"}</span>
+              </span>
+              {selectedRepo?.id === repo.id && <CheckCircle2 className="h-4 w-4 text-[#16754B]" />}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
-const VulnerabilityCard = ({ vuln, onCopy, copiedId }: { vuln: Vulnerability; onCopy: (vuln: Vulnerability) => void; copiedId: string | null }) => {
-  const cfg = {
-    critical: "border-[#6C63FF]/30 bg-[#6C63FF]/5",
-    medium: "border-[#00C2CB]/30 bg-[#00C2CB]/5",
-    low: "border-[#F59E0B]/30 bg-[#F59E0B]/5",
-  }[vuln.severity];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`rounded-xl border ${cfg} p-4`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <SeverityBadge severity={vuln.severity} />
-            {vuln.file && (
-              <span className="text-[11px] font-mono text-gray-500">{vuln.file}</span>
-            )}
-            {vuln.source && (
-              <span className="text-[10px] font-mono text-gray-500 bg-white/50 border border-gray-200 rounded-full px-2 py-0.5">
-                {vuln.source.replace(/_/g, " ")}
-              </span>
-            )}
-          </div>
-
-          <h4 className="mt-2 text-sm font-semibold text-gray-900">{vuln.title}</h4>
-          <p className="mt-1 text-xs leading-relaxed text-gray-600">{vuln.detail}</p>
-
-          <div className="mt-3 rounded-lg border border-gray-200 bg-white/70 p-3">
-            <p className="text-[11px] font-mono text-gray-500 uppercase tracking-wider">Suggested Fix</p>
-            <p className="mt-1 text-xs text-gray-700">{getRemediation(vuln)}</p>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center gap-2">
-          <Bug className="h-4 w-4 text-gray-600" />
-          <button
-            type="button"
-            onClick={() => onCopy(vuln)}
-            className="rounded-lg border border-gray-200 bg-white p-2 text-gray-600 transition hover:text-[#00C2CB]"
-            title="Copy for AI agent"
-          >
-            {copiedId === vuln.id ? (
-              <ClipboardCopy className="h-3.5 w-3.5 text-[#00C2CB]" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  );
+const LifecycleBadge = ({ lifecycle }: { lifecycle: ScanLifecycle }) => {
+  const details = {
+    idle: { label: "Ready", className: "border-[#B9D5DC] bg-[#F0FAFC] text-[#286778]", icon: ShieldCheck },
+    warming: { label: "Waking executor", className: "border-[#E8CE9C] bg-[#FFF9EA] text-[#A05B00]", icon: Loader2 },
+    queued: { label: "Queued", className: "border-[#B9D5DC] bg-[#F0FAFC] text-[#2867A5]", icon: Loader2 },
+    running: { label: "Scanning", className: "border-[#B9D5DC] bg-[#F0FAFC] text-[#2867A5]", icon: Loader2 },
+    completed: { label: "Evidence ready", className: "border-[#B9DCC7] bg-[#F2FAF5] text-[#16754B]", icon: CheckCircle2 },
+    cancelled: { label: "Cancelled", className: "border-[#D4E0E3] bg-[#EDF4F5] text-[#53656D]", icon: X },
+    failed: { label: "Needs attention", className: "border-[#E5B6B4] bg-[#FFF4F3] text-[#B12926]", icon: AlertTriangle },
+  }[lifecycle];
+  const Icon = details.icon;
+  return <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[10px] font-semibold ${details.className}`}><Icon className={`h-3.5 w-3.5 ${["warming", "queued", "running"].includes(lifecycle) ? "animate-spin" : ""}`} />{details.label}</span>;
 };
 
-const EmptyState = ({ onRetry }: { onRetry: () => void }) => (
-  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white/70 p-10 text-center">
-    <Shield className="h-10 w-10 text-gray-400" />
-    <h3 className="mt-3 text-sm font-semibold text-gray-900">No scan results yet</h3>
-    <p className="mt-1 max-w-sm text-xs text-gray-600">
-      Select a repository and start a scan to discover GitHub security alerts and live deployment
-      exposure issues.
-    </p>
-    <button
-      type="button"
-      onClick={onRetry}
-      className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#00C2CB] px-4 py-2 text-xs font-semibold text-white hover:bg-[#00C2CB]/90"
-    >
-      <Scan className="h-3.5 w-3.5" />
-      Start Scan
-    </button>
-  </div>
-);
-
-const ToolStatusPanel = ({ toolStatuses }: { toolStatuses: ToolStatus[] }) => {
-  if (toolStatuses.length === 0) return null;
+const EvidenceRail = ({ job, lifecycle, onCancel }: { job: ScanJob; lifecycle: ScanLifecycle; onCancel: () => void }) => {
+  const current = activeStageIndex(job);
+  const canCancel = ["warming", "queued", "running"].includes(lifecycle);
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900">Scanner Status</h3>
-        <span className="text-[10px] font-mono text-gray-500">{toolStatuses.length} tools</span>
-      </div>
-      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-        {toolStatuses.map((tool) => (
-          <div key={tool.tool} className="rounded-xl border border-gray-200 bg-gray-50/60 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold text-gray-900">{tool.tool}</p>
-                <p className="text-[11px] text-gray-500">
-                  {tool.status} • {tool.findingsCount} findings
-                </p>
-              </div>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-mono ${
-                tool.status === "ran"
-                  ? "bg-emerald-50 text-emerald-700"
-                  : tool.status === "failed"
-                    ? "bg-red-50 text-red-700"
-                    : "bg-gray-100 text-gray-600"
-              }`}>
-                {tool.status.toUpperCase()}
-              </span>
+    <section aria-labelledby="scan-progress-title" className="border-y border-[#D4E0E3] bg-[#FCFEFE] py-6 sm:py-8">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.8fr)] lg:gap-12">
+        <div>
+          <div className="flex items-end justify-between gap-4 border-b border-[#D4E0E3] pb-3">
+            <div>
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Scan ledger</p>
+              <h2 id="scan-progress-title" className="mt-1 text-lg font-bold tracking-[-0.02em] text-[#17262D]">Evidence in progress</h2>
             </div>
-            {tool.error && (
-              <p className="mt-2 text-[11px] text-red-600">{tool.error}</p>
-            )}
-            {tool.artifacts.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {tool.artifacts.map((artifact, index) => (
-                  <p key={`${tool.tool}-${index}`} className="text-[11px] font-mono text-gray-500 break-all">
-                    {artifact.kind}: {artifact.path}
-                  </p>
-                ))}
-              </div>
-            )}
+            <span className="font-mono text-xs text-[#53656D]">{Math.max(0, Math.min(100, job.progressPct))}%</span>
           </div>
-        ))}
+          <ol className="mt-1">
+            {STAGES.map((stage, index) => {
+              const completed = lifecycle === "completed" || index < current;
+              const active = index === current && !isTerminal(job.status);
+              const stopped = ["cancelled", "failed"].includes(lifecycle) && index === current;
+              return (
+                <li key={stage.id} className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 border-b border-[#D4E0E3] py-3">
+                  <div className="relative flex justify-center pt-0.5">
+                    {index < STAGES.length - 1 && <span className={`absolute top-5 h-[calc(100%+8px)] w-px ${completed ? "bg-[#008E9A]" : "bg-[#D4E0E3]"}`} />}
+                    <span className={`relative z-10 flex h-5 w-5 items-center justify-center rounded-full border ${completed ? "border-[#16754B] bg-[#16754B] text-white" : active ? "border-[#008E9A] bg-[#F0FAFC] text-[#008E9A]" : stopped ? "border-[#B12926] bg-[#FFF4F3] text-[#B12926]" : "border-[#D4E0E3] bg-[#FCFEFE] text-[#839198]"}`}>
+                      {completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : active ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : stopped ? <X className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-sm font-semibold ${active ? "text-[#17262D]" : "text-[#53656D]"}`}>{stage.label}</p>
+                    <p className="mt-0.5 text-xs text-[#53656D]">{active ? job.phaseMessage || stage.detail : stage.detail}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+        <aside className="self-start border-l-2 border-[#008E9A] pl-4 sm:pl-5" aria-live="polite">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Current state</p>
+          <p className="mt-2 text-base font-semibold leading-snug text-[#17262D]">{job.phaseMessage || "Preparing scan evidence."}</p>
+          {lifecycle === "queued" && job.queuePosition > 0 && <p className="mt-3 text-sm text-[#53656D]">Position {job.queuePosition} in the shared queue. {job.queueReason || "One repository scans at a time."}</p>}
+          {lifecycle === "warming" && <p className="mt-3 text-sm text-[#53656D]">The executor may need a short cold start. Your job is already persisted.</p>}
+          <div className="mt-5 border-t border-[#D4E0E3] pt-4">
+            <p className="text-xs leading-relaxed text-[#53656D]">Coverage includes GitHub alerts, source secrets, Semgrep rules, Trivy dependency and IaC checks, and a software inventory. A clean result is not proof of security.</p>
+            {canCancel && <button type="button" onClick={onCancel} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#D4E0E3] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#B12926] hover:text-[#B12926] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2"><X className="h-3.5 w-3.5" />Cancel scan</button>}
+          </div>
+        </aside>
       </div>
-    </div>
+    </section>
   );
 };
 
-// ─── Main Page ──────────────────────────────────────────────────
+const CoverageList = ({ tools }: { tools: ToolStatus[] }) => {
+  if (tools.length === 0) return null;
+  return (
+    <section aria-labelledby="coverage-title" className="border-y border-[#D4E0E3] py-5">
+      <div className="flex items-baseline justify-between gap-4">
+        <div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Coverage</p><h2 id="coverage-title" className="mt-1 text-base font-bold text-[#17262D]">Scanner evidence</h2></div>
+        {tools.some((tool) => tool.status !== "ran") && <span className="text-xs font-semibold text-[#A05B00]">Partial coverage</span>}
+      </div>
+      <ul className="mt-4 divide-y divide-[#D4E0E3] border-y border-[#D4E0E3]">
+        {tools.map((tool) => {
+          const status = tool.status === "ran" ? "text-[#16754B]" : tool.status === "failed" ? "text-[#B12926]" : "text-[#A05B00]";
+          return <li key={tool.tool} className="grid gap-1 py-3 sm:grid-cols-[150px_100px_1fr_auto] sm:items-center sm:gap-4"><span className="font-mono text-xs font-semibold text-[#17262D]">{tool.tool}</span><span className={`font-mono text-[10px] font-semibold uppercase ${status}`}>{tool.status}</span><span className="text-xs text-[#53656D]">{tool.error || "Completed with recorded evidence."}</span><span className="font-mono text-xs text-[#53656D]">{tool.findingsCount} findings</span></li>;
+        })}
+      </ul>
+    </section>
+  );
+};
+
+const PotentialAttackPaths = ({ candidates, completed }: { candidates: AttackPathCandidate[]; completed: boolean }) => {
+  const [showAll, setShowAll] = useState(false);
+  const [expandedFindingId, setExpandedFindingId] = useState<string | null>(null);
+  const candidateGroups = useMemo(() => {
+    const groups = new Map<string, { id: string; findingTitle: string; findingFile: string; severity: Vulnerability["severity"]; note: string; authBoundary: AttackPathCandidate["authBoundary"]; routes: AttackPathCandidate[] }>();
+    for (const candidate of candidates) {
+      const key = candidate.findingId || `${candidate.findingTitle}:${candidate.findingFile || candidate.routeFile}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.routes.push(candidate);
+        if (candidate.authBoundary === "not_detected") existing.authBoundary = "not_detected";
+        continue;
+      }
+      groups.set(key, {
+        id: key,
+        findingTitle: candidate.findingTitle,
+        findingFile: candidate.findingFile || candidate.routeFile,
+        severity: candidate.severity,
+        note: candidate.note,
+        authBoundary: candidate.authBoundary,
+        routes: [candidate],
+      });
+    }
+    return [...groups.values()].map((group) => ({
+      ...group,
+      routes: [...new Map(group.routes.map((route) => [`${route.routeFile}:${route.route}`, route])).values()].sort((left, right) => left.route.localeCompare(right.route)),
+    }));
+  }, [candidates]);
+  const initialGroupCount = 6;
+  const visibleGroups = showAll ? candidateGroups : candidateGroups.slice(0, initialGroupCount);
+  const totalRoutes = candidateGroups.reduce((total, group) => total + group.routes.length, 0);
+
+  if (!completed) return null;
+  return (
+    <section aria-labelledby="candidate-paths-title" className="border-b border-[#D4E0E3] py-6">
+      <div className="flex flex-col gap-3 border-b border-[#D4E0E3] pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Path candidates</p>
+          <h2 id="candidate-paths-title" className="mt-1 text-lg font-bold tracking-[-0.02em] text-[#17262D]">Potential source paths</h2>
+        </div>
+        <span className="w-fit rounded-full border border-[#E8CE9C] bg-[#FFF9EA] px-2.5 py-1 font-mono text-[10px] font-semibold text-[#A05B00]">Not exploit-verified</span>
+      </div>
+      <p className="mt-3 max-w-3xl text-xs leading-relaxed text-[#53656D]">Each row connects a detected route to a source-security finding in the same file. It is useful triage evidence, not a claim that an attacker can reach or exploit the sink.</p>
+      {candidateGroups.length === 0 ? <div className="mt-4 border-y border-dashed border-[#D4E0E3] py-6 text-sm text-[#53656D]">No source-local route-to-sink candidates were detected in this scan. This does not prove that the repository has no attack paths.</div> : <>
+        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.13em] text-[#53656D]">{candidateGroups.length} source finding{candidateGroups.length === 1 ? "" : "s"} · {totalRoutes} mapped route{totalRoutes === 1 ? "" : "s"}</p>
+        <ul className="mt-3 divide-y divide-[#D4E0E3] border-y border-[#D4E0E3]">
+          {visibleGroups.map((group) => {
+            const isExpanded = expandedFindingId === group.id;
+            const routeListId = `attack-path-routes-${group.id}`;
+            return <li key={group.id} className="px-1 py-4">
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-5">
+                <div className="min-w-0 border-l-2 border-[#008E9A] pl-3">
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#53656D]">Source evidence</p>
+                  <p className="mt-1 text-sm font-semibold text-[#17262D]">{group.findingTitle}</p>
+                  <p className="mt-1 break-all font-mono text-[11px] text-[#53656D]">{group.findingFile}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 md:justify-end">
+                  <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold ${severityClass(group.severity)}`}>{group.severity}</span>
+                  <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold ${group.authBoundary === "present" ? "border-[#B9DCC7] bg-[#F2FAF5] text-[#16754B]" : "border-[#E8CE9C] bg-[#FFF9EA] text-[#A05B00]"}`}>{group.authBoundary === "present" ? "auth referenced" : "auth not detected"}</span>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-col gap-3 border-t border-dashed border-[#D4E0E3] pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+                <div>
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#53656D]">Mapped entry routes</p>
+                  <p className="mt-1 text-xs text-[#53656D]">{group.routes.length} route{group.routes.length === 1 ? "" : "s"} in the same source file.</p>
+                </div>
+                <button type="button" aria-expanded={isExpanded} aria-controls={routeListId} onClick={() => setExpandedFindingId((current) => current === group.id ? null : group.id)} className="inline-flex min-h-9 shrink-0 items-center gap-2 self-start rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] hover:text-[#17262D] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2">{isExpanded ? "Hide routes" : "Show routes"}<ChevronDown className={`h-3.5 w-3.5 transition ${isExpanded ? "rotate-180" : ""}`} /></button>
+              </div>
+              {isExpanded && <ul id={routeListId} className="mt-3 grid gap-2 border-l border-[#D4E0E3] pl-3 sm:grid-cols-2">
+                {group.routes.map((route) => <li key={`${route.routeFile}:${route.route}`} className="min-w-0"><p className="break-all font-mono text-xs font-semibold text-[#17262D]">{route.route}</p><p className="mt-0.5 break-all font-mono text-[10px] text-[#53656D]">{route.routeFile}</p></li>)}
+              </ul>}
+              <p className="mt-3 text-xs leading-relaxed text-[#53656D]">{group.note}</p>
+            </li>;
+          })}
+        </ul>
+        {candidateGroups.length > initialGroupCount && <button type="button" onClick={() => setShowAll((current) => !current)} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] hover:text-[#17262D] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2">{showAll ? "Show fewer source findings" : `Show ${candidateGroups.length - initialGroupCount} more source finding${candidateGroups.length - initialGroupCount === 1 ? "" : "s"}`}<ChevronDown className={`h-3.5 w-3.5 transition ${showAll ? "rotate-180" : ""}`} /></button>}
+      </>}
+    </section>
+  );
+};
 
 const AttackPath = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isAuthenticated = !!user;
-
   const [repos, setRepos] = useState<RepoSummary[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<RepoSummary | null>(null);
-  const [repoDropdownOpen, setRepoDropdownOpen] = useState(false);
-  const [repoLoadError, setRepoLoadError] = useState<string | null>(null);
   const [repoLoading, setRepoLoading] = useState(false);
+  const [repoError, setRepoError] = useState("");
+  const [job, setJob] = useState<ScanJob | null>(null);
+  const [lifecycle, setLifecycle] = useState<ScanLifecycle>("idle");
+  const [findings, setFindings] = useState<Vulnerability[]>([]);
+  const [tools, setTools] = useState<ToolStatus[]>([]);
+  const [attackPathCandidates, setAttackPathCandidates] = useState<AttackPathCandidate[]>([]);
+  const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
+  const [severityFilter, setSeverityFilter] = useState<"all" | Vulnerability["severity"]>("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [copiedFinding, setCopiedFinding] = useState<string | null>(null);
+  const [copiedReport, setCopiedReport] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [quota, setQuota] = useState<ScanAllowance | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(true);
+  const streamRef = useRef<AbortController | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deviceId = useMemo(() => {
+    const existing = localStorage.getItem("servx_device_uuid");
+    if (existing) return existing;
+    const next = crypto.randomUUID();
+    localStorage.setItem("servx_device_uuid", next);
+    return next;
+  }, []);
 
-  const [scanKind, setScanKind] = useState<ScanKind>(null);
-  const [scanStatus, setScanStatus] = useState<ScanStatus>("idle");
-  const [targetUrl, setTargetUrl] = useState("");
-  const [targetUrlError, setTargetUrlError] = useState<string | null>(null);
-
-  const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
-  const [
-    resultsSummary,
-    setResultsSummary,
-  ] = useState<{
-    total: number;
-    github: number;
-    package: number;
-    secret: number;
-    sast: number;
-    iac: number;
-    dast: number;
-    sbom: number;
-    cspm: number;
-    live: number;
-  } | null>(null);
-  const [toolStatuses, setToolStatuses] = useState<ToolStatus[]>([]);
-  const [scanLog, setScanLog] = useState<string[]>([]);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [copiedAll, setCopiedAll] = useState(false);
-
-  const activeStreamRef = useRef<AbortController | null>(null);
-  const deviceUUID = useMemo(() => {
-    const KEY = "orizon_device_uuid";
-    let uuid = localStorage.getItem(KEY);
-    if (!uuid) {
-      uuid = crypto.randomUUID();
-      localStorage.setItem(KEY, uuid);
+  const loadQuota = useCallback(async () => {
+    setQuotaLoading(true);
+    try {
+      const response = await apiClient.get("/attack-paths/quota");
+      setQuota(normalizeScanAllowance(response.data));
+    } finally {
+      setQuotaLoading(false);
     }
-    return uuid;
   }, []);
 
-  // ─── Repo loading ────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const loadRepos = async () => {
-      setRepoLoading(true);
-      setRepoLoadError(null);
-      try {
-        const res = await apiClient.get("/github/repos");
-        setRepos(res.data || []);
-      } catch (err) {
-        console.error("Failed to load repositories for /attack", err);
-        setRepos([]);
-        setRepoLoadError("Repository load failed. Please refresh or re-link your GitHub connection.");
-      } finally {
-        setRepoLoading(false);
-      }
+  const applyJobPayload = useCallback((payload: any) => {
+    const nextJob: ScanJob = {
+      jobId: String(payload.jobId || ""),
+      repoFullName: String(payload.repoFullName || ""),
+      status: String(payload.status || "queued"),
+      progressPct: Number(payload.progressPct || 0),
+      phaseMessage: String(payload.phaseMessage || ""),
+      queuePosition: Number(payload.queuePosition || 0),
+      queueReason: String(payload.queueReason || ""),
+      lastError: String(payload.lastError || ""),
+      quotaRemaining: typeof payload.quotaRemaining === "number" ? payload.quotaRemaining : undefined,
+      toolStatuses: normalizeToolStatuses(payload.toolStatuses),
+      scanMetrics: payload.scanMetrics && typeof payload.scanMetrics === "object" ? payload.scanMetrics : undefined,
     };
-
-    loadRepos();
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    return () => activeStreamRef.current?.abort();
+    const nextQuota = normalizeScanAllowance(payload.quota);
+    if (nextQuota) {
+      setQuota(nextQuota);
+      setQuotaLoading(false);
+    } else if (typeof payload.quotaRemaining === "number") {
+      setQuota((current) => current ? { ...current, remaining: Math.max(0, payload.quotaRemaining), used: Math.max(0, current.limit - Math.max(0, payload.quotaRemaining)) } : current);
+    }
+    setJob(nextJob);
+    setLifecycle(lifecycleForStatus(nextJob.status));
+    if (Array.isArray(payload.findings) || Array.isArray(payload.results)) setFindings(normalizeFindings(payload.findings || payload.results));
+    if (Array.isArray(payload.toolStatuses)) setTools(normalizeToolStatuses(payload.toolStatuses));
+    if (Object.prototype.hasOwnProperty.call(payload, "graphArtifact")) {
+      const graph = payload.graphArtifact as Record<string, unknown> | null;
+      setAttackPathCandidates(normalizeAttackPathCandidates(graph?.candidates));
+    }
+    return nextJob;
   }, []);
 
-  // ─── Scan ────────────────────────────────────────────────────
+  const loadJob = useCallback(async (jobId: string) => {
+    const response = await apiClient.get(`/attack-paths/jobs/${jobId}`);
+    return applyJobPayload(response.data);
+  }, [applyJobPayload]);
 
-  const startScan = useCallback(
-    async (kind: ScanKind) => {
-      if (scanStatus === "scanning") return;
-      if (!selectedRepo && kind === "repo") return;
-
-      setScanKind(kind);
-      setScanStatus("scanning");
-      setResultsSummary(null);
-      setToolStatuses([]);
-      setVulnerabilities([]);
-
-      const logs: string[] = [];
-      const timestamp = new Date().toISOString();
-      logs.push(`[${timestamp}] DEVICE ${deviceUUID.slice(0, 8)}... initiating ${kind} scan`);
-
-      if (kind === "repo") {
-        logs.push(`[TARGET] ${selectedRepo!.full_name}`);
+  const startStream = useCallback(async (jobId: string) => {
+    streamRef.current?.abort();
+    const controller = new AbortController();
+    streamRef.current = controller;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Your session expired. Sign in again to follow this scan.");
+      const response = await fetch(streamUrl(jobId), { headers: { Accept: "text/event-stream", Authorization: `Bearer ${session.access_token}` }, signal: controller.signal });
+      if (!response.ok || !response.body) throw new Error(`Unable to follow scan progress (${response.status}).`);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (!controller.signal.aborted) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+        for (const rawEvent of events) {
+          const lines = rawEvent.split("\n");
+          const event = lines.find((line) => line.startsWith("event:"))?.slice(6).trim() || "progress";
+          const dataLine = lines.find((line) => line.startsWith("data:"));
+          if (!dataLine) continue;
+          const payload = JSON.parse(dataLine.slice(5).trim());
+          setJob((current) => current ? { ...current, status: String(payload.status || current.status), progressPct: Number(payload.progressPct ?? current.progressPct), phaseMessage: String(payload.statusMessage || current.phaseMessage), queuePosition: Number(payload.queuePosition || 0), queueReason: String(payload.queueReason || ""), lastError: String(payload.lastError || "") } : current);
+          const nextStatus = String(payload.status || "");
+          if (nextStatus) setLifecycle(lifecycleForStatus(nextStatus));
+          if (event === "completed" || event === "failed" || event === "cancelled" || isTerminal(nextStatus)) {
+            await loadJob(jobId);
+            sessionStorage.setItem(LAST_JOB_STORAGE_KEY, jobId);
+            sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+            return;
+          }
+        }
       }
+      if (!controller.signal.aborted) {
+        const latest = await loadJob(jobId);
+        if (!isTerminal(latest.status)) reconnectTimerRef.current = setTimeout(() => void startStream(jobId), 2_500);
+      }
+    } catch (error: any) {
+      if (controller.signal.aborted) return;
+      setActionError(error?.message || "Connection to scan progress was interrupted.");
+      reconnectTimerRef.current = setTimeout(() => void startStream(jobId), 3_000);
+    }
+  }, [loadJob]);
 
-      const trimmedTargetUrl = targetUrl.trim();
-      if (kind === "live" && trimmedTargetUrl) {
-        try {
-          new URL(trimmedTargetUrl);
-          setTargetUrlError(null);
-        } catch {
-          setTargetUrlError("Enter a valid live deployment URL, including https://");
-          setScanStatus("idle");
-          setScanKind(null);
+  useEffect(() => {
+    if (!user) return;
+    const loadRepos = async () => {
+      setRepoLoading(true); setRepoError("");
+      try { const response = await apiClient.get("/github/repos"); setRepos(Array.isArray(response.data) ? response.data : []); }
+      catch { setRepoError("Repository loading failed. Refresh or reconnect GitHub, then try again."); }
+      finally { setRepoLoading(false); }
+    };
+    void loadRepos();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    void loadQuota().catch(() => setQuota(null));
+  }, [loadQuota, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const activeJobId = sessionStorage.getItem(ACTIVE_JOB_STORAGE_KEY);
+    const lastJobId = sessionStorage.getItem(LAST_JOB_STORAGE_KEY);
+    const restore = async () => {
+      try {
+        const restored = activeJobId || lastJobId
+          ? await loadJob(activeJobId || lastJobId || "")
+          : applyJobPayload((await apiClient.get("/attack-paths/jobs/latest")).data);
+        sessionStorage.setItem(LAST_JOB_STORAGE_KEY, restored.jobId);
+        if (isTerminal(restored.status)) {
+          sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
           return;
         }
-        logs.push(`[LIVE] ${trimmedTargetUrl}`);
+        sessionStorage.setItem(ACTIVE_JOB_STORAGE_KEY, restored.jobId);
+        void startStream(restored.jobId);
+      } catch (error: any) {
+        if (activeJobId) sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+        if (error?.response?.status !== 404) setActionError("Unable to restore the most recent scan result.");
       }
+    };
+    void restore();
+  }, [loadJob, startStream, user]);
 
-      if (kind === "repo" && !trimmedTargetUrl) {
-        logs.push(`[MODE] Repository vulnerability scan only`);
-      }
+  useEffect(() => {
+    if (!job?.repoFullName || repos.length === 0 || selectedRepo) return;
+    const matching = repos.find((repo) => repo.full_name === job.repoFullName);
+    if (matching) setSelectedRepo(matching);
+  }, [job?.repoFullName, repos, selectedRepo]);
 
-      setScanLog([...logs]);
+  useEffect(() => () => { streamRef.current?.abort(); if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current); }, []);
 
-      activeStreamRef.current?.abort();
-      const controller = new AbortController();
-      activeStreamRef.current = controller;
+  const queueScan = useCallback(async () => {
+    if (!selectedRepo || ["warming", "queued", "running"].includes(lifecycle)) return;
+    setActionError("");
+    setFindings([]); setTools([]); setAttackPathCandidates([]); setSelectedFindingId(null); setLifecycle("warming");
+    try {
+      const response = await apiClient.post("/attack-paths/jobs", {
+        repoId: String(selectedRepo.id), repoFullName: selectedRepo.full_name, scanTypes: ["supply_chain"], analysisDepth: 2, deviceId, idempotencyKey: crypto.randomUUID(),
+      });
+      const payload = { ...response.data, repoFullName: selectedRepo.full_name, phaseMessage: response.data.message || "Starting scan executor...", queueReason: response.data.queuePosition > 1 ? "Waiting for earlier repository scans." : "" };
+      const next = applyJobPayload(payload);
+      sessionStorage.setItem(ACTIVE_JOB_STORAGE_KEY, next.jobId);
+      sessionStorage.setItem(LAST_JOB_STORAGE_KEY, next.jobId);
+      void startStream(next.jobId);
+    } catch (error: any) {
+      setLifecycle("idle");
+      setActionError(error?.response?.data?.message || error?.message || "Unable to queue this scan.");
+      void loadQuota().catch(() => setQuota(null));
+    }
+  }, [applyJobPayload, deviceId, lifecycle, loadQuota, selectedRepo, startStream]);
 
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const accessToken = session?.access_token;
-        if (!accessToken) {
-          throw new Error("Missing authenticated session for security scan stream");
-        }
+  const confirmCancel = useCallback(async () => {
+    if (!job) return;
+    try {
+      await apiClient.post(`/attack-paths/jobs/${job.jobId}/cancel`);
+      streamRef.current?.abort();
+      sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+      sessionStorage.setItem(LAST_JOB_STORAGE_KEY, job.jobId);
+      setCancelOpen(false);
+      await loadJob(job.jobId);
+    } catch (error: any) {
+      setCancelOpen(false);
+      setActionError(error?.response?.data?.message || "Unable to cancel this scan.");
+    }
+  }, [job, loadJob]);
 
-        const scanTypes = kind === "repo" ? ["supply_chain"] : ["secrets", "injection"];
-        const requestBody: Record<string, unknown> = {
-          scanTypes,
-          analysisDepth: 2,
-          deviceId: deviceUUID,
-        };
+  const filteredFindings = useMemo(() => findings.filter((finding) => (severityFilter === "all" || finding.severity === severityFilter) && (sourceFilter === "all" || finding.source === sourceFilter)), [findings, severityFilter, sourceFilter]);
+  const sourceOptions = useMemo(() => Array.from(new Set(findings.map((finding) => finding.source).filter(Boolean))) as string[], [findings]);
+  const selectedFinding = findings.find((finding) => finding.id === selectedFindingId) || null;
+  const severityTotals = useMemo(() => ({ critical: findings.filter((finding) => finding.severity === "critical").length, medium: findings.filter((finding) => finding.severity === "medium").length, low: findings.filter((finding) => finding.severity === "low").length }), [findings]);
+  const coverageIsPartial = tools.some((tool) => tool.status !== "ran");
+  const activeScan = ["warming", "queued", "running"].includes(lifecycle);
+  const allowanceExhausted = quota?.remaining === 0;
 
-        if (kind === "repo" && selectedRepo) {
-          requestBody.repoId = String(selectedRepo.id);
-          requestBody.repoFullName = selectedRepo.full_name;
-          if (trimmedTargetUrl) requestBody.targetUrl = trimmedTargetUrl;
-        }
-
-        if (kind === "live" && trimmedTargetUrl) {
-          requestBody.targetUrl = trimmedTargetUrl;
-          requestBody.repoId = String(selectedRepo?.id || trimmedTargetUrl);
-          requestBody.repoFullName = selectedRepo?.full_name || trimmedTargetUrl;
-        }
-
-        const createRes = await apiClient.post("/attack-paths/jobs", requestBody);
-        const jobId = String(createRes.data.jobId);
-        logs.push(`[JOB] ${jobId}`);
-        setScanLog([...logs]);
-
-        const streamUrl = buildStreamUrl(jobId);
-        const resp = await fetch(streamUrl, {
-          method: "GET",
-          headers: {
-            Accept: "text/event-stream",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          signal: controller.signal,
-        });
-
-        if (!resp.ok || !resp.body) {
-          throw new Error(`Scan stream failed: ${resp.status}`);
-        }
-
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let resultLoaded = false;
-
-        const loadFinalResults = async () => {
-          if (resultLoaded) return;
-          resultLoaded = true;
-
-          const resultRes = await apiClient.get(`/attack-paths/jobs/${jobId}`);
-          const findings = normalizeFindings(resultRes.data?.findings || resultRes.data?.results);
-          const summary = {
-            total: findings.length,
-            github: findings.filter((item) => item.source === "github_security_alert").length,
-            package: findings.filter((item) => item.source === "package_scan").length,
-            secret: findings.filter((item) => item.source === "secret_scan").length,
-            sast: findings.filter((item) => item.source === "sast_scan").length,
-            iac: findings.filter((item) => item.source === "iac_scan").length,
-            dast: findings.filter((item) => item.source === "dast_scan").length,
-            sbom: findings.filter((item) => item.source === "sbom_scan").length,
-            cspm: findings.filter((item) => item.source === "cspm_scan").length,
-            live: findings.filter((item) => item.source === "live_deployment_scan").length,
-          };
-
-          setResultsSummary(summary);
-          setToolStatuses(normalizeToolStatuses(resultRes.data?.toolStatuses || []));
-          setVulnerabilities(findings);
-          setScanStatus("reporting");
-          setScanLog((prev) => [...prev, `[REPORT] Scan complete. ${findings.length} findings detected.`]);
-        };
-
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split("\n\n");
-          buffer = parts.pop() || "";
-
-          for (const part of parts) {
-            const lines = part.split("\n").filter(Boolean);
-            const eventLine = lines.find((line) => line.startsWith("event:"));
-            const dataLine = lines.find((line) => line.startsWith("data:"));
-            const event = eventLine ? eventLine.replace("event:", "").trim() : "progress";
-            const dataStr = dataLine ? dataLine.replace("data:", "").trim() : "";
-            const data = dataStr ? JSON.parse(dataStr) : {};
-            const phase = String(data?.phase || data?.status || "");
-            const statusMessage = String(data?.statusMessage || "");
-
-            if (event === "progress") {
-              if (statusMessage) {
-                setScanLog((prev) => [...prev, `[${phase || event}] ${statusMessage}`]);
-              }
-            }
-
-            if (event === "completed" || phase === "completed") {
-              await loadFinalResults();
-              break;
-            }
-
-            if (event === "failed" || phase === "failed" || event === "error") {
-              const message = String(data?.lastError || data?.message || "Scan failed");
-              setScanLog((prev) => [...prev, `[ERROR] ${message}`]);
-              setScanStatus("idle");
-              setScanKind(null);
-              break;
-            }
-          }
-        }
-
-        if (!resultLoaded) {
-          const resultRes = await apiClient.get(`/attack-paths/jobs/${jobId}`);
-          if (String(resultRes.data?.status || "") === "completed") {
-            await loadFinalResults();
-          }
-        }
-      } catch (err: any) {
-        if (err?.name === "AbortError") return;
-        setScanLog((prev) => [...prev, `[ERROR] ${err?.message || "Failed to start scan"}`]);
-        setScanStatus("idle");
-        setScanKind(null);
-      } finally {
-        activeStreamRef.current = null;
-      }
-    },
-    [deviceUUID, selectedRepo, scanStatus, targetUrl]
-  );
-
-  const resetScan = useCallback(() => {
-    activeStreamRef.current?.abort();
-    setScanStatus("idle");
-    setScanKind(null);
-    setResultsSummary(null);
-    setToolStatuses([]);
-    setVulnerabilities([]);
-    setScanLog([]);
-    setTargetUrlError(null);
-  }, []);
-
-  const copyVulnerability = useCallback(async (vuln: Vulnerability) => {
-    await navigator.clipboard.writeText(formatVulnerabilityForCopy(vuln));
-    setCopiedId(vuln.id);
-    setTimeout(() => setCopiedId(null), 1500);
-  }, []);
-
-  const copyReport = useCallback(async () => {
-    const header = [
-      `Vulnerability Report`,
-      selectedRepo ? `Repository: ${selectedRepo.full_name}` : "Live scan only",
-      targetUrl.trim() ? `Live target: ${targetUrl.trim()}` : null,
-      `Total findings: ${vulnerabilities.length}`,
-      "",
-    ].filter(Boolean);
-
-    const body = vulnerabilities
-      .map((vuln, index) => `[${index + 1}] ${formatVulnerabilityForCopy(vuln)}`)
-      .join("\n\n");
-
-    await navigator.clipboard.writeText([...header, body].join("\n"));
-    setCopiedAll(true);
-    setTimeout(() => setCopiedAll(false), 1500);
-  }, [selectedRepo, targetUrl, vulnerabilities]);
-
-  const sendToAutoMedic = useCallback(
-    (vulns: Vulnerability[]) => {
-      const params = new URLSearchParams();
-      params.set("source", "attack-path");
-      if (selectedRepo?.full_name) params.set("repo", selectedRepo.full_name);
-      if (targetUrl.trim()) params.set("targetUrl", targetUrl.trim());
-      params.set("vulns", JSON.stringify(vulns.map((v) => ({ severity: v.severity, title: v.title, file: v.file }))));
-      navigate(`/automedic?${params.toString()}`);
-    },
-    [navigate, selectedRepo, targetUrl]
-  );
-
-  const scanDisabled = scanStatus === "scanning";
+  const copyFinding = async (finding: Vulnerability) => {
+    await navigator.clipboard.writeText([`Title: ${finding.title}`, `Severity: ${finding.severity.toUpperCase()}`, `Source: ${sourceLabel(finding.source)}`, finding.file ? `Location: ${finding.file}` : null, `Evidence: ${finding.detail}`, `Suggested fix: ${remediationFor(finding)}`].filter(Boolean).join("\n"));
+    setCopiedFinding(finding.id); setTimeout(() => setCopiedFinding(null), 1_500);
+  };
+  const copyReport = async () => {
+    await navigator.clipboard.writeText([`Repository: ${selectedRepo?.full_name || job?.repoFullName || "Repository"}`, `Findings: ${findings.length}`, "", ...findings.map((finding, index) => `${index + 1}. ${finding.title}\n${remediationFor(finding)}`)].join("\n"));
+    setCopiedReport(true); setTimeout(() => setCopiedReport(false), 1_500);
+  };
 
   return (
-    <div className="flex flex-1 flex-col bg-white text-gray-900">
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-8">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl border border-gray-200 bg-white p-2.5 shadow-sm">
-              <Shield className="h-5 w-5 text-[#00C2CB]" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">Attack Paths</h1>
-              <p className="text-xs text-gray-500">
-                Scan repositories and live deployments for real vulnerabilities.
-              </p>
-            </div>
+    <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#F4F8F9] px-4 py-5 text-[#17262D] sm:px-6 sm:py-8">
+      <div className="mx-auto w-full max-w-6xl">
+        <header className="flex flex-col gap-5 border-b border-[#D4E0E3] pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-2xl"><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Security evidence workspace</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.03em] text-[#17262D] sm:text-4xl">Attack Paths</h1><p className="mt-3 text-sm leading-relaxed text-[#53656D]">Queue a deep scan for a connected repository. ServX keeps the job state while the isolated executor collects evidence.</p></div>
+          <LifecycleBadge lifecycle={lifecycle} />
+        </header>
+
+        <section aria-labelledby="command-title" className="grid gap-4 border-b border-[#D4E0E3] py-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_190px]">
+            <div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Owned repository</p><h2 id="command-title" className="mt-1 text-base font-bold text-[#17262D]">Choose what ServX may inspect</h2><div className="mt-3"><RepoSelect repos={repos} selectedRepo={selectedRepo} disabled={activeScan} onSelect={setSelectedRepo} /></div>{repoLoading && <p className="mt-2 text-xs text-[#53656D]">Loading connected repositories.</p>}{repoError && <p className="mt-2 text-xs text-[#B12926]">{repoError}</p>}</div>
+            <div className="border-l-2 border-[#D4E0E3] pl-4"><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Allowance</p><p className="mt-2 text-2xl font-bold tracking-[-0.03em] text-[#17262D]">{quotaLoading ? "…" : quota?.remaining ?? "—"}<span className="ml-1 text-xs font-medium text-[#53656D]">remaining</span></p><p className="mt-1 text-xs text-[#53656D]">{quota ? `${quota.used} of ${quota.limit} scans used in the last 24 hours` : "Checking server allowance"}</p></div>
+          </div>
+          <div className="lg:text-right"><button type="button" onClick={() => void queueScan()} disabled={!selectedRepo || activeScan || allowanceExhausted} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#008E9A] px-5 text-sm font-semibold text-white outline-none transition hover:bg-[#007A84] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#839198] sm:w-auto"><Scan className="h-4 w-4" />{activeScan ? "Scan active" : allowanceExhausted ? "Daily limit reached" : "Queue scan"}</button><p className="mt-2 max-w-64 text-left text-[11px] leading-relaxed text-[#53656D] lg:ml-auto">{allowanceExhausted ? "The allowance will refresh as the oldest scan passes 24 hours." : "Connected repositories only. Manual live URL scanning is off."}</p></div>
+        </section>
+
+        {actionError && <div role="alert" className="mt-5 flex items-start gap-3 border-l-2 border-[#B12926] bg-[#FFF4F3] px-4 py-3 text-sm text-[#B12926]"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{actionError}</span><button type="button" onClick={() => setActionError("")} className="ml-auto rounded p-1 outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><X className="h-4 w-4" /></button></div>}
+
+        {job && lifecycle !== "idle" && <EvidenceRail job={job} lifecycle={lifecycle} onCancel={() => setCancelOpen(true)} />}
+
+        <section aria-labelledby="results-title" className="py-7 sm:py-9">
+          <div className="flex flex-col gap-4 border-b border-[#D4E0E3] pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Results desk</p><h2 id="results-title" className="mt-1 text-2xl font-bold tracking-[-0.025em] text-[#17262D]">{lifecycle === "completed" ? "Review the evidence" : "Findings"}</h2><p className="mt-2 text-sm text-[#53656D]">{findings.length ? `${findings.length} findings across the completed repository evidence.` : lifecycle === "completed" ? "No findings were returned by the completed scan. This does not prove the repository is secure." : "Results appear here after a repository scan completes."}</p></div>
+            {findings.length > 0 && <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void copyReport()} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2">{copiedReport ? <ClipboardCopy className="h-3.5 w-3.5 text-[#16754B]" /> : <Copy className="h-3.5 w-3.5" />}{copiedReport ? "Copied" : "Copy report"}</button><button type="button" onClick={() => navigate(`/automedic?${new URLSearchParams({ source: "attack-path", repo: selectedRepo?.full_name || job?.repoFullName || "", vulns: JSON.stringify(findings.map((finding) => ({ severity: finding.severity, title: finding.title, file: finding.file }))) }).toString()}`)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2"><Zap className="h-3.5 w-3.5" />Open Auto-Medic<ArrowRight className="h-3.5 w-3.5" /></button></div>}
           </div>
 
-          <div className="flex items-center gap-3">
-            <StatusBadge status={scanStatus} />
-            <button
-              type="button"
-              onClick={resetScan}
-              disabled={scanStatus === "idle"}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-            >
-              <X className="h-3.5 w-3.5" />
-              Reset
-            </button>
-          </div>
-        </div>
+          {findings.length > 0 && <div className="grid grid-cols-3 divide-x divide-[#D4E0E3] border-b border-[#D4E0E3] py-4"><div className="pr-3"><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Critical</p><p className="mt-1 text-2xl font-bold text-[#B12926]">{severityTotals.critical}</p></div><div className="px-3"><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Medium</p><p className="mt-1 text-2xl font-bold text-[#A05B00]">{severityTotals.medium}</p></div><div className="pl-3"><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Low</p><p className="mt-1 text-2xl font-bold text-[#286778]">{severityTotals.low}</p></div></div>}
 
-        {/* Configuration */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
-              <Server className="h-4 w-4 text-[#00C2CB]" />
-              Repository Scan
-            </div>
-            <div className="mt-3">
-              <RepoDropdown
-                repos={repos}
-                selectedRepo={selectedRepo}
-                onSelect={(repo) => {
-                  setSelectedRepo(repo);
-                  resetScan();
-                }}
-                isOpen={repoDropdownOpen}
-                setIsOpen={setRepoDropdownOpen}
-                disabled={scanDisabled}
-              />
-              {repoLoading && <p className="mt-2 text-[11px] text-gray-500">Loading repositories...</p>}
-              {repoLoadError && <p className="mt-2 text-[11px] text-red-600">{repoLoadError}</p>}
-            </div>
-            <button
-              type="button"
-              onClick={() => startScan("repo")}
-              disabled={scanDisabled || !selectedRepo}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#00C2CB] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#00C2CB]/90 disabled:opacity-50"
-            >
-              <Scan className="h-3.5 w-3.5" />
-              Scan Repository
-            </button>
-            <p className="mt-2 text-[10px] text-gray-500">Covers GitHub alerts, dependency scan, secrets, SAST, IaC, SBOM, and CSPM configs.</p>
-          </div>
+          {findings.length > 0 && <div className="mt-5 grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold text-[#53656D]">Severity<select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as typeof severityFilter)} className="mt-1 min-h-11 w-full rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-sm text-[#17262D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><option value="all">All severities</option><option value="critical">Critical</option><option value="medium">Medium</option><option value="low">Low</option></select></label><label className="text-xs font-semibold text-[#53656D]">Evidence source<select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-sm text-[#17262D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><option value="all">All sources</option>{sourceOptions.map((source) => <option key={source} value={source}>{sourceLabel(source)}</option>)}</select></label></div>}
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
-              <Globe className="h-4 w-4 text-[#F59E0B]" />
-              Live Deployment Scan
-            </div>
-            <div className="mt-3">
-              <input
-                type="url"
-                value={targetUrl}
-                onChange={(event) => {
-                  setTargetUrl(event.target.value);
-                  if (targetUrlError) setTargetUrlError(null);
-                }}
-                placeholder="https://your-site.example"
-                disabled={scanDisabled}
-                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-[#00C2CB] focus:ring-2 focus:ring-[#00C2CB]/20 disabled:opacity-50"
-              />
-              {targetUrlError && <p className="mt-2 text-[11px] text-red-600">{targetUrlError}</p>}
-              <p className="mt-2 text-[11px] text-gray-500">Optional. Scans for exposed secrets and unsafe public responses.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => startScan("live")}
-              disabled={scanDisabled || !targetUrl.trim()}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#F59E0B] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#F59E0B]/90 disabled:opacity-50"
-            >
-              <Activity className="h-3.5 w-3.5" />
-              Scan Live Target
-            </button>
-          </div>
+          {findings.length > 0 ? <div className="mt-5 overflow-hidden border-y border-[#D4E0E3]"><div className="hidden grid-cols-[100px_minmax(0,1fr)_160px_180px_28px] gap-4 bg-[#EDF4F5] px-4 py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[#53656D] md:grid"><span>Severity</span><span>Finding</span><span>Source</span><span>Location</span><span /></div>{filteredFindings.map((finding) => <div key={finding.id} className="border-t border-[#D4E0E3] first:border-t-0"><button type="button" onClick={() => setSelectedFindingId((current) => current === finding.id ? null : finding.id)} className="grid w-full gap-2 px-4 py-4 text-left outline-none transition hover:bg-[#EDF4F5] focus-visible:bg-[#EDF4F5] md:grid-cols-[100px_minmax(0,1fr)_160px_180px_28px] md:gap-4"><span className={`w-fit rounded-full border px-2 py-1 font-mono text-[10px] font-semibold uppercase ${severityClass(finding.severity)}`}>{finding.severity}</span><span className="min-w-0"><span className="block text-sm font-semibold text-[#17262D]">{finding.title}</span><span className="mt-1 block text-xs text-[#53656D] md:hidden">{sourceLabel(finding.source)}{finding.file ? ` · ${finding.file}` : ""}</span></span><span className="hidden truncate font-mono text-[10px] text-[#53656D] md:block">{sourceLabel(finding.source)}</span><span className="hidden truncate font-mono text-[10px] text-[#53656D] md:block">{finding.file || "Repository"}</span><ChevronRight className={`h-4 w-4 text-[#53656D] transition ${selectedFindingId === finding.id ? "rotate-90" : ""}`} /></button>{selectedFindingId === finding.id && <div className="border-t border-[#D4E0E3] bg-[#EDF4F5] px-4 py-4"><div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_230px]"><div><p className="text-sm leading-relaxed text-[#53656D]">{finding.detail}</p><p className="mt-4 border-l-2 border-[#008E9A] pl-3 text-sm leading-relaxed text-[#17262D]"><span className="font-semibold">Suggested fix. </span>{remediationFor(finding)}</p></div><div className="flex items-start justify-between gap-4 border-t border-[#D4E0E3] pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0"><div><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Evidence location</p><p className="mt-2 break-all font-mono text-xs text-[#17262D]">{finding.file || "Repository-wide evidence"}</p></div><button type="button" onClick={() => void copyFinding(finding)} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A]">{copiedFinding === finding.id ? <ClipboardCopy className="h-3.5 w-3.5 text-[#16754B]" /> : <Copy className="h-3.5 w-3.5" />}{copiedFinding === finding.id ? "Copied" : "Copy"}</button></div></div></div>}</div>)}</div> : <div className="mt-5 border-y border-dashed border-[#D4E0E3] py-12 text-center"><Shield className="mx-auto h-8 w-8 text-[#839198]" /><p className="mt-3 text-sm font-semibold text-[#17262D]">{lifecycle === "completed" ? "No findings returned" : "No scan evidence yet"}</p><p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-[#53656D]">{lifecycle === "completed" ? "Review scanner coverage below before treating this as a clean result." : "Select an owned repository and queue one deep scan to begin collecting evidence."}</p></div>}
+        </section>
 
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50/60 p-5">
-            <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
-              <Target className="h-4 w-4 text-gray-500" />
-              Quick Actions
-            </div>
-            <div className="mt-3 space-y-2">
-              <button
-                type="button"
-                onClick={() => setTargetUrl("")}
-                disabled={scanDisabled}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-left text-xs text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-              >
-                Clear live target
-              </button>
-              <button
-                type="button"
-                onClick={resetScan}
-                disabled={scanDisabled && scanStatus !== "idle"}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-left text-xs text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-              >
-                Clear results
-              </button>
-            </div>
-            <p className="mt-3 text-[11px] text-gray-500">
-              Need help? Use <strong>Auto-Medic</strong> to hand off vulnerabilities to an AI agent.
-            </p>
-          </div>
-        </div>
+        <PotentialAttackPaths candidates={attackPathCandidates} completed={lifecycle === "completed"} />
 
-        {/* Scan Log */}
-        <AnimatePresence>
-          {scanLog.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-gray-700">Scan Log</p>
-                <span className="text-[10px] text-gray-500">{scanLog.length} events</span>
-              </div>
-              <div className="mt-3 max-h-40 space-y-1 overflow-auto">
-                {scanLog.map((line, index) => (
-                  <p key={index} className="text-[11px] font-mono text-gray-600">
-                    {line}
-                  </p>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <CoverageList tools={tools} />
 
-        <ToolStatusPanel toolStatuses={toolStatuses} />
+        {job?.scanMetrics && lifecycle === "completed" && <section className="border-b border-[#D4E0E3] py-5"><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Run record</p><div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-xs text-[#53656D]"><span>Queue wait: {formatDuration(job.scanMetrics.queueWaitMs) || "not recorded"}</span><span>Scanner time: {formatDuration(job.scanMetrics.durationMs) || "not recorded"}</span><span>Attempts: {String(job.scanMetrics.attemptCount || 1)}</span>{coverageIsPartial && <span className="font-semibold text-[#A05B00]">Partial scanner coverage</span>}</div></section>}
 
-        {/* Report */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-900">Findings</h2>
-              {resultsSummary && (
-                <p className="text-[11px] text-gray-500">
-                  {resultsSummary.total} total • {resultsSummary.github} github • {resultsSummary.package} packages • {resultsSummary.secret} secrets • {resultsSummary.sast} sast • {resultsSummary.iac} iac • {resultsSummary.dast} dast • {resultsSummary.sbom} sbom • {resultsSummary.cspm} cspm • {resultsSummary.live} live
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              {vulnerabilities.length > 0 && (
-                <button
-                  type="button"
-                  onClick={copyReport}
-                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
-                >
-                  {copiedAll ? <ClipboardCopy className="h-3.5 w-3.5 text-[#00C2CB]" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copiedAll ? "Copied" : "Copy Report"}
-                </button>
-              )}
-              {vulnerabilities.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => sendToAutoMedic(vulnerabilities)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#6C63FF] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#5a53e0]"
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                  Fix with Auto-Medic
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {scanStatus === "idle" && vulnerabilities.length === 0 ? (
-            <EmptyState onRetry={() => startScan(selectedRepo ? "repo" : "live")} />
-          ) : (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {vulnerabilities.map((vuln) => (
-                <VulnerabilityCard
-                  key={vuln.id}
-                  vuln={vuln}
-                  onCopy={copyVulnerability}
-                  copiedId={copiedId}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between rounded-2xl border border-dashed border-gray-300 bg-gray-50/60 px-5 py-4 text-xs text-gray-500">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-[#00C2CB]" />
-            Scans run through your connected GitHub credentials and optional live target. Results are real.
-          </div>
-          {selectedRepo && (
-            <div className="hidden items-center gap-2 md:flex">
-              <ExternalLink className="h-3.5 w-3.5" />
-              <span className="font-mono">{selectedRepo.full_name}</span>
-            </div>
-          )}
-        </div>
+        <footer className="flex flex-col gap-3 py-6 text-xs text-[#53656D] sm:flex-row sm:items-center sm:justify-between"><span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#008E9A]" />The browser never connects to the scanner directly.</span>{selectedRepo && <span className="flex items-center gap-2 font-mono"><ExternalLink className="h-3.5 w-3.5" />{selectedRepo.full_name}</span>}</footer>
       </div>
-    </div>
+
+      {cancelOpen && <div role="dialog" aria-modal="true" aria-labelledby="cancel-scan-title" className="fixed inset-0 z-50 grid place-items-center bg-[#17262D]/35 p-4"><div className="w-full max-w-md rounded-xl border border-[#D4E0E3] bg-[#FCFEFE] p-5 shadow-[0_12px_32px_rgb(23_38_45_/_0.18)]"><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Cancel scan</p><h2 id="cancel-scan-title" className="mt-1 text-lg font-bold text-[#17262D]">Stop this repository scan?</h2></div><button type="button" onClick={() => setCancelOpen(false)} aria-label="Close cancellation dialog" className="rounded p-1 text-[#53656D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><X className="h-5 w-5" /></button></div><p className="mt-4 text-sm leading-relaxed text-[#53656D]">ServX will stop the queued or active scan and remove the worker’s temporary files. Existing completed findings are not changed.</p><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setCancelOpen(false)} className="min-h-11 rounded-lg border border-[#D4E0E3] px-4 text-sm font-semibold text-[#53656D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]">Keep scanning</button><button type="button" onClick={() => void confirmCancel()} className="min-h-11 rounded-lg bg-[#B12926] px-4 text-sm font-semibold text-white outline-none hover:bg-[#92211F] focus-visible:ring-2 focus-visible:ring-[#B12926] focus-visible:ring-offset-2">Cancel scan</button></div></div></div>}
+    </main>
   );
 };
 
