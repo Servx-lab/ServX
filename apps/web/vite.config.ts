@@ -22,51 +22,9 @@ export default defineConfig(({ mode }) => ({
     __BUNDLED_DEV__: mode === "development",
   },
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-
-          // 3D / WebGL — largest chunk, only loaded on 3D pages
-          if (id.includes("three") || id.includes("@react-three")) {
-            return "vendor-three";
-          }
-          // Charting / data-viz (recharts pulls in a lot of d3)
-          if (id.includes("recharts") || id.includes("d3-") || id.includes("/d3/")) {
-            return "vendor-charts";
-          }
-          // Supabase auth + realtime client
-          if (id.includes("@supabase")) {
-            return "vendor-supabase";
-          }
-          // All Radix UI headless primitives
-          if (id.includes("@radix-ui")) {
-            return "vendor-radix";
-          }
-          // Animation engine
-          if (id.includes("framer-motion")) {
-            return "vendor-motion";
-          }
-          // Diagram / flow canvas
-          if (id.includes("@xyflow/react")) {
-            return "vendor-xyflow";
-          }
-          // Lucide SVG icons
-          if (id.includes("lucide-react")) {
-            return "vendor-lucide";
-          }
-          // react-icons (very large — isolate so it's only loaded when needed)
-          if (id.includes("react-icons")) {
-            return "vendor-icons";
-          }
-          // TanStack Query (async state management)
-          if (id.includes("@tanstack")) {
-            return "vendor-tanstack";
-          }
-          // Everything else (React, router, etc.) is handled automatically by Vite.
-        },
-      },
-    },
+    // Let Rollup derive chunk boundaries from the lazy route imports. The former
+    // package-name split produced a vendor-three ↔ vendor-radix cycle, which can
+    // evaluate React-dependent modules before React is initialized in production.
     chunkSizeWarningLimit: 900,
   },
   resolve: {
