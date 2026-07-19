@@ -67,7 +67,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <ServXProvider projectKey="svx_test_pin_123" baseUrl="http://localhost:5000" pollingIntervalMs={3000}>
+        <ServXProvider projectKey="svx_test_pin_123" baseUrl="http://localhost:5000" pollingIntervalMs={30000}>
           <Toaster />
           <Sonner />
           <AuthProvider>
