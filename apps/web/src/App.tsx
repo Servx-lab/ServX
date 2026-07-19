@@ -11,6 +11,12 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { ServXProvider } from "@servx/react";
 import ApprovalDrawer from "./features/auth/ApprovalDrawer";
 
+const configuredApiOrigin = String(import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "")
+  .trim()
+  .replace(/\/+$/, "")
+  .replace(/\/api$/i, "");
+const servxProviderBaseUrl = configuredApiOrigin || (import.meta.env.DEV ? "http://localhost:5000" : undefined);
+
 // ---------------------------------------------------------------------------
 // Lazy-loaded pages/features — each becomes its own JS chunk loaded on demand
 // ---------------------------------------------------------------------------
@@ -67,7 +73,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <ServXProvider projectKey="svx_test_pin_123" baseUrl="http://localhost:5000" pollingIntervalMs={30000}>
+        <ServXProvider projectKey="svx_test_pin_123" baseUrl={servxProviderBaseUrl} pollingIntervalMs={30000}>
           <Toaster />
           <Sonner />
           <AuthProvider>
