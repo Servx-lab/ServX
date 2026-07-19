@@ -1,26 +1,35 @@
-import React, { useState, useEffect, Suspense, useRef, useMemo, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PageLayout } from '@/components/layout/PageLayout';
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera, Float, MeshDistortMaterial, Sphere, Icosahedron, Line, Stars, Text } from "@react-three/drei";
-import * as THREE from "three";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  Shield, Zap, Lock, AlertTriangle, ChevronDown,
-  Crosshair, Bug, FileWarning, ArrowRight, Cpu, X,
-  Loader2, Target, RadioTower, Scan
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  ClipboardCopy,
+  Copy,
+  Crosshair,
+  ExternalLink,
+  FileWarning,
+  Github,
+  Loader2,
+  Scan,
+  Server,
+  Shield,
+  ShieldCheck,
+  Target,
+  X,
+  Zap,
 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/features/auth/AuthContext";
-
-// ─── Types ──────────────────────────────────────────────────────
 
 interface RepoSummary {
   id: number;
   name: string;
   full_name: string;
   language: string | null;
-  owner?: { login: string };
 }
 
 interface Vulnerability {
@@ -29,1037 +38,702 @@ interface Vulnerability {
   title: string;
   detail: string;
   file?: string;
+  source?: string;
 }
 
-type AttackType = "ddos" | "injection" | null;
-type ScanPhase = "idle" | "scanning" | "attacking" | "reporting";
-
-// ─── Device UUID (persistent per browser) ───────────────────────
-
-function getDeviceUUID(): string {
-  const KEY = "orizon_device_uuid";
-  let uuid = localStorage.getItem(KEY);
-  if (!uuid) {
-    uuid = crypto.randomUUID();
-    localStorage.setItem(KEY, uuid);
-  }
-  return uuid;
+interface ToolStatus {
+  tool: string;
+  status: "ran" | "skipped" | "failed";
+  findingsCount: number;
+  error?: string | null;
 }
 
-// --- sub-components ---
+interface AttackPathCandidate {
+  id: string;
+  route: string;
+  routeFile: string;
+  authBoundary: "present" | "not_detected";
+  findingId: string;
+  findingTitle: string;
+  findingFile?: string;
+  severity: Vulnerability["severity"];
+  confidence: "partial";
+  note: string;
+}
 
-const SolarSystemBackground = () => {
-  const sunRef = useRef<THREE.Mesh>(null);
-  const earthRef = useRef<THREE.Group>(null);
-  const marsRef = useRef<THREE.Group>(null);
-  const jupiterRef = useRef<THREE.Group>(null);
+type ScanLifecycle = "idle" | "warming" | "queued" | "running" | "completed" | "cancelled" | "failed";
 
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
-    if (sunRef.current) sunRef.current.rotation.y += 0.005;
-    if (earthRef.current) {
-      earthRef.current.position.x = Math.cos(t * 0.5) * 10;
-      earthRef.current.position.z = Math.sin(t * 0.5) * 10;
-      earthRef.current.rotation.y += 0.02;
-    }
-    if (marsRef.current) {
-      marsRef.current.position.x = Math.cos(t * 0.3 + 2) * 14;
-      marsRef.current.position.z = Math.sin(t * 0.3 + 2) * 14;
-      marsRef.current.rotation.y += 0.015;
-    }
-    if (jupiterRef.current) {
-      jupiterRef.current.position.x = Math.cos(t * 0.1 + 4) * 20;
-      jupiterRef.current.position.z = Math.sin(t * 0.1 + 4) * 20;
-      jupiterRef.current.rotation.y += 0.01;
-    }
+interface ScanJob {
+  jobId: string;
+  repoFullName: string;
+  status: string;
+  progressPct: number;
+  phaseMessage: string;
+  queuePosition: number;
+  queueReason: string;
+  lastError: string;
+  quotaRemaining?: number;
+  toolStatuses: ToolStatus[];
+  scanMetrics?: Record<string, unknown>;
+}
+
+interface ScanAllowance {
+  limit: number;
+  used: number;
+  remaining: number;
+  resetAt: string | null;
+}
+
+const ACTIVE_JOB_STORAGE_KEY = "servx_attack_paths_active_job";
+const LAST_JOB_STORAGE_KEY = "servx_attack_paths_last_job";
+
+const STAGES = [
+  { id: "queued", label: "Queue", detail: "Waiting for the shared executor" },
+  { id: "repository", label: "Repository", detail: "Preparing the authorized source" },
+  { id: "secrets", label: "Secrets", detail: "Checking source and history" },
+  { id: "code", label: "Code", detail: "Applying source-security rules" },
+  { id: "dependencies", label: "Dependencies & IaC", detail: "Checking packages and configuration" },
+  { id: "inventory", label: "Inventory", detail: "Building the software inventory" },
+  { id: "report", label: "Report", detail: "Normalizing evidence for review" },
+] as const;
+
+function normalizeSeverity(value: unknown): Vulnerability["severity"] {
+  const upper = String(value || "").toUpperCase();
+  if (upper === "CRITICAL" || upper === "HIGH") return "critical";
+  if (upper === "MODERATE" || upper === "MEDIUM") return "medium";
+  return "low";
+}
+
+function normalizeFindings(input: unknown): Vulnerability[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((item, index) => {
+      const row = item as Record<string, unknown>;
+      return {
+        id: String(row.id || row.findingId || `finding-${index + 1}`),
+        severity: normalizeSeverity(row.severity),
+        title: String(row.title || row.packageName || `Finding ${index + 1}`).trim(),
+        detail: String(row.detail || row.summary || row.advisorySummary || "Security issue detected during scan.").trim(),
+        file: typeof row.file === "string" ? row.file : undefined,
+        source: typeof row.source === "string" ? row.source : undefined,
+      } satisfies Vulnerability;
+    })
+    .filter((finding) => finding.title.length > 0);
+}
+
+function normalizeToolStatuses(input: unknown): ToolStatus[] {
+  if (!Array.isArray(input)) return [];
+  return input.map((item) => {
+    const row = item as Record<string, unknown>;
+    const rawStatus = String(row.status || "skipped");
+    return {
+      tool: String(row.tool || "unknown"),
+      status: rawStatus === "ran" || rawStatus === "failed" ? rawStatus : "skipped",
+      findingsCount: Number(row.findingsCount || 0),
+      error: row.error ? String(row.error) : null,
+    } satisfies ToolStatus;
   });
+}
 
-  return (
-    <group position={[0, -2, -15]} rotation={[0.4, 0, 0]}>
-      {/* Sun */}
-      <mesh ref={sunRef}>
-        <sphereGeometry args={[2, 32, 32]} />
-        <meshBasicMaterial color="#ffaa00" />
-        <pointLight color="#ffaa00" intensity={2} distance={100} />
-        {/* Sun Glow */}
-        <Sphere args={[2.2, 32, 32]}>
-          <meshBasicMaterial color="#ffaa00" transparent opacity={0.2} blending={THREE.AdditiveBlending} />
-        </Sphere>
-      </mesh>
-
-      {/* Earth Orbit */}
-      <Line points={Array.from({ length: 65 }).map((_, i) => [Math.cos(i / 64 * Math.PI * 2) * 10, 0, Math.sin(i / 64 * Math.PI * 2) * 10])} color="#ffffff" opacity={0.15} transparent lineWidth={1} />
-      <group ref={earthRef}>
-        <mesh>
-          <sphereGeometry args={[0.4, 32, 32]} />
-          <meshStandardMaterial color="#2266ff" roughness={0.7} />
-        </mesh>
-      </group>
-
-      {/* Mars Orbit */}
-      <Line points={Array.from({ length: 65 }).map((_, i) => [Math.cos(i / 64 * Math.PI * 2) * 14, 0, Math.sin(i / 64 * Math.PI * 2) * 14])} color="#ffffff" opacity={0.15} transparent lineWidth={1} />
-      <group ref={marsRef}>
-        <mesh>
-          <sphereGeometry args={[0.3, 32, 32]} />
-          <meshStandardMaterial color="#ff4422" roughness={0.8} />
-        </mesh>
-      </group>
-
-      {/* Jupiter Orbit */}
-      <Line points={Array.from({ length: 65 }).map((_, i) => [Math.cos(i / 64 * Math.PI * 2) * 20, 0, Math.sin(i / 64 * Math.PI * 2) * 20])} color="#ffffff" opacity={0.15} transparent lineWidth={1} />
-      <group ref={jupiterRef}>
-        <mesh>
-          <sphereGeometry args={[0.8, 32, 32]} />
-          <meshStandardMaterial color="#ddaa88" roughness={0.6} />
-        </mesh>
-      </group>
-    </group>
-  );
-};
-
-const AttackParticles = React.memo(({ start, end, active }: any) => {
-  const [pos, setPos] = useState(0);
-  
-  useFrame((state, delta) => {
-    if (!active) return;
-    setPos((prev) => (prev + delta * 2) % 1);
+function normalizeAttackPathCandidates(input: unknown): AttackPathCandidate[] {
+  if (!Array.isArray(input)) return [];
+  return input.map((item, index) => {
+    const row = item as Record<string, unknown>;
+    return {
+      id: String(row.id || `candidate-${index + 1}`),
+      route: String(row.route || "unknown route"),
+      routeFile: String(row.routeFile || "repository source"),
+      authBoundary: row.authBoundary === "present" ? "present" : "not_detected",
+      findingId: String(row.findingId || ""),
+      findingTitle: String(row.findingTitle || "Source finding"),
+      findingFile: typeof row.findingFile === "string" ? row.findingFile : undefined,
+      severity: normalizeSeverity(row.severity),
+      confidence: "partial",
+      note: String(row.note || "Source-local candidate; reachability and deployment exposure are not verified."),
+    } satisfies AttackPathCandidate;
   });
+}
 
-  const currentPos = useMemo(() => {
-    return new THREE.Vector3().lerpVectors(new THREE.Vector3(...start), new THREE.Vector3(...end), pos);
-  }, [pos, start, end]);
+function normalizeScanAllowance(input: unknown): ScanAllowance | null {
+  if (!input || typeof input !== "object") return null;
+  const row = input as Record<string, unknown>;
+  const remaining = Number(row.remaining);
+  if (!Number.isFinite(remaining)) return null;
+  const limit = Number(row.limit);
+  const used = Number(row.used);
+  return {
+    limit: Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 3,
+    used: Number.isFinite(used) && used >= 0 ? Math.floor(used) : 0,
+    remaining: Math.max(0, Math.floor(remaining)),
+    resetAt: typeof row.resetAt === "string" ? row.resetAt : null,
+  };
+}
 
-  if (!active) return null;
+function lifecycleForStatus(status: string): ScanLifecycle {
+  if (status === "completed") return "completed";
+  if (status === "cancelled") return "cancelled";
+  if (status === "failed") return "failed";
+  if (status === "warming" || status === "retrying") return "warming";
+  if (status === "queued") return "queued";
+  return "running";
+}
 
-  return (
-    <mesh position={currentPos}>
-      <sphereGeometry args={[0.08, 16, 16]} />
-      <meshBasicMaterial color="#6C63FF" />
-      <pointLight color="#6C63FF" intensity={4} distance={3} />
-    </mesh>
-  );
-});
+function isTerminal(status: string): boolean {
+  return ["completed", "cancelled", "failed"].includes(status);
+}
 
-const TopologyNode = React.memo(({ position, label, isTargeted, isRepoNode }: {
-  position: number[];
-  label: string;
-  isTargeted: boolean;
-  isRepoNode?: boolean;
-}) => {
-  const meshRef = useRef<THREE.Mesh>(null);
+function activeStageIndex(job: ScanJob | null): number {
+  if (!job) return -1;
+  if (job.status === "completed") return STAGES.length - 1;
+  if (["warming", "queued", "retrying"].includes(job.status)) return 0;
+  const message = job.phaseMessage.toLowerCase();
+  if (message.includes("secret")) return 2;
+  if (message.includes("semgrep") || message.includes("source code")) return 3;
+  if (message.includes("dependenc") || message.includes("infrastructure") || message.includes("configuration")) return 4;
+  if (message.includes("inventory") || message.includes("sbom")) return 5;
+  if (message.includes("normalizing") || message.includes("report")) return 6;
+  if (job.progressPct < 20) return 1;
+  if (job.progressPct < 40) return 2;
+  if (job.progressPct < 55) return 3;
+  if (job.progressPct < 65) return 4;
+  if (job.progressPct < 85) return 5;
+  return 6;
+}
 
-  useFrame((state) => {
-    if (isTargeted && meshRef.current) {
-      meshRef.current.position.x = position[0] + Math.sin(state.clock.elapsedTime * 20) * 0.05;
-      meshRef.current.position.y = position[1] + Math.cos(state.clock.elapsedTime * 23) * 0.05;
-    }
-  });
+function formatDuration(value: unknown): string | null {
+  const milliseconds = Number(value);
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) return null;
+  const seconds = Math.round(milliseconds / 1000);
+  const minutes = Math.floor(seconds / 60);
+  return minutes > 0 ? `${minutes}m ${seconds % 60}s` : `${seconds}s`;
+}
 
-  const nodeColor = isRepoNode ? "#00C2CB" : isTargeted ? "#6C63FF" : "#00C2CB";
-  const emissiveIntensity = isRepoNode ? 8 : isTargeted ? 20 : 2;
+function streamUrl(jobId: string): string {
+  const baseUrl = String(apiClient.defaults.baseURL || "").replace(/\/+$/, "");
+  return `${baseUrl}/attack-paths/jobs/${jobId}/stream`;
+}
 
-  return (
-    <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
-      <group position={position}>
-        <Icosahedron ref={meshRef} args={[0.5, 1]} onPointerOver={(e) => (e.stopPropagation())}>
-          <meshStandardMaterial
-            color={nodeColor}
-            emissive={nodeColor}
-            emissiveIntensity={emissiveIntensity}
-            wireframe
-          />
-        </Icosahedron>
+function remediationFor(finding: Vulnerability): string {
+  const source = String(finding.source || "").toLowerCase();
+  if (source.includes("package") || source.includes("github_security")) return "Upgrade to a patched version, review the advisory, and rerun the scan.";
+  if (source.includes("secret")) return "Rotate the credential, remove it from source, and rerun the scan to confirm the finding closes.";
+  if (source.includes("sast")) return "Replace the unsafe pattern, validate untrusted input, and add a regression test.";
+  if (source.includes("iac")) return "Restrict the configuration, apply least privilege, and rerun the scan.";
+  return "Review the evidence in context, apply a targeted fix, and rerun the scan.";
+}
 
-        <Sphere args={[0.5, 16, 16]}>
-          <meshBasicMaterial
-            color={nodeColor}
-            transparent
-            opacity={0.1}
-          />
-        </Sphere>
+function severityClass(severity: Vulnerability["severity"]): string {
+  if (severity === "critical") return "border-[#E5B6B4] bg-[#FFF4F3] text-[#B12926]";
+  if (severity === "medium") return "border-[#E8CE9C] bg-[#FFF9EA] text-[#A05B00]";
+  return "border-[#B9D5DC] bg-[#F0FAFC] text-[#286778]";
+}
 
-        <Text
-          position={[0, 0.8, 0]}
-          fontSize={0.2}
-          color="#00C2CB"
-          font="https://fonts.gstatic.com/s/orbitron/v30/y97pyXG9LrxS4lTz68l6_GfN.woff"
-        >
-          {label}
-        </Text>
+function sourceLabel(source?: string): string {
+  return source ? source.replace(/_/g, " ") : "repository evidence";
+}
 
-        {isTargeted && (
-          <Sphere args={[0.6, 16, 16]}>
-            <MeshDistortMaterial
-              color="#6C63FF"
-              speed={5}
-              distort={0.4}
-              radius={1}
-              transparent
-              opacity={0.3}
-            />
-          </Sphere>
-        )}
-
-        {isRepoNode && !isTargeted && (
-          <Sphere args={[0.55, 16, 16]}>
-            <meshBasicMaterial color="#00C2CB" transparent opacity={0.15} />
-          </Sphere>
-        )}
-      </group>
-    </Float>
-  );
-});
-
-// ─── Scanning Animation Overlay ─────────────────────────────────
-
-const ScanLineAnimation = ({ repoName, phase }: { repoName: string; phase: ScanPhase }) => {
-  if (phase !== "scanning" && phase !== "attacking") return null;
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="absolute top-0 left-0 right-0 z-[70] pointer-events-none"
-    >
-      <div className="relative h-8 bg-[#0B0E14]/90 border-b border-[#00C2CB]/30 flex items-center justify-center overflow-hidden">
-        <motion.div
-          animate={{ x: ["-100%", "100%"] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-y-0 w-1/3"
-          style={{
-            background: "linear-gradient(90deg, transparent, rgba(0,194,203,0.4), transparent)"
-          }}
-        />
-        <span className="relative z-10 text-[10px] font-mono text-[#00C2CB] tracking-[0.3em] uppercase">
-          {phase === "scanning" ? `Scanning ${repoName}` : `Attacking ${repoName}`}
-        </span>
-      </div>
-    </motion.div>
-  );
-};
-
-// ─── Severity Config ────────────────────────────────────────────
-
-const SEVERITY_CONFIG = {
-  critical: { color: "#6C63FF", bg: "bg-[#6C63FF]/10", border: "border-[#6C63FF]/30", badge: "bg-[#6C63FF]", label: "CRITICAL" },
-  medium:   { color: "#00C2CB", bg: "bg-[#00C2CB]/10", border: "border-[#00C2CB]/30", badge: "bg-[#00C2CB]", label: "MEDIUM" },
-  low:      { color: "#F59E0B", bg: "bg-[#F59E0B]/10", border: "border-[#F59E0B]/30", badge: "bg-[#F59E0B]", label: "LOW" },
-};
-
-// ─── Vulnerability Report Modal ─────────────────────────────────
-
-const VulnerabilityReport = ({ vulns, repoName, onClose, onAutoMedic }: {
-  vulns: Vulnerability[];
-  repoName: string;
-  onClose: () => void;
-  onAutoMedic: (vulns: Vulnerability[]) => void;
-}) => {
-  const criticals = vulns.filter(v => v.severity === "critical");
-  const mediums = vulns.filter(v => v.severity === "medium");
-  const lows = vulns.filter(v => v.severity === "low");
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="absolute inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-auto"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 20 }}
-        onClick={(e) => e.stopPropagation()}
-        className="w-[560px] max-h-[80vh] bg-[#0B0E14] border border-[#00C2CB]/30 rounded-2xl overflow-hidden shadow-2xl shadow-[#00C2CB]/10"
-      >
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#6C63FF]/20 rounded-lg border border-[#6C63FF]/30">
-              <FileWarning className="w-5 h-5 text-[#6C63FF]" />
-            </div>
-            <div>
-              <h2 className="text-white font-bold text-sm tracking-tight">Vulnerability Report</h2>
-              <p className="text-[10px] text-[#A4ADB3] font-mono mt-0.5">{repoName} // POST-SCAN ANALYSIS</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-[#A4ADB3] hover:text-white">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Summary Bar */}
-        <div className="px-6 py-3 border-b border-white/5 flex items-center gap-6 bg-white/[0.02]">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#6C63FF]" />
-            <span className="text-xs text-white font-mono">{criticals.length} Critical</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#00C2CB]" />
-            <span className="text-xs text-white font-mono">{mediums.length} Medium</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#F59E0B]" />
-            <span className="text-xs text-white font-mono">{lows.length} Low</span>
-          </div>
-          <div className="ml-auto text-[10px] font-mono text-[#A4ADB3]">{vulns.length} TOTAL</div>
-        </div>
-
-        {/* Vulnerability List */}
-        <div className="px-6 py-4 space-y-3 max-h-[400px] overflow-auto">
-          {vulns.map((v) => {
-            const cfg = SEVERITY_CONFIG[v.severity];
-            return (
-              <motion.div
-                key={v.id}
-                initial={{ x: -10, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                className={`${cfg.bg} border ${cfg.border} rounded-xl p-4`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className={`${cfg.badge} text-white text-[9px] font-bold px-2 py-0.5 rounded-full tracking-wider`}>
-                        {cfg.label}
-                      </span>
-                      {v.file && (
-                        <span className="text-[10px] font-mono text-[#A4ADB3] truncate">{v.file}</span>
-                      )}
-                    </div>
-                    <h4 className="text-sm font-semibold text-white mb-1">{v.title}</h4>
-                    <p className="text-xs text-[#A4ADB3] leading-relaxed">{v.detail}</p>
-                  </div>
-                  <Bug className="w-4 h-4 flex-shrink-0 mt-1" style={{ color: cfg.color }} />
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between bg-white/[0.02]">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-[#A4ADB3] text-xs font-medium hover:bg-white/10 transition-colors"
-          >
-            Dismiss
-          </button>
-          <button
-            onClick={() => onAutoMedic(vulns)}
-            className="px-5 py-2 rounded-lg bg-[#6C63FF] text-white text-xs font-bold tracking-wide flex items-center gap-2 hover:bg-[#5a53e0] transition-colors shadow-lg shadow-[#6C63FF]/20"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            Fix with Auto-Medic
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
-
-// ─── Repository Selector Dropdown ───────────────────────────────
-
-const RepoSelector = ({ repos, selectedRepo, onSelect, isOpen, setIsOpen, scanPhase }: {
+const RepoSelect = ({
+  repos,
+  selectedRepo,
+  disabled,
+  onSelect,
+}: {
   repos: RepoSummary[];
   selectedRepo: RepoSummary | null;
-  onSelect: (r: RepoSummary) => void;
-  isOpen: boolean;
-  setIsOpen: (v: boolean) => void;
-  scanPhase: ScanPhase;
+  disabled: boolean;
+  onSelect: (repo: RepoSummary) => void;
 }) => {
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
+    const close = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [setIsOpen]);
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
 
   return (
-    <div ref={dropdownRef} className="relative pointer-events-auto">
-      <motion.button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 px-4 py-2.5 bg-[#0B0E14]/90 backdrop-blur-xl border border-[#00C2CB]/40 rounded-xl hover:border-[#00C2CB]/70 transition-all group"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
+    <div ref={rootRef} className="relative min-w-0">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls="attack-paths-repositories"
+        disabled={disabled}
+        onClick={() => setOpen((current) => !current)}
+        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-left outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {selectedRepo ? (
-          <>
-            <div className="relative">
-              <Crosshair className="w-4 h-4 text-[#00C2CB]" />
-              {scanPhase !== "idle" && (
-                <motion.div
-                  animate={{ scale: [1, 1.5, 1], opacity: [1, 0.4, 1] }}
-                  transition={{ duration: 1.2, repeat: Infinity }}
-                  className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#00C2CB] rounded-full"
-                />
-              )}
-            </div>
-            <span className="text-sm font-bold text-white tracking-tight">{selectedRepo.name}</span>
-            {selectedRepo.language && (
-              <span className="text-[9px] font-mono text-[#00C2CB] bg-[#00C2CB]/10 px-1.5 py-0.5 rounded-full">{selectedRepo.language}</span>
-            )}
-          </>
-        ) : (
-          <>
-            <Target className="w-4 h-4 text-[#A4ADB3]" />
-            <span className="text-sm text-[#A4ADB3]">Select Target Repository</span>
-          </>
-        )}
-        <ChevronDown className={`w-4 h-4 text-[#A4ADB3] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </motion.button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.97 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-2 w-72 bg-[#0B0E14]/95 backdrop-blur-xl border border-[#00C2CB]/30 rounded-xl overflow-hidden shadow-2xl shadow-black/50 z-[100]"
-          >
-            <div className="px-4 py-3 border-b border-white/5">
-              <p className="text-[9px] font-mono text-[#00C2CB] uppercase tracking-[0.25em]">Target Selection</p>
-            </div>
-            <div className="max-h-64 overflow-auto">
-              {repos.length === 0 ? (
-                <div className="px-4 py-6 text-center text-xs text-[#A4ADB3]">
-                  No repositories linked.
-                </div>
-              ) : (
-                repos.map((repo) => (
-                  <button
-                    key={repo.id}
-                    onClick={() => { onSelect(repo); setIsOpen(false); }}
-                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors hover:bg-[#00C2CB]/10 ${
-                      selectedRepo?.id === repo.id ? "bg-[#00C2CB]/5 border-l-2 border-l-[#00C2CB]" : "border-l-2 border-l-transparent"
-                    }`}
-                  >
-                    <Crosshair className={`w-3.5 h-3.5 flex-shrink-0 ${selectedRepo?.id === repo.id ? "text-[#00C2CB]" : "text-[#A4ADB3]"}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-medium truncate ${selectedRepo?.id === repo.id ? "text-[#00C2CB]" : "text-white"}`}>
-                        {repo.name}
-                      </p>
-                      <p className="text-[10px] text-[#A4ADB3] truncate font-mono">{repo.full_name}</p>
-                    </div>
-                    {repo.language && (
-                      <span className="text-[9px] text-[#A4ADB3] font-mono">{repo.language}</span>
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        <span className="flex min-w-0 items-center gap-3">
+          <Github className="h-4 w-4 shrink-0 text-[#53656D]" />
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold text-[#17262D]">{selectedRepo?.full_name || "Select a connected repository"}</span>
+            <span className="block truncate font-mono text-[10px] text-[#53656D]">{selectedRepo?.language || "GitHub authorization required"}</span>
+          </span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-[#53656D] transition ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div id="attack-paths-repositories" role="listbox" className="absolute z-30 mt-2 max-h-72 w-full overflow-auto rounded-xl border border-[#D4E0E3] bg-[#FCFEFE] p-1 shadow-[0_12px_32px_rgb(23_38_45_/_0.08)]">
+          {repos.length === 0 ? (
+            <p className="px-3 py-4 text-sm text-[#53656D]">No connected repositories were found.</p>
+          ) : repos.map((repo) => (
+            <button
+              key={repo.id}
+              type="button"
+              role="option"
+              aria-selected={selectedRepo?.id === repo.id}
+              onClick={() => { onSelect(repo); setOpen(false); }}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left outline-none transition hover:bg-[#EDF4F5] focus-visible:bg-[#EDF4F5] ${selectedRepo?.id === repo.id ? "bg-[#EDF4F5]" : ""}`}
+            >
+              <Crosshair className="h-4 w-4 shrink-0 text-[#008E9A]" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-[#17262D]">{repo.full_name}</span>
+                <span className="block truncate font-mono text-[10px] text-[#53656D]">{repo.language || "repository"}</span>
+              </span>
+              {selectedRepo?.id === repo.id && <CheckCircle2 className="h-4 w-4 text-[#16754B]" />}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
-// ─── Defense Radar Widget ───────────────────────────────────────
+const LifecycleBadge = ({ lifecycle }: { lifecycle: ScanLifecycle }) => {
+  const details = {
+    idle: { label: "Ready", className: "border-[#B9D5DC] bg-[#F0FAFC] text-[#286778]", icon: ShieldCheck },
+    warming: { label: "Waking executor", className: "border-[#E8CE9C] bg-[#FFF9EA] text-[#A05B00]", icon: Loader2 },
+    queued: { label: "Queued", className: "border-[#B9D5DC] bg-[#F0FAFC] text-[#2867A5]", icon: Loader2 },
+    running: { label: "Scanning", className: "border-[#B9D5DC] bg-[#F0FAFC] text-[#2867A5]", icon: Loader2 },
+    completed: { label: "Evidence ready", className: "border-[#B9DCC7] bg-[#F2FAF5] text-[#16754B]", icon: CheckCircle2 },
+    cancelled: { label: "Cancelled", className: "border-[#D4E0E3] bg-[#EDF4F5] text-[#53656D]", icon: X },
+    failed: { label: "Needs attention", className: "border-[#E5B6B4] bg-[#FFF4F3] text-[#B12926]", icon: AlertTriangle },
+  }[lifecycle];
+  const Icon = details.icon;
+  return <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[10px] font-semibold ${details.className}`}><Icon className={`h-3.5 w-3.5 ${["warming", "queued", "running"].includes(lifecycle) ? "animate-spin" : ""}`} />{details.label}</span>;
+};
 
-const DefenseRadar = ({ selectedRepo, scanPhase }: { selectedRepo: RepoSummary | null; scanPhase: ScanPhase }) => {
-  const isActive = scanPhase === "attacking" && !!selectedRepo;
+const EvidenceRail = ({ job, lifecycle, onCancel }: { job: ScanJob; lifecycle: ScanLifecycle; onCancel: () => void }) => {
+  const current = activeStageIndex(job);
+  const canCancel = ["warming", "queued", "running"].includes(lifecycle);
+
   return (
-    <div className="flex items-center gap-3">
-      <div className="relative w-8 h-8">
-        <RadioTower className={`w-4 h-4 absolute inset-0 m-auto transition-colors ${isActive ? "text-[#6C63FF]" : "text-[#A4ADB3]"}`} />
-        {isActive && (
-          <motion.div
-            animate={{ scale: [1, 2.5], opacity: [0.6, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="absolute inset-0 border border-[#6C63FF] rounded-full"
-          />
-        )}
+    <section aria-labelledby="scan-progress-title" className="border-y border-[#D4E0E3] bg-[#FCFEFE] py-6 sm:py-8">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.8fr)] lg:gap-12">
+        <div>
+          <div className="flex items-end justify-between gap-4 border-b border-[#D4E0E3] pb-3">
+            <div>
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Scan ledger</p>
+              <h2 id="scan-progress-title" className="mt-1 text-lg font-bold tracking-[-0.02em] text-[#17262D]">Evidence in progress</h2>
+            </div>
+            <span className="font-mono text-xs text-[#53656D]">{Math.max(0, Math.min(100, job.progressPct))}%</span>
+          </div>
+          <ol className="mt-1">
+            {STAGES.map((stage, index) => {
+              const completed = lifecycle === "completed" || index < current;
+              const active = index === current && !isTerminal(job.status);
+              const stopped = ["cancelled", "failed"].includes(lifecycle) && index === current;
+              return (
+                <li key={stage.id} className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 border-b border-[#D4E0E3] py-3">
+                  <div className="relative flex justify-center pt-0.5">
+                    {index < STAGES.length - 1 && <span className={`absolute top-5 h-[calc(100%+8px)] w-px ${completed ? "bg-[#008E9A]" : "bg-[#D4E0E3]"}`} />}
+                    <span className={`relative z-10 flex h-5 w-5 items-center justify-center rounded-full border ${completed ? "border-[#16754B] bg-[#16754B] text-white" : active ? "border-[#008E9A] bg-[#F0FAFC] text-[#008E9A]" : stopped ? "border-[#B12926] bg-[#FFF4F3] text-[#B12926]" : "border-[#D4E0E3] bg-[#FCFEFE] text-[#839198]"}`}>
+                      {completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : active ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : stopped ? <X className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-sm font-semibold ${active ? "text-[#17262D]" : "text-[#53656D]"}`}>{stage.label}</p>
+                    <p className="mt-0.5 text-xs text-[#53656D]">{active ? job.phaseMessage || stage.detail : stage.detail}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+        <aside className="self-start border-l-2 border-[#008E9A] pl-4 sm:pl-5" aria-live="polite">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Current state</p>
+          <p className="mt-2 text-base font-semibold leading-snug text-[#17262D]">{job.phaseMessage || "Preparing scan evidence."}</p>
+          {lifecycle === "queued" && job.queuePosition > 0 && <p className="mt-3 text-sm text-[#53656D]">Position {job.queuePosition} in the shared queue. {job.queueReason || "One repository scans at a time."}</p>}
+          {lifecycle === "warming" && <p className="mt-3 text-sm text-[#53656D]">The executor may need a short cold start. Your job is already persisted.</p>}
+          <div className="mt-5 border-t border-[#D4E0E3] pt-4">
+            <p className="text-xs leading-relaxed text-[#53656D]">Coverage includes GitHub alerts, source secrets, Semgrep rules, Trivy dependency and IaC checks, and a software inventory. A clean result is not proof of security.</p>
+            {canCancel && <button type="button" onClick={onCancel} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#D4E0E3] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#B12926] hover:text-[#B12926] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2"><X className="h-3.5 w-3.5" />Cancel scan</button>}
+          </div>
+        </aside>
       </div>
-      <div className="text-right">
-        <p className="text-[10px] text-[#A4ADB3] uppercase tracking-widest font-mono">Defense Radar</p>
-        <p className={`text-xs font-mono font-bold ${isActive ? "text-[#6C63FF]" : "text-[#00C2CB]"}`}>
-          {isActive ? selectedRepo!.name.toUpperCase() : "ALL NODES"}
-        </p>
-      </div>
-    </div>
+    </section>
   );
 };
 
-// ─── Simulated Vulnerability Generator ──────────────────────────
+const CoverageList = ({ tools }: { tools: ToolStatus[] }) => {
+  if (tools.length === 0) return null;
+  return (
+    <section aria-labelledby="coverage-title" className="border-y border-[#D4E0E3] py-5">
+      <div className="flex items-baseline justify-between gap-4">
+        <div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Coverage</p><h2 id="coverage-title" className="mt-1 text-base font-bold text-[#17262D]">Scanner evidence</h2></div>
+        {tools.some((tool) => tool.status !== "ran") && <span className="text-xs font-semibold text-[#A05B00]">Partial coverage</span>}
+      </div>
+      <ul className="mt-4 divide-y divide-[#D4E0E3] border-y border-[#D4E0E3]">
+        {tools.map((tool) => {
+          const status = tool.status === "ran" ? "text-[#16754B]" : tool.status === "failed" ? "text-[#B12926]" : "text-[#A05B00]";
+          return <li key={tool.tool} className="grid gap-1 py-3 sm:grid-cols-[150px_100px_1fr_auto] sm:items-center sm:gap-4"><span className="font-mono text-xs font-semibold text-[#17262D]">{tool.tool}</span><span className={`font-mono text-[10px] font-semibold uppercase ${status}`}>{tool.status}</span><span className="text-xs text-[#53656D]">{tool.error || "Completed with recorded evidence."}</span><span className="font-mono text-xs text-[#53656D]">{tool.findingsCount} findings</span></li>;
+        })}
+      </ul>
+    </section>
+  );
+};
 
-function generateVulnerabilities(repo: RepoSummary): Vulnerability[] {
-  const name = repo.name.toLowerCase();
-  const vulns: Vulnerability[] = [
-    {
-      id: `${repo.id}-crit-1`,
-      severity: "critical",
-      title: "Hardcoded Firebase Key found in config.js",
-      detail: `Plaintext API credentials detected in the ${repo.name} repository. This allows unauthenticated access to the Firebase project and all associated user data.`,
-      file: "src/config.js:14",
-    },
-    {
-      id: `${repo.id}-crit-2`,
-      severity: "critical",
-      title: "Exposed .env file in public directory",
-      detail: "Environment variables containing database credentials are served as a static asset. Immediate remediation required.",
-      file: "public/.env",
-    },
-    {
-      id: `${repo.id}-med-1`,
-      severity: "medium",
-      title: "Outdated dependency: axios v0.21.1",
-      detail: "Known SSRF vulnerability (CVE-2023-45857) in axios versions below 1.6.0. Upgrade to latest stable release.",
-      file: "package.json",
-    },
-    {
-      id: `${repo.id}-med-2`,
-      severity: "medium",
-      title: "Missing Content-Security-Policy header",
-      detail: "The application does not set CSP headers, leaving it vulnerable to XSS attacks via injected scripts.",
-    },
-    {
-      id: `${repo.id}-med-3`,
-      severity: "medium",
-      title: "Insecure CORS configuration",
-      detail: `Access-Control-Allow-Origin is set to '*' allowing any origin to make authenticated requests.`,
-      file: "server/server.js:28",
-    },
-  ];
+const PotentialAttackPaths = ({ candidates, completed }: { candidates: AttackPathCandidate[]; completed: boolean }) => {
+  const [showAll, setShowAll] = useState(false);
+  const [expandedFindingId, setExpandedFindingId] = useState<string | null>(null);
+  const candidateGroups = useMemo(() => {
+    const groups = new Map<string, { id: string; findingTitle: string; findingFile: string; severity: Vulnerability["severity"]; note: string; authBoundary: AttackPathCandidate["authBoundary"]; routes: AttackPathCandidate[] }>();
+    for (const candidate of candidates) {
+      const key = candidate.findingId || `${candidate.findingTitle}:${candidate.findingFile || candidate.routeFile}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.routes.push(candidate);
+        if (candidate.authBoundary === "not_detected") existing.authBoundary = "not_detected";
+        continue;
+      }
+      groups.set(key, {
+        id: key,
+        findingTitle: candidate.findingTitle,
+        findingFile: candidate.findingFile || candidate.routeFile,
+        severity: candidate.severity,
+        note: candidate.note,
+        authBoundary: candidate.authBoundary,
+        routes: [candidate],
+      });
+    }
+    return [...groups.values()].map((group) => ({
+      ...group,
+      routes: [...new Map(group.routes.map((route) => [`${route.routeFile}:${route.route}`, route])).values()].sort((left, right) => left.route.localeCompare(right.route)),
+    }));
+  }, [candidates]);
+  const initialGroupCount = 6;
+  const visibleGroups = showAll ? candidateGroups : candidateGroups.slice(0, initialGroupCount);
+  const totalRoutes = candidateGroups.reduce((total, group) => total + group.routes.length, 0);
 
-  if (name.includes("quiz") || name.includes("game")) {
-    vulns.push({
-      id: `${repo.id}-low-1`,
-      severity: "low",
-      title: "Rate limiting not configured on API routes",
-      detail: "Public API endpoints lack rate limiting, making brute-force enumeration feasible.",
-      file: "server/routes/api.js",
-    });
-  } else {
-    vulns.push({
-      id: `${repo.id}-low-1`,
-      severity: "low",
-      title: "Debug logging enabled in production build",
-      detail: "Console.log statements found in 14 files. Sensitive data may be leaked to browser devtools.",
-    });
-  }
-
-  return vulns;
-}
+  if (!completed) return null;
+  return (
+    <section aria-labelledby="candidate-paths-title" className="border-b border-[#D4E0E3] py-6">
+      <div className="flex flex-col gap-3 border-b border-[#D4E0E3] pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Path candidates</p>
+          <h2 id="candidate-paths-title" className="mt-1 text-lg font-bold tracking-[-0.02em] text-[#17262D]">Potential source paths</h2>
+        </div>
+        <span className="w-fit rounded-full border border-[#E8CE9C] bg-[#FFF9EA] px-2.5 py-1 font-mono text-[10px] font-semibold text-[#A05B00]">Not exploit-verified</span>
+      </div>
+      <p className="mt-3 max-w-3xl text-xs leading-relaxed text-[#53656D]">Each row connects a detected route to a source-security finding in the same file. It is useful triage evidence, not a claim that an attacker can reach or exploit the sink.</p>
+      {candidateGroups.length === 0 ? <div className="mt-4 border-y border-dashed border-[#D4E0E3] py-6 text-sm text-[#53656D]">No source-local route-to-sink candidates were detected in this scan. This does not prove that the repository has no attack paths.</div> : <>
+        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.13em] text-[#53656D]">{candidateGroups.length} source finding{candidateGroups.length === 1 ? "" : "s"} · {totalRoutes} mapped route{totalRoutes === 1 ? "" : "s"}</p>
+        <ul className="mt-3 divide-y divide-[#D4E0E3] border-y border-[#D4E0E3]">
+          {visibleGroups.map((group) => {
+            const isExpanded = expandedFindingId === group.id;
+            const routeListId = `attack-path-routes-${group.id}`;
+            return <li key={group.id} className="px-1 py-4">
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-5">
+                <div className="min-w-0 border-l-2 border-[#008E9A] pl-3">
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#53656D]">Source evidence</p>
+                  <p className="mt-1 text-sm font-semibold text-[#17262D]">{group.findingTitle}</p>
+                  <p className="mt-1 break-all font-mono text-[11px] text-[#53656D]">{group.findingFile}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 md:justify-end">
+                  <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold ${severityClass(group.severity)}`}>{group.severity}</span>
+                  <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold ${group.authBoundary === "present" ? "border-[#B9DCC7] bg-[#F2FAF5] text-[#16754B]" : "border-[#E8CE9C] bg-[#FFF9EA] text-[#A05B00]"}`}>{group.authBoundary === "present" ? "auth referenced" : "auth not detected"}</span>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-col gap-3 border-t border-dashed border-[#D4E0E3] pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+                <div>
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#53656D]">Mapped entry routes</p>
+                  <p className="mt-1 text-xs text-[#53656D]">{group.routes.length} route{group.routes.length === 1 ? "" : "s"} in the same source file.</p>
+                </div>
+                <button type="button" aria-expanded={isExpanded} aria-controls={routeListId} onClick={() => setExpandedFindingId((current) => current === group.id ? null : group.id)} className="inline-flex min-h-9 shrink-0 items-center gap-2 self-start rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] hover:text-[#17262D] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2">{isExpanded ? "Hide routes" : "Show routes"}<ChevronDown className={`h-3.5 w-3.5 transition ${isExpanded ? "rotate-180" : ""}`} /></button>
+              </div>
+              {isExpanded && <ul id={routeListId} className="mt-3 grid gap-2 border-l border-[#D4E0E3] pl-3 sm:grid-cols-2">
+                {group.routes.map((route) => <li key={`${route.routeFile}:${route.route}`} className="min-w-0"><p className="break-all font-mono text-xs font-semibold text-[#17262D]">{route.route}</p><p className="mt-0.5 break-all font-mono text-[10px] text-[#53656D]">{route.routeFile}</p></li>)}
+              </ul>}
+              <p className="mt-3 text-xs leading-relaxed text-[#53656D]">{group.note}</p>
+            </li>;
+          })}
+        </ul>
+        {candidateGroups.length > initialGroupCount && <button type="button" onClick={() => setShowAll((current) => !current)} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] hover:text-[#17262D] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2">{showAll ? "Show fewer source findings" : `Show ${candidateGroups.length - initialGroupCount} more source finding${candidateGroups.length - initialGroupCount === 1 ? "" : "s"}`}<ChevronDown className={`h-3.5 w-3.5 transition ${showAll ? "rotate-180" : ""}`} /></button>}
+      </>}
+    </section>
+  );
+};
 
 const AttackPath = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isAuthenticated = !!user;
   const [repos, setRepos] = useState<RepoSummary[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<RepoSummary | null>(null);
-  const [repoDropdownOpen, setRepoDropdownOpen] = useState(false);
-
-  const [isAttackActive, setIsAttackActive] = useState(false);
-  const [activeAttackType, setActiveAttackType] = useState<AttackType>(null);
-  const [isLockdown, setIsLockdown] = useState(false);
-  const [glitch, setGlitch] = useState(false);
-
-  const [scanPhase, setScanPhase] = useState<ScanPhase>("idle");
-  const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
-  const [showReport, setShowReport] = useState(false);
-  const [scanLog, setScanLog] = useState<string[]>([]);
-
-  const deviceUUID = useMemo(() => getDeviceUUID(), []);
-
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    apiClient.get("/github/repos").then((res) => {
-      setRepos(res.data);
-    }).catch(() => {});
-  }, [isAuthenticated]);
-
-  // 3D node labels — replace default label when repo is selected
-  const nodeLabels = useMemo(() => {
-    if (selectedRepo) {
-      return [
-        `${selectedRepo.name.toUpperCase()}-FE`,
-        `${selectedRepo.name.toUpperCase()}-API`,
-        `${selectedRepo.name.toUpperCase()}-DB`,
-        `${selectedRepo.name.toUpperCase()}-AUTH`,
-      ];
-    }
-    return ["G-FRONTEND-01", "G-CORE-API-07", "G-PERSIST-09", "G-AUTH-SYS-04"];
-  }, [selectedRepo]);
-
-  // Simulate attack sequence
-  const runAttack = useCallback((type: AttackType) => {
-    if (!selectedRepo || scanPhase !== "idle") return;
-
-    setActiveAttackType(type);
-    setScanPhase("scanning");
-    setIsAttackActive(false);
-    setVulnerabilities([]);
-    setShowReport(false);
-
-    const logs: string[] = [];
-    logs.push(`[${new Date().toISOString()}] DEVICE ${deviceUUID.slice(0, 8)}... initiated ${type} scan`);
-    logs.push(`[TARGET] ${selectedRepo.full_name}`);
-    setScanLog([...logs]);
-
-    // Phase 1: Scanning (2s)
-    setTimeout(() => {
-      logs.push("[SCAN] Enumerating attack surface...");
-      logs.push("[SCAN] Probing endpoints...");
-      setScanLog([...logs]);
-      setScanPhase("attacking");
-      setIsAttackActive(true);
-
-      // Phase 2: Attacking (3s)
-      setTimeout(() => {
-        logs.push(`[ATTACK] ${type === "ddos" ? "DDoS flood packets" : "SQL injection payloads"} deployed`);
-        logs.push("[ATTACK] Monitoring response degradation...");
-        setScanLog([...logs]);
-
-        // Phase 3: Reporting (2s)
-        setTimeout(() => {
-          const vulns = generateVulnerabilities(selectedRepo);
-          logs.push(`[REPORT] Scan complete. ${vulns.length} vulnerabilities detected.`);
-          setScanLog([...logs]);
-
-          setIsAttackActive(false);
-          setScanPhase("reporting");
-          setVulnerabilities(vulns);
-          setShowReport(true);
-          setActiveAttackType(null);
-        }, 2000);
-      }, 3000);
-    }, 2000);
-  }, [selectedRepo, scanPhase, deviceUUID]);
-
-  const handleChaosToggle = useCallback((type: AttackType) => {
-    if (scanPhase !== "idle") return;
-    if (!selectedRepo) {
-      setRepoDropdownOpen(true);
-      return;
-    }
-    runAttack(type);
-  }, [selectedRepo, scanPhase, runAttack]);
-
-  const handleAutoMedic = useCallback((vulns: Vulnerability[]) => {
-    const params = new URLSearchParams();
-    params.set("source", "attack-path");
-    params.set("repo", selectedRepo?.full_name || "");
-    params.set("vulns", JSON.stringify(vulns.map(v => ({ severity: v.severity, title: v.title, file: v.file }))));
-    navigate(`/automedic?${params.toString()}`);
-  }, [navigate, selectedRepo]);
-
-  const resetScan = useCallback(() => {
-    setScanPhase("idle");
-    setIsAttackActive(false);
-    setActiveAttackType(null);
-    setVulnerabilities([]);
-    setShowReport(false);
-    setScanLog([]);
+  const [repoLoading, setRepoLoading] = useState(false);
+  const [repoError, setRepoError] = useState("");
+  const [job, setJob] = useState<ScanJob | null>(null);
+  const [lifecycle, setLifecycle] = useState<ScanLifecycle>("idle");
+  const [findings, setFindings] = useState<Vulnerability[]>([]);
+  const [tools, setTools] = useState<ToolStatus[]>([]);
+  const [attackPathCandidates, setAttackPathCandidates] = useState<AttackPathCandidate[]>([]);
+  const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
+  const [severityFilter, setSeverityFilter] = useState<"all" | Vulnerability["severity"]>("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [copiedFinding, setCopiedFinding] = useState<string | null>(null);
+  const [copiedReport, setCopiedReport] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [quota, setQuota] = useState<ScanAllowance | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(true);
+  const streamRef = useRef<AbortController | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deviceId = useMemo(() => {
+    const existing = localStorage.getItem("servx_device_uuid");
+    if (existing) return existing;
+    const next = crypto.randomUUID();
+    localStorage.setItem("servx_device_uuid", next);
+    return next;
   }, []);
 
-  const toggleLockdown = () => {
-    setGlitch(true);
-    setTimeout(() => setGlitch(false), 200);
-    setIsLockdown(!isLockdown);
+  const loadQuota = useCallback(async () => {
+    setQuotaLoading(true);
+    try {
+      const response = await apiClient.get("/attack-paths/quota");
+      setQuota(normalizeScanAllowance(response.data));
+    } finally {
+      setQuotaLoading(false);
+    }
+  }, []);
+
+  const applyJobPayload = useCallback((payload: any) => {
+    const nextJob: ScanJob = {
+      jobId: String(payload.jobId || ""),
+      repoFullName: String(payload.repoFullName || ""),
+      status: String(payload.status || "queued"),
+      progressPct: Number(payload.progressPct || 0),
+      phaseMessage: String(payload.phaseMessage || ""),
+      queuePosition: Number(payload.queuePosition || 0),
+      queueReason: String(payload.queueReason || ""),
+      lastError: String(payload.lastError || ""),
+      quotaRemaining: typeof payload.quotaRemaining === "number" ? payload.quotaRemaining : undefined,
+      toolStatuses: normalizeToolStatuses(payload.toolStatuses),
+      scanMetrics: payload.scanMetrics && typeof payload.scanMetrics === "object" ? payload.scanMetrics : undefined,
+    };
+    const nextQuota = normalizeScanAllowance(payload.quota);
+    if (nextQuota) {
+      setQuota(nextQuota);
+      setQuotaLoading(false);
+    } else if (typeof payload.quotaRemaining === "number") {
+      setQuota((current) => current ? { ...current, remaining: Math.max(0, payload.quotaRemaining), used: Math.max(0, current.limit - Math.max(0, payload.quotaRemaining)) } : current);
+    }
+    setJob(nextJob);
+    setLifecycle(lifecycleForStatus(nextJob.status));
+    if (Array.isArray(payload.findings) || Array.isArray(payload.results)) setFindings(normalizeFindings(payload.findings || payload.results));
+    if (Array.isArray(payload.toolStatuses)) setTools(normalizeToolStatuses(payload.toolStatuses));
+    if (Object.prototype.hasOwnProperty.call(payload, "graphArtifact")) {
+      const graph = payload.graphArtifact as Record<string, unknown> | null;
+      setAttackPathCandidates(normalizeAttackPathCandidates(graph?.candidates));
+    }
+    return nextJob;
+  }, []);
+
+  const loadJob = useCallback(async (jobId: string) => {
+    const response = await apiClient.get(`/attack-paths/jobs/${jobId}`);
+    return applyJobPayload(response.data);
+  }, [applyJobPayload]);
+
+  const startStream = useCallback(async (jobId: string) => {
+    streamRef.current?.abort();
+    const controller = new AbortController();
+    streamRef.current = controller;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Your session expired. Sign in again to follow this scan.");
+      const response = await fetch(streamUrl(jobId), { headers: { Accept: "text/event-stream", Authorization: `Bearer ${session.access_token}` }, signal: controller.signal });
+      if (!response.ok || !response.body) throw new Error(`Unable to follow scan progress (${response.status}).`);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (!controller.signal.aborted) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+        for (const rawEvent of events) {
+          const lines = rawEvent.split("\n");
+          const event = lines.find((line) => line.startsWith("event:"))?.slice(6).trim() || "progress";
+          const dataLine = lines.find((line) => line.startsWith("data:"));
+          if (!dataLine) continue;
+          const payload = JSON.parse(dataLine.slice(5).trim());
+          setJob((current) => current ? { ...current, status: String(payload.status || current.status), progressPct: Number(payload.progressPct ?? current.progressPct), phaseMessage: String(payload.statusMessage || current.phaseMessage), queuePosition: Number(payload.queuePosition || 0), queueReason: String(payload.queueReason || ""), lastError: String(payload.lastError || "") } : current);
+          const nextStatus = String(payload.status || "");
+          if (nextStatus) setLifecycle(lifecycleForStatus(nextStatus));
+          if (event === "completed" || event === "failed" || event === "cancelled" || isTerminal(nextStatus)) {
+            await loadJob(jobId);
+            sessionStorage.setItem(LAST_JOB_STORAGE_KEY, jobId);
+            sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+            return;
+          }
+        }
+      }
+      if (!controller.signal.aborted) {
+        const latest = await loadJob(jobId);
+        if (!isTerminal(latest.status)) reconnectTimerRef.current = setTimeout(() => void startStream(jobId), 2_500);
+      }
+    } catch (error: any) {
+      if (controller.signal.aborted) return;
+      setActionError(error?.message || "Connection to scan progress was interrupted.");
+      reconnectTimerRef.current = setTimeout(() => void startStream(jobId), 3_000);
+    }
+  }, [loadJob]);
+
+  useEffect(() => {
+    if (!user) return;
+    const loadRepos = async () => {
+      setRepoLoading(true); setRepoError("");
+      try { const response = await apiClient.get("/github/repos"); setRepos(Array.isArray(response.data) ? response.data : []); }
+      catch { setRepoError("Repository loading failed. Refresh or reconnect GitHub, then try again."); }
+      finally { setRepoLoading(false); }
+    };
+    void loadRepos();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    void loadQuota().catch(() => setQuota(null));
+  }, [loadQuota, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const activeJobId = sessionStorage.getItem(ACTIVE_JOB_STORAGE_KEY);
+    const lastJobId = sessionStorage.getItem(LAST_JOB_STORAGE_KEY);
+    const restore = async () => {
+      try {
+        const restored = activeJobId || lastJobId
+          ? await loadJob(activeJobId || lastJobId || "")
+          : applyJobPayload((await apiClient.get("/attack-paths/jobs/latest")).data);
+        sessionStorage.setItem(LAST_JOB_STORAGE_KEY, restored.jobId);
+        if (isTerminal(restored.status)) {
+          sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+          return;
+        }
+        sessionStorage.setItem(ACTIVE_JOB_STORAGE_KEY, restored.jobId);
+        void startStream(restored.jobId);
+      } catch (error: any) {
+        if (activeJobId) sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+        if (error?.response?.status !== 404) setActionError("Unable to restore the most recent scan result.");
+      }
+    };
+    void restore();
+  }, [loadJob, startStream, user]);
+
+  useEffect(() => {
+    if (!job?.repoFullName || repos.length === 0 || selectedRepo) return;
+    const matching = repos.find((repo) => repo.full_name === job.repoFullName);
+    if (matching) setSelectedRepo(matching);
+  }, [job?.repoFullName, repos, selectedRepo]);
+
+  useEffect(() => () => { streamRef.current?.abort(); if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current); }, []);
+
+  const queueScan = useCallback(async () => {
+    if (!selectedRepo || ["warming", "queued", "running"].includes(lifecycle)) return;
+    setActionError("");
+    setFindings([]); setTools([]); setAttackPathCandidates([]); setSelectedFindingId(null); setLifecycle("warming");
+    try {
+      const response = await apiClient.post("/attack-paths/jobs", {
+        repoId: String(selectedRepo.id), repoFullName: selectedRepo.full_name, scanTypes: ["supply_chain"], analysisDepth: 2, deviceId, idempotencyKey: crypto.randomUUID(),
+      });
+      const payload = { ...response.data, repoFullName: selectedRepo.full_name, phaseMessage: response.data.message || "Starting scan executor...", queueReason: response.data.queuePosition > 1 ? "Waiting for earlier repository scans." : "" };
+      const next = applyJobPayload(payload);
+      sessionStorage.setItem(ACTIVE_JOB_STORAGE_KEY, next.jobId);
+      sessionStorage.setItem(LAST_JOB_STORAGE_KEY, next.jobId);
+      void startStream(next.jobId);
+    } catch (error: any) {
+      setLifecycle("idle");
+      setActionError(error?.response?.data?.message || error?.message || "Unable to queue this scan.");
+      void loadQuota().catch(() => setQuota(null));
+    }
+  }, [applyJobPayload, deviceId, lifecycle, loadQuota, selectedRepo, startStream]);
+
+  const confirmCancel = useCallback(async () => {
+    if (!job) return;
+    try {
+      await apiClient.post(`/attack-paths/jobs/${job.jobId}/cancel`);
+      streamRef.current?.abort();
+      sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+      sessionStorage.setItem(LAST_JOB_STORAGE_KEY, job.jobId);
+      setCancelOpen(false);
+      await loadJob(job.jobId);
+    } catch (error: any) {
+      setCancelOpen(false);
+      setActionError(error?.response?.data?.message || "Unable to cancel this scan.");
+    }
+  }, [job, loadJob]);
+
+  const filteredFindings = useMemo(() => findings.filter((finding) => (severityFilter === "all" || finding.severity === severityFilter) && (sourceFilter === "all" || finding.source === sourceFilter)), [findings, severityFilter, sourceFilter]);
+  const sourceOptions = useMemo(() => Array.from(new Set(findings.map((finding) => finding.source).filter(Boolean))) as string[], [findings]);
+  const selectedFinding = findings.find((finding) => finding.id === selectedFindingId) || null;
+  const severityTotals = useMemo(() => ({ critical: findings.filter((finding) => finding.severity === "critical").length, medium: findings.filter((finding) => finding.severity === "medium").length, low: findings.filter((finding) => finding.severity === "low").length }), [findings]);
+  const coverageIsPartial = tools.some((tool) => tool.status !== "ran");
+  const activeScan = ["warming", "queued", "running"].includes(lifecycle);
+  const allowanceExhausted = quota?.remaining === 0;
+
+  const copyFinding = async (finding: Vulnerability) => {
+    await navigator.clipboard.writeText([`Title: ${finding.title}`, `Severity: ${finding.severity.toUpperCase()}`, `Source: ${sourceLabel(finding.source)}`, finding.file ? `Location: ${finding.file}` : null, `Evidence: ${finding.detail}`, `Suggested fix: ${remediationFor(finding)}`].filter(Boolean).join("\n"));
+    setCopiedFinding(finding.id); setTimeout(() => setCopiedFinding(null), 1_500);
+  };
+  const copyReport = async () => {
+    await navigator.clipboard.writeText([`Repository: ${selectedRepo?.full_name || job?.repoFullName || "Repository"}`, `Findings: ${findings.length}`, "", ...findings.map((finding, index) => `${index + 1}. ${finding.title}\n${remediationFor(finding)}`)].join("\n"));
+    setCopiedReport(true); setTimeout(() => setCopiedReport(false), 1_500);
   };
 
   return (
-    <PageLayout title="Attack Paths" subtitle="Simulate zero-day vulnerabilities and monitor lateral movement." fullWidth={true} noPadding={true}>
-      <div className={`relative min-h-[800px] w-full flex flex-col bg-white text-black overflow-hidden transition-all duration-500 ${glitch ? 'filter invert brightness-150' : ''}`}>
-        {/* Holographic Scanline Overlay */}
-        <div className="absolute inset-0 pointer-events-none z-[60] opacity-[0.03]" style={{
-          backgroundImage: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))',
-          backgroundSize: '100% 2px, 3px 100%'
-        }} />
+    <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#F4F8F9] px-4 py-5 text-[#17262D] sm:px-6 sm:py-8">
+      <div className="mx-auto w-full max-w-6xl">
+        <header className="flex flex-col gap-5 border-b border-[#D4E0E3] pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-2xl"><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Security evidence workspace</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.03em] text-[#17262D] sm:text-4xl">Attack Paths</h1><p className="mt-3 text-sm leading-relaxed text-[#53656D]">Queue a deep scan for a connected repository. ServX keeps the job state while the isolated executor collects evidence.</p></div>
+          <LifecycleBadge lifecycle={lifecycle} />
+        </header>
 
-      <main className="flex-1 relative flex flex-col items-center justify-center">
-        {/* Scan Line Animation */}
-        <AnimatePresence>
-          {selectedRepo && scanPhase !== "idle" && scanPhase !== "reporting" && (
-            <ScanLineAnimation repoName={selectedRepo.name} phase={scanPhase} />
-          )}
-        </AnimatePresence>
+        <section aria-labelledby="command-title" className="grid gap-4 border-b border-[#D4E0E3] py-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_190px]">
+            <div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Owned repository</p><h2 id="command-title" className="mt-1 text-base font-bold text-[#17262D]">Choose what ServX may inspect</h2><div className="mt-3"><RepoSelect repos={repos} selectedRepo={selectedRepo} disabled={activeScan} onSelect={setSelectedRepo} /></div>{repoLoading && <p className="mt-2 text-xs text-[#53656D]">Loading connected repositories.</p>}{repoError && <p className="mt-2 text-xs text-[#B12926]">{repoError}</p>}</div>
+            <div className="border-l-2 border-[#D4E0E3] pl-4"><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Allowance</p><p className="mt-2 text-2xl font-bold tracking-[-0.03em] text-[#17262D]">{quotaLoading ? "…" : quota?.remaining ?? "—"}<span className="ml-1 text-xs font-medium text-[#53656D]">remaining</span></p><p className="mt-1 text-xs text-[#53656D]">{quota ? `${quota.used} of ${quota.limit} scans used in the last 24 hours` : "Checking server allowance"}</p></div>
+          </div>
+          <div className="lg:text-right"><button type="button" onClick={() => void queueScan()} disabled={!selectedRepo || activeScan || allowanceExhausted} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#008E9A] px-5 text-sm font-semibold text-white outline-none transition hover:bg-[#007A84] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#839198] sm:w-auto"><Scan className="h-4 w-4" />{activeScan ? "Scan active" : allowanceExhausted ? "Daily limit reached" : "Queue scan"}</button><p className="mt-2 max-w-64 text-left text-[11px] leading-relaxed text-[#53656D] lg:ml-auto">{allowanceExhausted ? "The allowance will refresh as the oldest scan passes 24 hours." : "Connected repositories only. Manual live URL scanning is off."}</p></div>
+        </section>
 
-        {/* 3D Viewport */}
-        <div className="absolute inset-0 z-0">
-          <Canvas shadows>
-            <PerspectiveCamera makeDefault position={[0, 0, 10]} />
-            <ambientLight intensity={0.4} />
-            <pointLight position={[10, 10, 10]} intensity={2} color="#00C2CB" />
-            <pointLight position={[-10, -10, -10]} intensity={1} color="#6C63FF" />
-            
-            <Stars radius={100} depth={50} count={7000} factor={4} saturation={1} fade speed={1.5} />
+        {actionError && <div role="alert" className="mt-5 flex items-start gap-3 border-l-2 border-[#B12926] bg-[#FFF4F3] px-4 py-3 text-sm text-[#B12926]"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{actionError}</span><button type="button" onClick={() => setActionError("")} className="ml-auto rounded p-1 outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><X className="h-4 w-4" /></button></div>}
 
-            <Suspense fallback={null}>
-              <SolarSystemBackground />
-              <group rotation={[0.2, 0, 0]}>
-                <TopologyNode position={[-4, 0, 0]} label={nodeLabels[0]} isTargeted={false} isRepoNode={!!selectedRepo} />
-                <TopologyNode position={[0, 2.5, 0]} label={nodeLabels[1]} isTargeted={isAttackActive} isRepoNode={!!selectedRepo} />
-                <TopologyNode position={[4, 0, 0]} label={nodeLabels[2]} isTargeted={false} isRepoNode={!!selectedRepo} />
-                <TopologyNode position={[0, -2.5, 0]} label={nodeLabels[3]} isTargeted={false} isRepoNode={!!selectedRepo} />
+        {job && lifecycle !== "idle" && <EvidenceRail job={job} lifecycle={lifecycle} onCancel={() => setCancelOpen(true)} />}
 
-                {/* Attack Animation */}
-                <AttackParticles start={[-4, 0, 0]} end={[0, 2, 0]} active={isAttackActive} />
-
-                {/* Holographic Flow Paths */}
-                <Line
-                  points={[[-4, 0, 0], [0, 2, 0]]}
-                  color={isAttackActive ? "#6C63FF" : "#00C2CB"}
-                  lineWidth={1.5}
-                  transparent
-                  opacity={0.5}
-                />
-                <Line
-                  points={[[-4, 0, 0], [0, -2, 0]]}
-                  color="#00C2CB"
-                  lineWidth={1.5}
-                  transparent
-                  opacity={0.5}
-                />
-                <Line
-                  points={[[0, 2, 0], [4, 0, 0]]}
-                  color="#00C2CB"
-                  lineWidth={1.5}
-                  transparent
-                  opacity={0.5}
-                />
-                <Line
-                  points={[[0, -2, 0], [4, 0, 0]]}
-                  color="#00C2CB"
-                  lineWidth={1.5}
-                  transparent
-                  opacity={0.5}
-                />
-              </group>
-            </Suspense>
-
-            <OrbitControls enableZoom={false} autoRotate autoRotateSpeed={0.5} />
-          </Canvas>
-        </div>
-
-        {/* UI Overlay */}
-        <div className="relative z-10 w-full h-full p-8 flex flex-col justify-between pointer-events-none">
-          {/* Top Header */}
-          <div className="flex justify-between items-start">
-            <div className="flex flex-col gap-3">
-              <motion.div
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                className="bg-white/80 backdrop-blur-xl border border-gray-200 p-6 rounded-2xl shadow-sm pointer-events-auto"
-              >
-                <h2 className="text-xs font-black text-blue-500 uppercase tracking-[0.3em] mb-1">War Room Context</h2>
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className={`w-5 h-5 ${isAttackActive ? 'text-purple-500 animate-pulse' : 'text-blue-500'}`} />
-                  <span className="text-xl font-bold tracking-tight text-black">Active Infrastructure Map</span>
-                </div>
-              </motion.div>
-
-              {/* Repository Selector */}
-              <motion.div
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-              >
-                <RepoSelector
-                  repos={repos}
-                  selectedRepo={selectedRepo}
-                  onSelect={(r) => { setSelectedRepo(r); resetScan(); }}
-                  isOpen={repoDropdownOpen}
-                  setIsOpen={setRepoDropdownOpen}
-                  scanPhase={scanPhase}
-                />
-              </motion.div>
-            </div>
-
-            <motion.div
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              className="bg-white/80 backdrop-blur-xl border border-gray-200 p-6 rounded-2xl shadow-sm pointer-events-auto"
-            >
-              <div className="flex items-center gap-4">
-                <DefenseRadar selectedRepo={selectedRepo} scanPhase={scanPhase} />
-                <div className="h-10 w-px bg-gray-200" />
-                <div className="text-right">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest">Network Load</p>
-                  <p className="text-lg font-mono font-bold text-blue-500">{isAttackActive ? '94.2%' : '12.4%'}</p>
-                </div>
-                <div className="h-10 w-px bg-gray-200" />
-                <div className="text-right">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest">Active Threats</p>
-                  <p className={`text-lg font-mono font-bold ${isAttackActive ? 'text-purple-500' : 'text-blue-500'}`}>
-                    {isAttackActive ? '01' : '00'}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
+        <section aria-labelledby="results-title" className="py-7 sm:py-9">
+          <div className="flex flex-col gap-4 border-b border-[#D4E0E3] pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Results desk</p><h2 id="results-title" className="mt-1 text-2xl font-bold tracking-[-0.025em] text-[#17262D]">{lifecycle === "completed" ? "Review the evidence" : "Findings"}</h2><p className="mt-2 text-sm text-[#53656D]">{findings.length ? `${findings.length} findings across the completed repository evidence.` : lifecycle === "completed" ? "No findings were returned by the completed scan. This does not prove the repository is secure." : "Results appear here after a repository scan completes."}</p></div>
+            {findings.length > 0 && <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void copyReport()} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2">{copiedReport ? <ClipboardCopy className="h-3.5 w-3.5 text-[#16754B]" /> : <Copy className="h-3.5 w-3.5" />}{copiedReport ? "Copied" : "Copy report"}</button><button type="button" onClick={() => navigate(`/automedic?${new URLSearchParams({ source: "attack-path", repo: selectedRepo?.full_name || job?.repoFullName || "", vulns: JSON.stringify(findings.map((finding) => ({ severity: finding.severity, title: finding.title, file: finding.file }))) }).toString()}`)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2"><Zap className="h-3.5 w-3.5" />Open Auto-Medic<ArrowRight className="h-3.5 w-3.5" /></button></div>}
           </div>
 
-          {/* Bottom Controls (Bento Style) */}
-          <div className="grid grid-cols-4 gap-6">
-            {/* Chaos Control */}
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="col-span-1 bg-white/80 backdrop-blur-xl border border-gray-200 p-6 rounded-2xl shadow-sm pointer-events-auto"
-            >
-              <h3 className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mb-4">Chaos Simulation</h3>
-              <div className="space-y-4">
-                <ChaosToggle
-                  label="Simulate DDoS"
-                  active={activeAttackType === "ddos" && scanPhase !== "idle"}
-                  onClick={() => handleChaosToggle("ddos")}
-                  disabled={scanPhase !== "idle"}
-                />
-                <ChaosToggle
-                  label="Inject Payload"
-                  active={activeAttackType === "injection" && scanPhase !== "idle"}
-                  onClick={() => handleChaosToggle("injection")}
-                  disabled={scanPhase !== "idle"}
-                />
-                {scanPhase !== "idle" && (
-                  <motion.button
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    onClick={resetScan}
-                    className="w-full mt-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    <X className="w-3 h-3" /> Reset
-                  </motion.button>
-                )}
-              </div>
+          {findings.length > 0 && <div className="grid grid-cols-3 divide-x divide-[#D4E0E3] border-b border-[#D4E0E3] py-4"><div className="pr-3"><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Critical</p><p className="mt-1 text-2xl font-bold text-[#B12926]">{severityTotals.critical}</p></div><div className="px-3"><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Medium</p><p className="mt-1 text-2xl font-bold text-[#A05B00]">{severityTotals.medium}</p></div><div className="pl-3"><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Low</p><p className="mt-1 text-2xl font-bold text-[#286778]">{severityTotals.low}</p></div></div>}
 
-              {/* Scan Phase Indicator */}
-              {scanPhase !== "idle" && (
-                <div className="mt-4 pt-3 border-t border-gray-200">
-                  <div className="flex items-center gap-2">
-                    {scanPhase === "reporting" ? (
-                      <Scan className="w-3 h-3 text-[#6C63FF]" />
-                    ) : (
-                      <Loader2 className="w-3 h-3 text-[#00C2CB] animate-spin" />
-                    )}
-                    <span className="text-[9px] font-mono text-gray-500 uppercase tracking-wider">
-                      {scanPhase === "scanning" && "Scanning target..."}
-                      {scanPhase === "attacking" && "Attack in progress..."}
-                      {scanPhase === "reporting" && `${vulnerabilities.length} vulns found`}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </motion.div>
+          {findings.length > 0 && <div className="mt-5 grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold text-[#53656D]">Severity<select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as typeof severityFilter)} className="mt-1 min-h-11 w-full rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-sm text-[#17262D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><option value="all">All severities</option><option value="critical">Critical</option><option value="medium">Medium</option><option value="low">Low</option></select></label><label className="text-xs font-semibold text-[#53656D]">Evidence source<select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-sm text-[#17262D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><option value="all">All sources</option>{sourceOptions.map((source) => <option key={source} value={source}>{sourceLabel(source)}</option>)}</select></label></div>}
 
-            {/* Scan Log (center column) */}
-            <div className="col-span-2 flex items-end">
-              <AnimatePresence>
-                {scanLog.length > 0 && (
-                  <motion.div
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 20, opacity: 0 }}
-                    className="w-full bg-[#0B0E14]/90 backdrop-blur-xl border border-[#00C2CB]/20 rounded-xl p-4 pointer-events-auto max-h-32 overflow-auto"
-                  >
-                    {scanLog.map((line, i) => (
-                      <motion.p
-                        key={i}
-                        initial={{ x: -5, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        className="text-[10px] font-mono text-[#00C2CB]/80 leading-relaxed"
-                      >
-                        {line}
-                      </motion.p>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+          {findings.length > 0 ? <div className="mt-5 overflow-hidden border-y border-[#D4E0E3]"><div className="hidden grid-cols-[100px_minmax(0,1fr)_160px_180px_28px] gap-4 bg-[#EDF4F5] px-4 py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[#53656D] md:grid"><span>Severity</span><span>Finding</span><span>Source</span><span>Location</span><span /></div>{filteredFindings.map((finding) => <div key={finding.id} className="border-t border-[#D4E0E3] first:border-t-0"><button type="button" onClick={() => setSelectedFindingId((current) => current === finding.id ? null : finding.id)} className="grid w-full gap-2 px-4 py-4 text-left outline-none transition hover:bg-[#EDF4F5] focus-visible:bg-[#EDF4F5] md:grid-cols-[100px_minmax(0,1fr)_160px_180px_28px] md:gap-4"><span className={`w-fit rounded-full border px-2 py-1 font-mono text-[10px] font-semibold uppercase ${severityClass(finding.severity)}`}>{finding.severity}</span><span className="min-w-0"><span className="block text-sm font-semibold text-[#17262D]">{finding.title}</span><span className="mt-1 block text-xs text-[#53656D] md:hidden">{sourceLabel(finding.source)}{finding.file ? ` · ${finding.file}` : ""}</span></span><span className="hidden truncate font-mono text-[10px] text-[#53656D] md:block">{sourceLabel(finding.source)}</span><span className="hidden truncate font-mono text-[10px] text-[#53656D] md:block">{finding.file || "Repository"}</span><ChevronRight className={`h-4 w-4 text-[#53656D] transition ${selectedFindingId === finding.id ? "rotate-90" : ""}`} /></button>{selectedFindingId === finding.id && <div className="border-t border-[#D4E0E3] bg-[#EDF4F5] px-4 py-4"><div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_230px]"><div><p className="text-sm leading-relaxed text-[#53656D]">{finding.detail}</p><p className="mt-4 border-l-2 border-[#008E9A] pl-3 text-sm leading-relaxed text-[#17262D]"><span className="font-semibold">Suggested fix. </span>{remediationFor(finding)}</p></div><div className="flex items-start justify-between gap-4 border-t border-[#D4E0E3] pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0"><div><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Evidence location</p><p className="mt-2 break-all font-mono text-xs text-[#17262D]">{finding.file || "Repository-wide evidence"}</p></div><button type="button" onClick={() => void copyFinding(finding)} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A]">{copiedFinding === finding.id ? <ClipboardCopy className="h-3.5 w-3.5 text-[#16754B]" /> : <Copy className="h-3.5 w-3.5" />}{copiedFinding === finding.id ? "Copied" : "Copy"}</button></div></div></div>}</div>)}</div> : <div className="mt-5 border-y border-dashed border-[#D4E0E3] py-12 text-center"><Shield className="mx-auto h-8 w-8 text-[#839198]" /><p className="mt-3 text-sm font-semibold text-[#17262D]">{lifecycle === "completed" ? "No findings returned" : "No scan evidence yet"}</p><p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-[#53656D]">{lifecycle === "completed" ? "Review scanner coverage below before treating this as a clean result." : "Select an owned repository and queue one deep scan to begin collecting evidence."}</p></div>}
+        </section>
 
-            {/* Master Override */}
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="col-span-1 bg-white/80 backdrop-blur-xl border border-gray-200 p-6 rounded-2xl shadow-sm pointer-events-auto flex flex-col items-center justify-center gap-4"
-            >
-              <h3 className="text-[10px] text-purple-500 font-bold uppercase tracking-widest">Security Protocol</h3>
-              <MasterOverride onClick={toggleLockdown} active={isLockdown} />
-            </motion.div>
-          </div>
+        <PotentialAttackPaths candidates={attackPathCandidates} completed={lifecycle === "completed"} />
 
-          {/* Device UUID watermark */}
-          <div className="absolute bottom-2 left-2 pointer-events-none">
-            <p className="text-[8px] font-mono text-gray-300 tracking-wider">DEVICE {deviceUUID.slice(0, 12)}...</p>
-          </div>
-        </div>
+        <CoverageList tools={tools} />
 
-        {/* Vulnerability Report Overlay */}
-        <AnimatePresence>
-          {showReport && selectedRepo && (
-            <VulnerabilityReport
-              vulns={vulnerabilities}
-              repoName={selectedRepo.full_name}
-              onClose={() => setShowReport(false)}
-              onAutoMedic={handleAutoMedic}
-            />
-          )}
-        </AnimatePresence>
+        {job?.scanMetrics && lifecycle === "completed" && <section className="border-b border-[#D4E0E3] py-5"><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Run record</p><div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-xs text-[#53656D]"><span>Queue wait: {formatDuration(job.scanMetrics.queueWaitMs) || "not recorded"}</span><span>Scanner time: {formatDuration(job.scanMetrics.durationMs) || "not recorded"}</span><span>Attempts: {String(job.scanMetrics.attemptCount || 1)}</span>{coverageIsPartial && <span className="font-semibold text-[#A05B00]">Partial scanner coverage</span>}</div></section>}
 
-        {/* Lockdown Overlay */}
-        <AnimatePresence>
-          {isLockdown && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 z-50 flex items-center justify-center bg-purple-500/5 backdrop-blur-md pointer-events-none overflow-hidden"
-            >
-              {/* Hexagonal Grid Overlay */}
-              <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ 
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill-rule='evenodd' stroke='%236C63FF' fill='none'/%3E%3C/svg%3E")`,
-                backgroundSize: '60px 60px'
-              }} />
-
-              <motion.div 
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="relative"
-              >
-                <div className="absolute inset-0 bg-purple-500 blur-[120px] opacity-20 animate-pulse" />
-                <div className="border border-purple-200 p-16 relative flex flex-col items-center gap-8 bg-white/90 backdrop-blur-3xl shadow-2xl rounded-2xl">
-                  {/* Corners */}
-                  <div className="absolute -top-1 -left-1 w-10 h-10 border-t-2 border-l-2 border-purple-500" />
-                  <div className="absolute -top-1 -right-1 w-10 h-10 border-t-2 border-r-2 border-purple-500" />
-                  <div className="absolute -bottom-1 -left-1 w-10 h-10 border-b-2 border-l-2 border-purple-500" />
-                  <div className="absolute -bottom-1 -right-1 w-10 h-10 border-b-2 border-r-2 border-purple-500" />
-                  
-                  <div className="relative">
-                    <Shield className="w-24 h-24 text-purple-600 animate-pulse" />
-                    <motion.div 
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                      className="absolute inset-0 border-2 border-dashed border-purple-300 rounded-full scale-150"
-                    />
-                  </div>
-
-                  <div className="text-center">
-                    <h1 className="text-7xl font-black text-black tracking-[0.3em] mb-4">LOCKDOWN</h1>
-                    <div className="h-px w-full bg-gradient-to-r from-transparent via-purple-500 to-transparent mb-4" />
-                    <p className="text-purple-600 text-sm font-mono tracking-[0.5em] animate-pulse">ENCRYPTING ALL NETWORK NODES // LEVEL 4 PROTOCOL</p>
-                  </div>
-
-                  <div className="flex gap-8 text-[10px] font-mono text-gray-500">
-                    <div className="flex flex-col items-center">
-                      <span>NODES ISOLATED</span>
-                      <span className="text-black font-bold">14/14</span>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <span>DATA SHIELD</span>
-                      <span className="text-purple-600 font-bold">MAXIMUM</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
+        <footer className="flex flex-col gap-3 py-6 text-xs text-[#53656D] sm:flex-row sm:items-center sm:justify-between"><span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#008E9A]" />The browser never connects to the scanner directly.</span>{selectedRepo && <span className="flex items-center gap-2 font-mono"><ExternalLink className="h-3.5 w-3.5" />{selectedRepo.full_name}</span>}</footer>
       </div>
-    </PageLayout>
-  );
-};
 
-const ChaosToggle = ({ label, active, onClick, disabled }: { label: string; active: boolean; onClick: () => void; disabled?: boolean }) => {
-  return (
-    <div className={`flex items-center justify-between group pointer-events-auto ${disabled && !active ? 'opacity-50' : ''}`}>
-      <span className={`text-xs font-bold tracking-wider transition-colors duration-300 ${active ? 'text-black' : 'text-gray-500'}`}>
-        {label}
-      </span>
-      <div
-        onClick={disabled && !active ? undefined : onClick}
-        className={`relative w-14 h-7 ${disabled && !active ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-      >
-        {/* Track */}
-        <div className={`absolute inset-0 rounded-full border transition-all duration-500 ${active ? 'bg-purple-100 border-purple-500' : 'bg-gray-100 border-gray-300'}`} />
-        
-        {/* Handle */}
-        <motion.div 
-          animate={{ 
-            x: active ? 28 : 0,
-            backgroundColor: active ? "#8b5cf6" : "#9ca3af"
-          }}
-          transition={{ 
-            type: "spring", 
-            stiffness: 400, 
-            damping: 25,
-            mass: 0.8
-          }}
-          className="absolute top-1 left-1 w-5 h-5 rounded-full shadow-sm flex items-center justify-center"
-        >
-          <div className={`w-1 h-1 rounded-full ${active ? 'bg-white' : 'bg-gray-200'}`} />
-        </motion.div>
-
-        {/* Ripple Effect */}
-        <AnimatePresence>
-          {active && (
-            <motion.div 
-              initial={{ scale: 0.5, opacity: 1 }}
-              animate={{ scale: 8, opacity: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="absolute inset-0 rounded-full border-2 border-blue-500 pointer-events-none"
-            />
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-};
-
-const MasterOverride = ({ onClick, active }: { onClick: () => void; active: boolean }) => {
-  const [coverOpen, setCoverOpen] = useState(false);
-
-  return (
-    <div className="relative group flex flex-col items-center gap-6">
-      <div 
-        className="relative w-40 h-40 flex items-center justify-center cursor-pointer perspective-1000"
-        onMouseEnter={() => setCoverOpen(true)}
-        onMouseLeave={() => setCoverOpen(false)}
-        onClick={() => coverOpen && onClick()}
-      >
-        {/* Glow Background */}
-        <div className={`absolute inset-0 rounded-full blur-3xl opacity-20 transition-all duration-1000 ${active ? 'bg-purple-500 opacity-40' : 'bg-blue-500'}`} />
-
-        {/* Under Button */}
-        <div className={`relative z-0 w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 shadow-xl ${active ? 'bg-purple-500 shadow-purple-200' : 'bg-white border-2 border-purple-200'}`}>
-          <motion.div
-            animate={{ scale: active ? [1, 1.2, 1] : 1 }}
-            transition={{ repeat: Infinity, duration: 2 }}
-          >
-            {active ? <Shield className="w-12 h-12 text-white" /> : <Lock className="w-12 h-12 text-purple-300" />}
-          </motion.div>
-        </div>
-
-        {/* Glass Cover */}
-        <motion.div 
-          animate={{ rotateX: coverOpen ? -130 : 0, y: coverOpen ? -20 : 0 }}
-          transition={{ type: "spring", stiffness: 150, damping: 15 }}
-          style={{ transformOrigin: "top", transformStyle: "preserve-3d" }}
-          className="absolute inset-x-0 top-0 h-40 bg-white/50 backdrop-blur-md border border-gray-200 rounded-2xl flex flex-col items-center justify-center pointer-events-none z-10 shadow-lg"
-        >
-          <div className="w-12 h-1 bg-gray-300 rounded-full mb-4" />
-          <p className="text-[10px] font-black italic text-gray-500 uppercase tracking-[0.4em] mb-2">Level 4 Clearance</p>
-          <div className="flex gap-1">
-             {[1,2,3].map(i => <div key={i} className="w-1 h-1 bg-purple-500 rounded-full animate-pulse" />)}
-          </div>
-        </motion.div>
-      </div>
-      <div className="text-center">
-        <p className={`text-[10px] font-mono tracking-widest transition-colors ${coverOpen ? 'text-purple-600' : 'text-gray-400'}`}>
-          {coverOpen ? "ENGAGE MASTER OVERRIDE" : "RESTRICTED ACCESS"}
-        </p>
-      </div>
-    </div>
+      {cancelOpen && <div role="dialog" aria-modal="true" aria-labelledby="cancel-scan-title" className="fixed inset-0 z-50 grid place-items-center bg-[#17262D]/35 p-4"><div className="w-full max-w-md rounded-xl border border-[#D4E0E3] bg-[#FCFEFE] p-5 shadow-[0_12px_32px_rgb(23_38_45_/_0.18)]"><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Cancel scan</p><h2 id="cancel-scan-title" className="mt-1 text-lg font-bold text-[#17262D]">Stop this repository scan?</h2></div><button type="button" onClick={() => setCancelOpen(false)} aria-label="Close cancellation dialog" className="rounded p-1 text-[#53656D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><X className="h-5 w-5" /></button></div><p className="mt-4 text-sm leading-relaxed text-[#53656D]">ServX will stop the queued or active scan and remove the worker’s temporary files. Existing completed findings are not changed.</p><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setCancelOpen(false)} className="min-h-11 rounded-lg border border-[#D4E0E3] px-4 text-sm font-semibold text-[#53656D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]">Keep scanning</button><button type="button" onClick={() => void confirmCancel()} className="min-h-11 rounded-lg bg-[#B12926] px-4 text-sm font-semibold text-white outline-none hover:bg-[#92211F] focus-visible:ring-2 focus-visible:ring-[#B12926] focus-visible:ring-offset-2">Cancel scan</button></div></div></div>}
+    </main>
   );
 };
 

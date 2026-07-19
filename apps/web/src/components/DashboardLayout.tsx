@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
+import AttackPathsWarmup from "@/features/attack-paths/AttackPathsWarmup";
 
 /**
  * Shared layout for all dashboard pages. Keeps the Sidebar mounted
@@ -11,6 +12,7 @@ import Sidebar from "@/components/Sidebar";
 const DashboardLayout = () => {
   return (
     <div className="box-border flex h-[100dvh] w-full overflow-hidden bg-black p-2 sm:p-3">
+      <AttackPathsWarmup />
       <div className="flex h-full min-h-0 w-full min-w-0 overflow-hidden rounded-[2rem] bg-zinc-950 transition-all duration-300">
         <Sidebar />
         {/* Dark gutter: lets the white panel’s rounded corners read against the frame */}

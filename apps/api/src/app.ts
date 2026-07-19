@@ -24,6 +24,8 @@ import verifyRouter from './domains/verify/router';
 import devicesRouter from './domains/devices/router';
 import { defconMiddleware } from './domains/operations/defconMiddleware';
 import { streamController } from './controllers/streamController';
+import attackPathsRouter from './domains/attack-paths/router';
+import attackPathsInternalRouter from './domains/attack-paths/internal/router';
 
 export function createApp(): Express {
   const app = express();
@@ -65,7 +67,12 @@ export function createApp(): Express {
     })
   );
 
-  app.use(express.json());
+  app.use(express.json({
+    limit: '1mb',
+    verify: (req, _res, buffer) => {
+      (req as Request & { rawBody?: string }).rawBody = buffer.toString('utf8');
+    },
+  }));
 
   app.use((req, _res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
@@ -131,9 +138,11 @@ export function registerApiRoutes(app: Express): void {
   app.use('/api/repositories', repositoriesRouter);
   app.use('/api/verify', verifyRouter);
   app.use('/api/devices', devicesRouter);
-  
   // TDD SSE Endpoints
   app.get('/api/v1/medic/stream', streamController);
+
+  app.use('/api/attack-paths', attackPathsRouter);
+  app.use('/api/internal/attack-paths', attackPathsInternalRouter);
 }
 
 
