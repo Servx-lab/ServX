@@ -188,7 +188,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     } else if (syncError.response?.status === 403 && syncError.response?.data?.error === 'device_setup_required') {
                         setIsDeviceSetupRequired(true);
                     } else {
-                        throw syncError;
+                        console.error('[Auth] Sync user failed:', syncError);
                     }
                 }
                 lastSyncedUid.current = session.user.id;
