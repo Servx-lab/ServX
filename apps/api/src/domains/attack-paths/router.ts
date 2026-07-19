@@ -2,8 +2,12 @@ import { Router } from 'express';
 import requireAuth from '../../core/middleware/requireAuth';
 import {
   createAttackPathsJob,
+  cancelAttackPathsJob,
   streamAttackPathsJobProgress,
   getAttackPathsJobResult,
+  getLatestAttackPathsJobResult,
+  getAttackPathsQuota,
+  warmAttackPaths,
 } from './controllers/attackPathsController';
 import requireAttackJobAccess from './middleware/requireAttackJobAccess';
 
@@ -14,6 +18,9 @@ const router = Router();
  * POST /api/attack-paths/jobs
  */
 router.post('/jobs', requireAuth, createAttackPathsJob);
+router.post('/warmup', requireAuth, warmAttackPaths);
+router.get('/quota', requireAuth, getAttackPathsQuota);
+router.get('/jobs/latest', requireAuth, getLatestAttackPathsJobResult);
 
 /**
  * Stream job progress via SSE.
@@ -24,6 +31,13 @@ router.get(
   requireAuth,
   requireAttackJobAccess,
   streamAttackPathsJobProgress
+);
+
+router.post(
+  '/jobs/:jobId/cancel',
+  requireAuth,
+  requireAttackJobAccess,
+  cancelAttackPathsJob
 );
 
 /**

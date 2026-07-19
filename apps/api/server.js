@@ -31,6 +31,13 @@ async function startServer() {
     await connectDB();
     await connectRedis();
 
+    try {
+      const { startAttackPathsRecovery } = require('./src/workers/attackPathsRecovery');
+      startAttackPathsRecovery();
+    } catch (err) {
+      console.error('❌ Failed to boot Attack Paths recovery worker:', err.message);
+    }
+
     const host = '0.0.0.0';
     console.log(`📡 Attempting to listen on ${host}:${PORT}...`);
     
