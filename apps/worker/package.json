@@ -4,12 +4,25 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/index.ts"
+    "dev": "tsx --watch src/index.ts"
   },
   "dependencies": {
     "@servx/config": "*",
     "@servx/errors": "*",
     "@servx/crypto": "*",
-    "@supabase/supabase-js": "^2.103.0"
+    "@supabase/supabase-js": "^2.103.0",
+    "dotenv": "^16.4.5",
+    "mongoose": "^9.2.4"
+  },
+  "optionalDependencies": {
+    "nuclei": "^3.3.0",
+    "gitleaks": "^8.18.0",
+    "trivy": "^0.48.0",
+    "semgrep": "^1.55.0",
+    "syft": "^1.0.0",
+    "cloudsploit": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4"
   }
 }

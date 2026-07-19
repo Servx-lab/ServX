@@ -152,7 +152,7 @@ const buildEdgeCase = (item: { name: string; pattern: string; fix: string }): Ex
 
 export const generateExpertCache = async () => {
     console.log('🏭 Starting Massive Cache Generation...');
-    if (ENCRYPTION_KEY_RAW) {
+    if (ENCRYPTION_KEY_RAW()) {
         console.log('🔒 Encryption key detected.');
     }
 
