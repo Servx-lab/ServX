@@ -17,7 +17,7 @@ const navItems = [
   { id: 'showcase-globalops', icon: Globe, label: 'Global Ops', offset: 55 },
   { id: 'showcase-vscode', icon: Code2, label: 'VSCode Sync', offset: 255 },
   { id: 'showcase-github', icon: Github, label: 'GitHub Analytics', offset: 230 },
-  { id: 'showcase-attackpath', icon: Shield, label: 'Attack Path', offset: -100 },
+  { id: 'showcase-attackpath', icon: Shield, label: 'Attack Path', offset: 235 },
 ];
 
 // Set this to true in the future if you add new pages and need to tweak offsets again!
