@@ -1034,16 +1034,28 @@ const AttackPath = () => {
     const lastJobId = sessionStorage.getItem(LAST_JOB_STORAGE_KEY);
     const restore = async () => {
       try {
-        const restored = activeJobId || lastJobId
-          ? await loadJob(activeJobId || lastJobId || "")
-          : applyJobPayload((await apiClient.get("/attack-paths/jobs/latest")).data);
-        sessionStorage.setItem(LAST_JOB_STORAGE_KEY, restored.jobId);
-        if (isTerminal(restored.status)) {
-          sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
-          return;
+        if (activeJobId || lastJobId) {
+          const restored = await loadJob(activeJobId || lastJobId || "");
+          sessionStorage.setItem(LAST_JOB_STORAGE_KEY, restored.jobId);
+          if (isTerminal(restored.status)) {
+            sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+            return;
+          }
+          sessionStorage.setItem(ACTIVE_JOB_STORAGE_KEY, restored.jobId);
+          void startStream(restored.jobId);
+        } else {
+          const response = await apiClient.get("/attack-paths/jobs/latest");
+          if (response.data && response.data.found !== false && response.data.jobId) {
+            const restored = applyJobPayload(response.data);
+            sessionStorage.setItem(LAST_JOB_STORAGE_KEY, restored.jobId);
+            if (isTerminal(restored.status)) {
+              sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+              return;
+            }
+            sessionStorage.setItem(ACTIVE_JOB_STORAGE_KEY, restored.jobId);
+            void startStream(restored.jobId);
+          }
         }
-        sessionStorage.setItem(ACTIVE_JOB_STORAGE_KEY, restored.jobId);
-        void startStream(restored.jobId);
       } catch (error: any) {
         if (activeJobId) sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
         if (error?.response?.status !== 404) setActionError("Unable to restore the most recent scan result.");
@@ -1066,6 +1078,15 @@ const AttackPath = () => {
     streamRef.current?.abort();
     try {
       const response = await apiClient.get(`/attack-paths/jobs/latest?repoFullName=${encodeURIComponent(repoFullName)}`);
+      if (response.data && (response.data.found === false || !response.data.jobId)) {
+        setJob(null);
+        setFindings([]);
+        setTools([]);
+        setAttackPathCandidates([]);
+        setLifecycle("idle");
+        sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+        return;
+      }
       const restored = applyJobPayload(response.data);
       sessionStorage.setItem(LAST_JOB_STORAGE_KEY, restored.jobId);
       if (isTerminal(restored.status)) {

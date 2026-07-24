@@ -334,7 +334,7 @@ export async function getLatestAttackPathsJobResult(req: Request, res: Response)
 
   const job = await getLatestAttackPathsJobForUser(req.user.id, repoFullName);
   if (!job) {
-    res.status(404).json({ error: 'NotFound', message: 'No Attack Paths scans found.' });
+    res.status(200).json({ found: false, message: 'No Attack Paths scans found.' });
     return;
   }
   const [queuePosition, quota] = await Promise.all([

@@ -223,7 +223,8 @@ export async function getAttackPathsJobById(jobId: string): Promise<AttackPathsJ
 export async function getLatestAttackPathsJobForUser(requestedBy: string, repoFullName?: string): Promise<AttackPathsJobDoc | null> {
   const query: Record<string, unknown> = { requestedBy };
   if (repoFullName) {
-    query.repoFullName = repoFullName;
+    const escaped = repoFullName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    query.repoFullName = { $regex: new RegExp(`^${escaped}$`, 'i') };
   }
   const doc = await AttackPathsJobModel.findOne(query)
     .sort({ createdAt: -1 })
