@@ -14,6 +14,7 @@ import {
   Github,
   Loader2,
   Scan,
+  Search,
   Server,
   Shield,
   ShieldCheck,
@@ -75,6 +76,10 @@ interface ScanJob {
   quotaRemaining?: number;
   toolStatuses: ToolStatus[];
   scanMetrics?: Record<string, unknown>;
+  createdAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  updatedAt?: string | null;
 }
 
 interface ScanAllowance {
@@ -208,6 +213,49 @@ function formatDuration(value: unknown): string | null {
   return minutes > 0 ? `${minutes}m ${seconds % 60}s` : `${seconds}s`;
 }
 
+function formatTimestamp(value: unknown): string | null {
+  if (!value) return null;
+  const date = new Date(String(value));
+  if (isNaN(date.getTime())) return null;
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatRelativeTime(value: unknown): string | null {
+  if (!value) return null;
+  const date = new Date(String(value));
+  if (isNaN(date.getTime())) return null;
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 0) return "just now";
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return "just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+function formatTimeUntil(value: unknown): string | null {
+  if (!value) return null;
+  const date = new Date(String(value));
+  if (isNaN(date.getTime())) return null;
+  const diffMs = date.getTime() - Date.now();
+  if (diffMs <= 0) return "shortly";
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `in ${diffMin}m`;
+  const diffHours = Math.floor(diffMin / 60);
+  const remMin = diffMin % 60;
+  return `in ${diffHours}h ${remMin}m`;
+}
+
 function streamUrl(jobId: string): string {
   const baseUrl = String(apiClient.defaults.baseURL || "").replace(/\/+$/, "");
   return `${baseUrl}/attack-paths/jobs/${jobId}/stream`;
@@ -244,7 +292,9 @@ const RepoSelect = ({
   onSelect: (repo: RepoSummary) => void;
 }) => {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const close = (event: MouseEvent) => {
@@ -253,6 +303,25 @@ const RepoSelect = ({
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    } else {
+      setSearchQuery("");
+    }
+  }, [open]);
+
+  const filteredRepos = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return repos;
+    return repos.filter(
+      (repo) =>
+        repo.full_name.toLowerCase().includes(query) ||
+        repo.name.toLowerCase().includes(query) ||
+        (repo.language && repo.language.toLowerCase().includes(query))
+    );
+  }, [repos, searchQuery]);
 
   return (
     <div ref={rootRef} className="relative min-w-0">
@@ -275,26 +344,54 @@ const RepoSelect = ({
         <ChevronDown className={`h-4 w-4 shrink-0 text-[#53656D] transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div id="attack-paths-repositories" role="listbox" className="absolute z-30 mt-2 max-h-72 w-full overflow-auto rounded-xl border border-[#D4E0E3] bg-[#FCFEFE] p-1 shadow-[0_12px_32px_rgb(23_38_45_/_0.08)]">
-          {repos.length === 0 ? (
-            <p className="px-3 py-4 text-sm text-[#53656D]">No connected repositories were found.</p>
-          ) : repos.map((repo) => (
-            <button
-              key={repo.id}
-              type="button"
-              role="option"
-              aria-selected={selectedRepo?.id === repo.id}
-              onClick={() => { onSelect(repo); setOpen(false); }}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left outline-none transition hover:bg-[#EDF4F5] focus-visible:bg-[#EDF4F5] ${selectedRepo?.id === repo.id ? "bg-[#EDF4F5]" : ""}`}
-            >
-              <Crosshair className="h-4 w-4 shrink-0 text-[#008E9A]" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-[#17262D]">{repo.full_name}</span>
-                <span className="block truncate font-mono text-[10px] text-[#53656D]">{repo.language || "repository"}</span>
-              </span>
-              {selectedRepo?.id === repo.id && <CheckCircle2 className="h-4 w-4 text-[#16754B]" />}
-            </button>
-          ))}
+        <div id="attack-paths-repositories" role="listbox" className="absolute z-30 mt-2 flex max-h-80 w-full flex-col overflow-hidden rounded-xl border border-[#D4E0E3] bg-[#FCFEFE] shadow-[0_12px_32px_rgb(23_38_45_/_0.12)]">
+          <div className="border-b border-[#D4E0E3] bg-[#FCFEFE] p-2">
+            <div className="relative flex items-center">
+              <Search className="absolute left-3 h-3.5 w-3.5 text-[#53656D]" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search repository or language..."
+                className="w-full rounded-md border border-[#D4E0E3] bg-[#F4F8F9] py-1.5 pl-8 pr-7 text-xs text-[#17262D] outline-none placeholder:text-[#839198] focus:border-[#008E9A] focus:bg-[#FCFEFE]"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 rounded p-0.5 text-[#53656D] hover:text-[#17262D]"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="max-h-60 overflow-y-auto p-1">
+            {filteredRepos.length === 0 ? (
+              <p className="px-3 py-4 text-center text-xs text-[#53656D]">
+                {repos.length === 0 ? "No connected repositories found." : `No repositories matching "${searchQuery}".`}
+              </p>
+            ) : (
+              filteredRepos.map((repo) => (
+                <button
+                  key={repo.id}
+                  type="button"
+                  role="option"
+                  aria-selected={selectedRepo?.id === repo.id}
+                  onClick={() => { onSelect(repo); setOpen(false); }}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left outline-none transition hover:bg-[#EDF4F5] focus-visible:bg-[#EDF4F5] ${selectedRepo?.id === repo.id ? "bg-[#EDF4F5]" : ""}`}
+                >
+                  <Crosshair className="h-4 w-4 shrink-0 text-[#008E9A]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-[#17262D]">{repo.full_name}</span>
+                    <span className="block truncate font-mono text-[10px] text-[#53656D]">{repo.language || "repository"}</span>
+                  </span>
+                  {selectedRepo?.id === repo.id && <CheckCircle2 className="h-4 w-4 text-[#16754B]" />}
+                </button>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -318,6 +415,12 @@ const LifecycleBadge = ({ lifecycle }: { lifecycle: ScanLifecycle }) => {
 const EvidenceRail = ({ job, lifecycle, onCancel }: { job: ScanJob; lifecycle: ScanLifecycle; onCancel: () => void }) => {
   const current = activeStageIndex(job);
   const canCancel = ["warming", "queued", "running"].includes(lifecycle);
+  const timestampText = lifecycle === "completed"
+    ? formatTimestamp(job.completedAt || job.updatedAt)
+    : formatTimestamp(job.startedAt || job.createdAt);
+  const relativeText = lifecycle === "completed"
+    ? formatRelativeTime(job.completedAt || job.updatedAt)
+    : formatRelativeTime(job.startedAt || job.createdAt);
 
   return (
     <section aria-labelledby="scan-progress-title" className="border-y border-[#D4E0E3] bg-[#FCFEFE] py-6 sm:py-8">
@@ -325,8 +428,17 @@ const EvidenceRail = ({ job, lifecycle, onCancel }: { job: ScanJob; lifecycle: S
         <div>
           <div className="flex items-end justify-between gap-4 border-b border-[#D4E0E3] pb-3">
             <div>
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Scan ledger</p>
-              <h2 id="scan-progress-title" className="mt-1 text-lg font-bold tracking-[-0.02em] text-[#17262D]">Evidence in progress</h2>
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">
+                Scan ledger {relativeText ? `· ${relativeText}` : ""}
+              </p>
+              <h2 id="scan-progress-title" className="mt-1 text-lg font-bold tracking-[-0.02em] text-[#17262D]">
+                {lifecycle === "completed" ? "Completed scan evidence" : lifecycle === "failed" || lifecycle === "cancelled" ? "Scan evidence ledger" : "Evidence in progress"}
+              </h2>
+              {timestampText && (
+                <p className="mt-0.5 font-mono text-[11px] text-[#53656D]">
+                  {lifecycle === "completed" ? `Recorded ${timestampText}` : `Scan started ${timestampText}`}
+                </p>
+              )}
             </div>
             <span className="font-mono text-xs text-[#53656D]">{Math.max(0, Math.min(100, job.progressPct))}%</span>
           </div>
@@ -355,9 +467,18 @@ const EvidenceRail = ({ job, lifecycle, onCancel }: { job: ScanJob; lifecycle: S
         <aside className="self-start border-l-2 border-[#008E9A] pl-4 sm:pl-5" aria-live="polite">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Current state</p>
           <p className="mt-2 text-base font-semibold leading-snug text-[#17262D]">{job.phaseMessage || "Preparing scan evidence."}</p>
-          {lifecycle === "queued" && job.queuePosition > 0 && <p className="mt-3 text-sm text-[#53656D]">Position {job.queuePosition} in the shared queue. {job.queueReason || "One repository scans at a time."}</p>}
-          {lifecycle === "warming" && <p className="mt-3 text-sm text-[#53656D]">The executor may need a short cold start. Your job is already persisted.</p>}
-          <div className="mt-5 border-t border-[#D4E0E3] pt-4">
+          {canCancel && (
+            <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-[#B9D5DC] bg-[#F0FAFC] p-2.5 text-xs text-[#286778]">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#008E9A]" />
+              <span>Runs in the background. You can safely leave this page or close your browser — results are saved automatically.</span>
+            </div>
+          )}
+          <div className="mt-4 space-y-1 border-t border-[#D4E0E3] pt-3 font-mono text-[11px] text-[#53656D]">
+            {job.createdAt && <p><span className="font-semibold text-[#17262D]">Queued:</span> {formatTimestamp(job.createdAt)}</p>}
+            {job.startedAt && <p><span className="font-semibold text-[#17262D]">Started:</span> {formatTimestamp(job.startedAt)}</p>}
+            {job.completedAt && <p><span className="font-semibold text-[#16754B]">Completed:</span> {formatTimestamp(job.completedAt)}</p>}
+          </div>
+          <div className="mt-4 border-t border-[#D4E0E3] pt-3">
             <p className="text-xs leading-relaxed text-[#53656D]">Coverage includes GitHub alerts, source secrets, Semgrep rules, Trivy dependency and IaC checks, and a software inventory. A clean result is not proof of security.</p>
             {canCancel && <button type="button" onClick={onCancel} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#D4E0E3] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#B12926] hover:text-[#B12926] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2"><X className="h-3.5 w-3.5" />Cancel scan</button>}
           </div>
@@ -520,6 +641,10 @@ const AttackPath = () => {
       quotaRemaining: typeof payload.quotaRemaining === "number" ? payload.quotaRemaining : undefined,
       toolStatuses: normalizeToolStatuses(payload.toolStatuses),
       scanMetrics: payload.scanMetrics && typeof payload.scanMetrics === "object" ? payload.scanMetrics : undefined,
+      createdAt: payload.createdAt ? String(payload.createdAt) : null,
+      startedAt: payload.startedAt ? String(payload.startedAt) : null,
+      completedAt: payload.completedAt ? String(payload.completedAt) : null,
+      updatedAt: payload.updatedAt ? String(payload.updatedAt) : null,
     };
     const nextQuota = normalizeScanAllowance(payload.quota);
     if (nextQuota) {
@@ -568,7 +693,19 @@ const AttackPath = () => {
           const dataLine = lines.find((line) => line.startsWith("data:"));
           if (!dataLine) continue;
           const payload = JSON.parse(dataLine.slice(5).trim());
-          setJob((current) => current ? { ...current, status: String(payload.status || current.status), progressPct: Number(payload.progressPct ?? current.progressPct), phaseMessage: String(payload.statusMessage || current.phaseMessage), queuePosition: Number(payload.queuePosition || 0), queueReason: String(payload.queueReason || ""), lastError: String(payload.lastError || "") } : current);
+          setJob((current) => current ? {
+            ...current,
+            status: String(payload.status || current.status),
+            progressPct: Number(payload.progressPct ?? current.progressPct),
+            phaseMessage: String(payload.statusMessage || current.phaseMessage),
+            queuePosition: Number(payload.queuePosition || 0),
+            queueReason: String(payload.queueReason || ""),
+            lastError: String(payload.lastError || ""),
+            createdAt: payload.createdAt ? String(payload.createdAt) : current.createdAt,
+            startedAt: payload.startedAt ? String(payload.startedAt) : current.startedAt,
+            completedAt: payload.completedAt ? String(payload.completedAt) : current.completedAt,
+            updatedAt: payload.updatedAt ? String(payload.updatedAt) : current.updatedAt,
+          } : current);
           const nextStatus = String(payload.status || "");
           if (nextStatus) setLifecycle(lifecycleForStatus(nextStatus));
           if (event === "completed" || event === "failed" || event === "cancelled" || isTerminal(nextStatus)) {
@@ -682,12 +819,44 @@ const AttackPath = () => {
   const allowanceExhausted = quota?.remaining === 0;
 
   const copyFinding = async (finding: Vulnerability) => {
-    await navigator.clipboard.writeText([`Title: ${finding.title}`, `Severity: ${finding.severity.toUpperCase()}`, `Source: ${sourceLabel(finding.source)}`, finding.file ? `Location: ${finding.file}` : null, `Evidence: ${finding.detail}`, `Suggested fix: ${remediationFor(finding)}`].filter(Boolean).join("\n"));
-    setCopiedFinding(finding.id); setTimeout(() => setCopiedFinding(null), 1_500);
+    const text = [
+      `### [${finding.severity.toUpperCase()}] ${finding.title}`,
+      `- **Repository**: ${job?.repoFullName || selectedRepo?.full_name || "Repository"}`,
+      `- **Source**: ${sourceLabel(finding.source)}`,
+      finding.file ? `- **Location**: \`${finding.file}\`` : null,
+      `- **Evidence**: ${finding.detail}`,
+      `- **Suggested Fix**: ${remediationFor(finding)}`,
+    ].filter(Boolean).join("\n");
+    await navigator.clipboard.writeText(text);
+    setCopiedFinding(finding.id);
+    setTimeout(() => setCopiedFinding(null), 1_500);
   };
+
   const copyReport = async () => {
-    await navigator.clipboard.writeText([`Repository: ${selectedRepo?.full_name || job?.repoFullName || "Repository"}`, `Findings: ${findings.length}`, "", ...findings.map((finding, index) => `${index + 1}. ${finding.title}\n${remediationFor(finding)}`)].join("\n"));
-    setCopiedReport(true); setTimeout(() => setCopiedReport(false), 1_500);
+    const repoName = selectedRepo?.full_name || job?.repoFullName || "Repository";
+    const timestamp = formatTimestamp(job?.completedAt || job?.updatedAt) || "Latest scan";
+    const reportLines = [
+      `# ServX Security Audit Report`,
+      `**Repository**: ${repoName}`,
+      `**Scan Date**: ${timestamp}`,
+      `**Total Findings**: ${findings.length} (Critical: ${severityTotals.critical}, Medium: ${severityTotals.medium}, Low: ${severityTotals.low})`,
+      ``,
+      `---`,
+      ``,
+      ...findings.map((finding, index) => {
+        return [
+          `## ${index + 1}. [${finding.severity.toUpperCase()}] ${finding.title}`,
+          `- **Source**: ${sourceLabel(finding.source)}`,
+          `- **Location**: \`${finding.file || "Repository-wide"}\``,
+          `- **Evidence**: ${finding.detail}`,
+          `- **Suggested Remediation**: ${remediationFor(finding)}`,
+          ``,
+        ].join("\n");
+      }),
+    ];
+    await navigator.clipboard.writeText(reportLines.join("\n"));
+    setCopiedReport(true);
+    setTimeout(() => setCopiedReport(false), 1_500);
   };
 
   return (
@@ -701,18 +870,57 @@ const AttackPath = () => {
         <section aria-labelledby="command-title" className="grid gap-4 border-b border-[#D4E0E3] py-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_190px]">
             <div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Owned repository</p><h2 id="command-title" className="mt-1 text-base font-bold text-[#17262D]">Choose what ServX may inspect</h2><div className="mt-3"><RepoSelect repos={repos} selectedRepo={selectedRepo} disabled={activeScan} onSelect={setSelectedRepo} /></div>{repoLoading && <p className="mt-2 text-xs text-[#53656D]">Loading connected repositories.</p>}{repoError && <p className="mt-2 text-xs text-[#B12926]">{repoError}</p>}</div>
-            <div className="border-l-2 border-[#D4E0E3] pl-4"><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Allowance</p><p className="mt-2 text-2xl font-bold tracking-[-0.03em] text-[#17262D]">{quotaLoading ? "…" : quota?.remaining ?? "—"}<span className="ml-1 text-xs font-medium text-[#53656D]">remaining</span></p><p className="mt-1 text-xs text-[#53656D]">{quota ? `${quota.used} of ${quota.limit} scans used in the last 24 hours` : "Checking server allowance"}</p></div>
+            <div className="border-l-2 border-[#D4E0E3] pl-4">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Allowance</p>
+              <p className="mt-2 text-2xl font-bold tracking-[-0.03em] text-[#17262D]">
+                {quotaLoading ? "…" : quota?.remaining ?? "—"}
+                <span className="ml-1 text-xs font-medium text-[#53656D]">remaining</span>
+              </p>
+              <p className="mt-1 text-xs text-[#53656D]">
+                {quota ? `${quota.used} of ${quota.limit} scans used in last 24h` : "Checking server allowance"}
+              </p>
+              {quota?.resetAt && (
+                <p className="mt-1 font-mono text-[10px] text-[#008E9A]">
+                  Resets {formatTimeUntil(quota.resetAt)}
+                </p>
+              )}
+            </div>
           </div>
-          <div className="lg:text-right"><button type="button" onClick={() => void queueScan()} disabled={!selectedRepo || activeScan || allowanceExhausted} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#008E9A] px-5 text-sm font-semibold text-white outline-none transition hover:bg-[#007A84] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#839198] sm:w-auto"><Scan className="h-4 w-4" />{activeScan ? "Scan active" : allowanceExhausted ? "Daily limit reached" : "Queue scan"}</button><p className="mt-2 max-w-64 text-left text-[11px] leading-relaxed text-[#53656D] lg:ml-auto">{allowanceExhausted ? "The allowance will refresh as the oldest scan passes 24 hours." : "Connected repositories only. Manual live URL scanning is off."}</p></div>
+          <div className="lg:text-right"><button type="button" onClick={() => void queueScan()} disabled={!selectedRepo || activeScan || allowanceExhausted} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#008E9A] px-5 text-sm font-semibold text-white outline-none transition hover:bg-[#007A84] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#839198] sm:w-auto"><Scan className="h-4 w-4" />{activeScan ? "Scan active" : allowanceExhausted ? "Daily limit reached" : "Queue scan"}</button><p className="mt-2 max-w-64 text-left text-[11px] leading-relaxed text-[#53656D] lg:ml-auto">{allowanceExhausted ? `Quota will refresh ${formatTimeUntil(quota?.resetAt)}.` : "Runs asynchronously in background — safe to leave page or close browser."}</p></div>
         </section>
 
         {actionError && <div role="alert" className="mt-5 flex items-start gap-3 border-l-2 border-[#B12926] bg-[#FFF4F3] px-4 py-3 text-sm text-[#B12926]"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{actionError}</span><button type="button" onClick={() => setActionError("")} className="ml-auto rounded p-1 outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><X className="h-4 w-4" /></button></div>}
+
+        {selectedRepo && job?.repoFullName && selectedRepo.full_name !== job.repoFullName && (
+          <div role="status" className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-[#E8CE9C] bg-[#FFF9EA] px-4 py-3 text-xs text-[#A05B00]">
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-[#A05B00]" />
+              Showing scan evidence for <strong className="font-mono">{job.repoFullName}</strong>. You have selected <strong className="font-mono">{selectedRepo.full_name}</strong> in the dropdown.
+            </span>
+            <button type="button" onClick={() => void queueScan()} disabled={activeScan || allowanceExhausted} className="font-semibold underline outline-none hover:text-[#17262D]">
+              Queue scan for {selectedRepo.name}
+            </button>
+          </div>
+        )}
 
         {job && lifecycle !== "idle" && <EvidenceRail job={job} lifecycle={lifecycle} onCancel={() => setCancelOpen(true)} />}
 
         <section aria-labelledby="results-title" className="py-7 sm:py-9">
           <div className="flex flex-col gap-4 border-b border-[#D4E0E3] pb-5 sm:flex-row sm:items-end sm:justify-between">
-            <div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Results desk</p><h2 id="results-title" className="mt-1 text-2xl font-bold tracking-[-0.025em] text-[#17262D]">{lifecycle === "completed" ? "Review the evidence" : "Findings"}</h2><p className="mt-2 text-sm text-[#53656D]">{findings.length ? `${findings.length} findings across the completed repository evidence.` : lifecycle === "completed" ? "No findings were returned by the completed scan. This does not prove the repository is secure." : "Results appear here after a repository scan completes."}</p></div>
+            <div>
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">
+                Results desk {job?.completedAt || job?.updatedAt ? `· ${formatRelativeTime(job.completedAt || job.updatedAt)}` : ""}
+              </p>
+              <h2 id="results-title" className="mt-1 text-2xl font-bold tracking-[-0.025em] text-[#17262D]">{lifecycle === "completed" ? "Review the evidence" : "Findings"}</h2>
+              <p className="mt-2 text-sm text-[#53656D]">
+                {findings.length ? `${findings.length} findings across completed repository evidence for ${job?.repoFullName || selectedRepo?.full_name || "repository"}.` : lifecycle === "completed" ? "No findings were returned by the completed scan. This does not prove the repository is secure." : "Results appear here after a repository scan completes."}
+              </p>
+              {(job?.completedAt || job?.updatedAt) && (
+                <p className="mt-1 font-mono text-[11px] text-[#53656D]">
+                  Evidence timestamp: {formatTimestamp(job.completedAt || job.updatedAt)}
+                </p>
+              )}
+            </div>
             {findings.length > 0 && <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void copyReport()} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2">{copiedReport ? <ClipboardCopy className="h-3.5 w-3.5 text-[#16754B]" /> : <Copy className="h-3.5 w-3.5" />}{copiedReport ? "Copied" : "Copy report"}</button><button type="button" onClick={() => navigate(`/automedic?${new URLSearchParams({ source: "attack-path", repo: selectedRepo?.full_name || job?.repoFullName || "", vulns: JSON.stringify(findings.map((finding) => ({ severity: finding.severity, title: finding.title, file: finding.file }))) }).toString()}`)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2"><Zap className="h-3.5 w-3.5" />Open Auto-Medic<ArrowRight className="h-3.5 w-3.5" /></button></div>}
           </div>
 
@@ -720,14 +928,101 @@ const AttackPath = () => {
 
           {findings.length > 0 && <div className="mt-5 grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold text-[#53656D]">Severity<select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as typeof severityFilter)} className="mt-1 min-h-11 w-full rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-sm text-[#17262D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><option value="all">All severities</option><option value="critical">Critical</option><option value="medium">Medium</option><option value="low">Low</option></select></label><label className="text-xs font-semibold text-[#53656D]">Evidence source<select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-sm text-[#17262D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><option value="all">All sources</option>{sourceOptions.map((source) => <option key={source} value={source}>{sourceLabel(source)}</option>)}</select></label></div>}
 
-          {findings.length > 0 ? <div className="mt-5 overflow-hidden border-y border-[#D4E0E3]"><div className="hidden grid-cols-[100px_minmax(0,1fr)_160px_180px_28px] gap-4 bg-[#EDF4F5] px-4 py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[#53656D] md:grid"><span>Severity</span><span>Finding</span><span>Source</span><span>Location</span><span /></div>{filteredFindings.map((finding) => <div key={finding.id} className="border-t border-[#D4E0E3] first:border-t-0"><button type="button" onClick={() => setSelectedFindingId((current) => current === finding.id ? null : finding.id)} className="grid w-full gap-2 px-4 py-4 text-left outline-none transition hover:bg-[#EDF4F5] focus-visible:bg-[#EDF4F5] md:grid-cols-[100px_minmax(0,1fr)_160px_180px_28px] md:gap-4"><span className={`w-fit rounded-full border px-2 py-1 font-mono text-[10px] font-semibold uppercase ${severityClass(finding.severity)}`}>{finding.severity}</span><span className="min-w-0"><span className="block text-sm font-semibold text-[#17262D]">{finding.title}</span><span className="mt-1 block text-xs text-[#53656D] md:hidden">{sourceLabel(finding.source)}{finding.file ? ` · ${finding.file}` : ""}</span></span><span className="hidden truncate font-mono text-[10px] text-[#53656D] md:block">{sourceLabel(finding.source)}</span><span className="hidden truncate font-mono text-[10px] text-[#53656D] md:block">{finding.file || "Repository"}</span><ChevronRight className={`h-4 w-4 text-[#53656D] transition ${selectedFindingId === finding.id ? "rotate-90" : ""}`} /></button>{selectedFindingId === finding.id && <div className="border-t border-[#D4E0E3] bg-[#EDF4F5] px-4 py-4"><div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_230px]"><div><p className="text-sm leading-relaxed text-[#53656D]">{finding.detail}</p><p className="mt-4 border-l-2 border-[#008E9A] pl-3 text-sm leading-relaxed text-[#17262D]"><span className="font-semibold">Suggested fix. </span>{remediationFor(finding)}</p></div><div className="flex items-start justify-between gap-4 border-t border-[#D4E0E3] pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0"><div><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Evidence location</p><p className="mt-2 break-all font-mono text-xs text-[#17262D]">{finding.file || "Repository-wide evidence"}</p></div><button type="button" onClick={() => void copyFinding(finding)} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A]">{copiedFinding === finding.id ? <ClipboardCopy className="h-3.5 w-3.5 text-[#16754B]" /> : <Copy className="h-3.5 w-3.5" />}{copiedFinding === finding.id ? "Copied" : "Copy"}</button></div></div></div>}</div>)}</div> : <div className="mt-5 border-y border-dashed border-[#D4E0E3] py-12 text-center"><Shield className="mx-auto h-8 w-8 text-[#839198]" /><p className="mt-3 text-sm font-semibold text-[#17262D]">{lifecycle === "completed" ? "No findings returned" : "No scan evidence yet"}</p><p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-[#53656D]">{lifecycle === "completed" ? "Review scanner coverage below before treating this as a clean result." : "Select an owned repository and queue one deep scan to begin collecting evidence."}</p></div>}
+          {findings.length > 0 ? (
+            filteredFindings.length > 0 ? (
+              <div className="mt-5 overflow-hidden border-y border-[#D4E0E3]">
+                <div className="hidden grid-cols-[100px_minmax(0,1fr)_160px_180px_28px] gap-4 bg-[#EDF4F5] px-4 py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[#53656D] md:grid">
+                  <span>Severity</span>
+                  <span>Finding</span>
+                  <span>Source</span>
+                  <span>Location</span>
+                  <span />
+                </div>
+                {filteredFindings.map((finding) => (
+                  <div key={finding.id} className="border-t border-[#D4E0E3] first:border-t-0">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFindingId((current) => current === finding.id ? null : finding.id)}
+                      className="grid w-full gap-2 px-4 py-4 text-left outline-none transition hover:bg-[#EDF4F5] focus-visible:bg-[#EDF4F5] md:grid-cols-[100px_minmax(0,1fr)_160px_180px_28px] md:gap-4"
+                    >
+                      <span className={`w-fit rounded-full border px-2 py-1 font-mono text-[10px] font-semibold uppercase ${severityClass(finding.severity)}`}>{finding.severity}</span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-[#17262D]">{finding.title}</span>
+                        <span className="mt-1 block text-xs text-[#53656D] md:hidden">{sourceLabel(finding.source)}{finding.file ? ` · ${finding.file}` : ""}</span>
+                      </span>
+                      <span className="hidden truncate font-mono text-[10px] text-[#53656D] md:block">{sourceLabel(finding.source)}</span>
+                      <span className="hidden truncate font-mono text-[10px] text-[#53656D] md:block">{finding.file || "Repository"}</span>
+                      <ChevronRight className={`h-4 w-4 text-[#53656D] transition ${selectedFindingId === finding.id ? "rotate-90" : ""}`} />
+                    </button>
+                    {selectedFindingId === finding.id && (
+                      <div className="border-t border-[#D4E0E3] bg-[#EDF4F5] px-4 py-4">
+                        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_230px]">
+                          <div>
+                            <p className="text-sm leading-relaxed text-[#53656D]">{finding.detail}</p>
+                            <p className="mt-4 border-l-2 border-[#008E9A] pl-3 text-sm leading-relaxed text-[#17262D]">
+                              <span className="font-semibold">Suggested fix. </span>{remediationFor(finding)}
+                            </p>
+                          </div>
+                          <div className="flex items-start justify-between gap-4 border-t border-[#D4E0E3] pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+                            <div>
+                              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Evidence location</p>
+                              <p className="mt-2 break-all font-mono text-xs text-[#17262D]">{finding.file || "Repository-wide evidence"}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void copyFinding(finding)}
+                              className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A]"
+                            >
+                              {copiedFinding === finding.id ? <ClipboardCopy className="h-3.5 w-3.5 text-[#16754B]" /> : <Copy className="h-3.5 w-3.5" />}
+                              {copiedFinding === finding.id ? "Copied" : "Copy"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-5 border-y border-dashed border-[#D4E0E3] py-10 text-center">
+                <FileWarning className="mx-auto h-7 w-7 text-[#839198]" />
+                <p className="mt-2 text-sm font-semibold text-[#17262D]">No findings match selected filters</p>
+                <p className="mt-1 text-xs text-[#53656D]">Adjust your severity or evidence source filter to view results.</p>
+                <button
+                  type="button"
+                  onClick={() => { setSeverityFilter("all"); setSourceFilter("all"); }}
+                  className="mt-3 inline-flex min-h-9 items-center rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#008E9A] outline-none hover:border-[#008E9A]"
+                >
+                  Reset filters
+                </button>
+              </div>
+            )
+          ) : (
+            <div className="mt-5 border-y border-dashed border-[#D4E0E3] py-12 text-center">
+              <Shield className="mx-auto h-8 w-8 text-[#839198]" />
+              <p className="mt-3 text-sm font-semibold text-[#17262D]">{lifecycle === "completed" ? "No findings returned" : "No scan evidence yet"}</p>
+              <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-[#53656D]">{lifecycle === "completed" ? "Review scanner coverage below before treating this as a clean result." : "Select an owned repository and queue one deep scan to begin collecting evidence."}</p>
+            </div>
+          )}
         </section>
 
         <PotentialAttackPaths candidates={attackPathCandidates} completed={lifecycle === "completed"} />
 
         <CoverageList tools={tools} />
 
-        {job?.scanMetrics && lifecycle === "completed" && <section className="border-b border-[#D4E0E3] py-5"><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Run record</p><div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-xs text-[#53656D]"><span>Queue wait: {formatDuration(job.scanMetrics.queueWaitMs) || "not recorded"}</span><span>Scanner time: {formatDuration(job.scanMetrics.durationMs) || "not recorded"}</span><span>Attempts: {String(job.scanMetrics.attemptCount || 1)}</span>{coverageIsPartial && <span className="font-semibold text-[#A05B00]">Partial scanner coverage</span>}</div></section>}
+        {job?.scanMetrics && lifecycle === "completed" && (
+          <section className="border-b border-[#D4E0E3] py-5">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Run record</p>
+            <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 font-mono text-xs text-[#53656D]">
+              {job.startedAt && <span>Started: {formatTimestamp(job.startedAt)}</span>}
+              {job.completedAt && <span>Completed: {formatTimestamp(job.completedAt)}</span>}
+              <span>Queue wait: {formatDuration(job.scanMetrics.queueWaitMs) || "not recorded"}</span>
+              <span>Scanner time: {formatDuration(job.scanMetrics.durationMs) || "not recorded"}</span>
+              <span>Attempts: {String(job.scanMetrics.attemptCount || 1)}</span>
+              {coverageIsPartial && <span className="font-semibold text-[#A05B00]">Partial scanner coverage</span>}
+            </div>
+          </section>
+        )}
 
         <footer className="flex flex-col gap-3 py-6 text-xs text-[#53656D] sm:flex-row sm:items-center sm:justify-between"><span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#008E9A]" />The browser never connects to the scanner directly.</span>{selectedRepo && <span className="flex items-center gap-2 font-mono"><ExternalLink className="h-3.5 w-3.5" />{selectedRepo.full_name}</span>}</footer>
       </div>
