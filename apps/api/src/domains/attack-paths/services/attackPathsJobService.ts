@@ -220,8 +220,12 @@ export async function getAttackPathsJobById(jobId: string): Promise<AttackPathsJ
 }
 
 /** Returns the caller's most recent job so completed evidence survives a page refresh. */
-export async function getLatestAttackPathsJobForUser(requestedBy: string): Promise<AttackPathsJobDoc | null> {
-  const doc = await AttackPathsJobModel.findOne({ requestedBy })
+export async function getLatestAttackPathsJobForUser(requestedBy: string, repoFullName?: string): Promise<AttackPathsJobDoc | null> {
+  const query: Record<string, unknown> = { requestedBy };
+  if (repoFullName) {
+    query.repoFullName = repoFullName;
+  }
+  const doc = await AttackPathsJobModel.findOne(query)
     .sort({ createdAt: -1 })
     .exec();
   return (doc as AttackPathsJobDoc) || null;

@@ -328,7 +328,11 @@ export async function getLatestAttackPathsJobResult(req: Request, res: Response)
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
-  const job = await getLatestAttackPathsJobForUser(req.user.id);
+  const repoFullName = typeof req.query.repoFullName === 'string' && req.query.repoFullName.trim()
+    ? req.query.repoFullName.trim()
+    : undefined;
+
+  const job = await getLatestAttackPathsJobForUser(req.user.id, repoFullName);
   if (!job) {
     res.status(404).json({ error: 'NotFound', message: 'No Attack Paths scans found.' });
     return;

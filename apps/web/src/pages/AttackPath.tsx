@@ -13,6 +13,7 @@ import {
   FileWarning,
   Github,
   Loader2,
+  Route,
   Scan,
   Search,
   Server,
@@ -25,6 +26,8 @@ import {
 import apiClient from "@/lib/apiClient";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/features/auth/AuthContext";
+
+/* ─── Interfaces ─── */
 
 interface RepoSummary {
   id: number;
@@ -89,6 +92,16 @@ interface ScanAllowance {
   resetAt: string | null;
 }
 
+/** Findings grouped by rule title */
+interface FindingGroup {
+  ruleTitle: string;
+  severity: Vulnerability["severity"];
+  source?: string;
+  instances: Vulnerability[];
+}
+
+/* ─── Constants ─── */
+
 const ACTIVE_JOB_STORAGE_KEY = "servx_attack_paths_active_job";
 const LAST_JOB_STORAGE_KEY = "servx_attack_paths_last_job";
 
@@ -101,6 +114,8 @@ const STAGES = [
   { id: "inventory", label: "Inventory", detail: "Building the software inventory" },
   { id: "report", label: "Report", detail: "Normalizing evidence for review" },
 ] as const;
+
+/* ─── Normalizers ─── */
 
 function normalizeSeverity(value: unknown): Vulnerability["severity"] {
   const upper = String(value || "").toUpperCase();
@@ -174,6 +189,8 @@ function normalizeScanAllowance(input: unknown): ScanAllowance | null {
   };
 }
 
+/* ─── Lifecycle helpers ─── */
+
 function lifecycleForStatus(status: string): ScanLifecycle {
   if (status === "completed") return "completed";
   if (status === "cancelled") return "cancelled";
@@ -204,6 +221,8 @@ function activeStageIndex(job: ScanJob | null): number {
   if (job.progressPct < 85) return 5;
   return 6;
 }
+
+/* ─── Format helpers ─── */
 
 function formatDuration(value: unknown): string | null {
   const milliseconds = Number(value);
@@ -280,6 +299,48 @@ function sourceLabel(source?: string): string {
   return source ? source.replace(/_/g, " ") : "repository evidence";
 }
 
+/** Derive a domain tab key from the raw finding source string */
+function sourceDomain(source?: string): string {
+  const s = (source || "").toLowerCase();
+  if (s.includes("secret")) return "secrets";
+  if (s.includes("sast") || s.includes("semgrep")) return "sast";
+  if (s.includes("package") || s.includes("depend") || s.includes("github_security")) return "deps";
+  if (s.includes("iac") || s.includes("cspm") || s.includes("trivy") || s.includes("config")) return "cspm";
+  return "other";
+}
+
+const DOMAIN_LABELS: Record<string, string> = {
+  secrets: "Secrets",
+  sast: "SAST",
+  deps: "Dependencies",
+  cspm: "Config & IaC",
+  other: "Other",
+};
+
+/* ─── Group findings by rule title ─── */
+
+function groupFindingsByRule(findings: Vulnerability[]): FindingGroup[] {
+  const map = new Map<string, FindingGroup>();
+  for (const f of findings) {
+    const key = `${f.title}::${f.severity}::${f.source || ""}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.instances.push(f);
+    } else {
+      map.set(key, { ruleTitle: f.title, severity: f.severity, source: f.source, instances: [f] });
+    }
+  }
+  // Sort: critical first, then medium, then low; within same severity, more instances first
+  const order: Record<string, number> = { critical: 0, medium: 1, low: 2 };
+  return [...map.values()].sort((a, b) => (order[a.severity] ?? 3) - (order[b.severity] ?? 3) || b.instances.length - a.instances.length);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SUB-COMPONENTS
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── RepoSelect (unchanged) ─── */
+
 const RepoSelect = ({
   repos,
   selectedRepo,
@@ -332,19 +393,16 @@ const RepoSelect = ({
         aria-controls="attack-paths-repositories"
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
-        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-left outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex min-h-9 w-full items-center justify-between gap-3 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-left outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <span className="flex min-w-0 items-center gap-3">
-          <Github className="h-4 w-4 shrink-0 text-[#53656D]" />
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold text-[#17262D]">{selectedRepo?.full_name || "Select a connected repository"}</span>
-            <span className="block truncate font-mono text-[10px] text-[#53656D]">{selectedRepo?.language || "GitHub authorization required"}</span>
-          </span>
+        <span className="flex min-w-0 items-center gap-2">
+          <Github className="h-3.5 w-3.5 shrink-0 text-[#53656D]" />
+          <span className="truncate text-sm font-semibold text-[#17262D]">{selectedRepo?.full_name || "Select repository"}</span>
         </span>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-[#53656D] transition ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#53656D] transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div id="attack-paths-repositories" role="listbox" className="absolute z-30 mt-2 flex max-h-80 w-full flex-col overflow-hidden rounded-xl border border-[#D4E0E3] bg-[#FCFEFE] shadow-[0_12px_32px_rgb(23_38_45_/_0.12)]">
+        <div id="attack-paths-repositories" role="listbox" className="absolute z-30 mt-2 flex max-h-80 w-full min-w-[280px] flex-col overflow-hidden rounded-xl border border-[#D4E0E3] bg-[#FCFEFE] shadow-[0_12px_32px_rgb(23_38_45_/_0.12)]">
           <div className="border-b border-[#D4E0E3] bg-[#FCFEFE] p-2">
             <div className="relative flex items-center">
               <Search className="absolute left-3 h-3.5 w-3.5 text-[#53656D]" />
@@ -398,6 +456,8 @@ const RepoSelect = ({
   );
 };
 
+/* ─── LifecycleBadge (unchanged) ─── */
+
 const LifecycleBadge = ({ lifecycle }: { lifecycle: ScanLifecycle }) => {
   const details = {
     idle: { label: "Ready", className: "border-[#B9D5DC] bg-[#F0FAFC] text-[#286778]", icon: ShieldCheck },
@@ -409,38 +469,38 @@ const LifecycleBadge = ({ lifecycle }: { lifecycle: ScanLifecycle }) => {
     failed: { label: "Needs attention", className: "border-[#E5B6B4] bg-[#FFF4F3] text-[#B12926]", icon: AlertTriangle },
   }[lifecycle];
   const Icon = details.icon;
-  return <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[10px] font-semibold ${details.className}`}><Icon className={`h-3.5 w-3.5 ${["warming", "queued", "running"].includes(lifecycle) ? "animate-spin" : ""}`} />{details.label}</span>;
+  return <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold ${details.className}`}><Icon className={`h-3 w-3 ${["warming", "queued", "running"].includes(lifecycle) ? "animate-spin" : ""}`} />{details.label}</span>;
 };
 
-const EvidenceRail = ({ job, lifecycle, onCancel }: { job: ScanJob; lifecycle: ScanLifecycle; onCancel: () => void }) => {
+/* ─── Scan Command Mode: full stepper + controls (before/during scan) ─── */
+
+const ScanCommandMode = ({
+  job,
+  lifecycle,
+  onCancel,
+}: {
+  job: ScanJob;
+  lifecycle: ScanLifecycle;
+  onCancel: () => void;
+}) => {
   const current = activeStageIndex(job);
   const canCancel = ["warming", "queued", "running"].includes(lifecycle);
-  const timestampText = lifecycle === "completed"
-    ? formatTimestamp(job.completedAt || job.updatedAt)
-    : formatTimestamp(job.startedAt || job.createdAt);
-  const relativeText = lifecycle === "completed"
-    ? formatRelativeTime(job.completedAt || job.updatedAt)
-    : formatRelativeTime(job.startedAt || job.createdAt);
 
   return (
-    <section aria-labelledby="scan-progress-title" className="border-y border-[#D4E0E3] bg-[#FCFEFE] py-6 sm:py-8">
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.8fr)] lg:gap-12">
+    <section className="rounded-2xl border border-[#D4E0E3] bg-[#FCFEFE] p-5 sm:p-6">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(240px,0.7fr)] lg:gap-10">
+        {/* Stepper */}
         <div>
           <div className="flex items-end justify-between gap-4 border-b border-[#D4E0E3] pb-3">
             <div>
               <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">
-                Scan ledger {relativeText ? `· ${relativeText}` : ""}
+                Scan progress
               </p>
-              <h2 id="scan-progress-title" className="mt-1 text-lg font-bold tracking-[-0.02em] text-[#17262D]">
-                {lifecycle === "completed" ? "Completed scan evidence" : lifecycle === "failed" || lifecycle === "cancelled" ? "Scan evidence ledger" : "Evidence in progress"}
+              <h2 className="mt-1 text-lg font-bold tracking-[-0.02em] text-[#17262D]">
+                Evidence in progress
               </h2>
-              {timestampText && (
-                <p className="mt-0.5 font-mono text-[11px] text-[#53656D]">
-                  {lifecycle === "completed" ? `Recorded ${timestampText}` : `Scan started ${timestampText}`}
-                </p>
-              )}
             </div>
-            <span className="font-mono text-xs text-[#53656D]">{Math.max(0, Math.min(100, job.progressPct))}%</span>
+            <span className="font-mono text-xs font-semibold text-[#008E9A]">{Math.max(0, Math.min(100, job.progressPct))}%</span>
           </div>
           <ol className="mt-1">
             {STAGES.map((stage, index) => {
@@ -448,9 +508,9 @@ const EvidenceRail = ({ job, lifecycle, onCancel }: { job: ScanJob; lifecycle: S
               const active = index === current && !isTerminal(job.status);
               const stopped = ["cancelled", "failed"].includes(lifecycle) && index === current;
               return (
-                <li key={stage.id} className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 border-b border-[#D4E0E3] py-3">
+                <li key={stage.id} className="grid grid-cols-[24px_minmax(0,1fr)] gap-3 border-b border-[#D4E0E3] py-2.5">
                   <div className="relative flex justify-center pt-0.5">
-                    {index < STAGES.length - 1 && <span className={`absolute top-5 h-[calc(100%+8px)] w-px ${completed ? "bg-[#008E9A]" : "bg-[#D4E0E3]"}`} />}
+                    {index < STAGES.length - 1 && <span className={`absolute top-5 h-[calc(100%+6px)] w-px ${completed ? "bg-[#008E9A]" : "bg-[#D4E0E3]"}`} />}
                     <span className={`relative z-10 flex h-5 w-5 items-center justify-center rounded-full border ${completed ? "border-[#16754B] bg-[#16754B] text-white" : active ? "border-[#008E9A] bg-[#F0FAFC] text-[#008E9A]" : stopped ? "border-[#B12926] bg-[#FFF4F3] text-[#B12926]" : "border-[#D4E0E3] bg-[#FCFEFE] text-[#839198]"}`}>
                       {completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : active ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : stopped ? <X className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                     </span>
@@ -464,6 +524,8 @@ const EvidenceRail = ({ job, lifecycle, onCancel }: { job: ScanJob; lifecycle: S
             })}
           </ol>
         </div>
+
+        {/* Current state sidebar */}
         <aside className="self-start border-l-2 border-[#008E9A] pl-4 sm:pl-5" aria-live="polite">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Current state</p>
           <p className="mt-2 text-base font-semibold leading-snug text-[#17262D]">{job.phaseMessage || "Preparing scan evidence."}</p>
@@ -480,7 +542,7 @@ const EvidenceRail = ({ job, lifecycle, onCancel }: { job: ScanJob; lifecycle: S
           </div>
           <div className="mt-4 border-t border-[#D4E0E3] pt-3">
             <p className="text-xs leading-relaxed text-[#53656D]">Coverage includes GitHub alerts, source secrets, Semgrep rules, Trivy dependency and IaC checks, and a software inventory. A clean result is not proof of security.</p>
-            {canCancel && <button type="button" onClick={onCancel} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#D4E0E3] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#B12926] hover:text-[#B12926] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2"><X className="h-3.5 w-3.5" />Cancel scan</button>}
+            {canCancel && <button type="button" onClick={onCancel} className="mt-4 inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#D4E0E3] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#B12926] hover:text-[#B12926] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2"><X className="h-3.5 w-3.5" />Cancel scan</button>}
           </div>
         </aside>
       </div>
@@ -488,108 +550,282 @@ const EvidenceRail = ({ job, lifecycle, onCancel }: { job: ScanJob; lifecycle: S
   );
 };
 
-const CoverageList = ({ tools }: { tools: ToolStatus[] }) => {
-  if (tools.length === 0) return null;
+/* ─── Collapsed scan ribbon (after completion) ─── */
+
+const CompletedScanRibbon = ({
+  job,
+  lifecycle,
+  expanded,
+  onToggle,
+}: {
+  job: ScanJob;
+  lifecycle: ScanLifecycle;
+  expanded: boolean;
+  onToggle: () => void;
+}) => {
+  const scanDuration = formatDuration(job.scanMetrics?.durationMs);
+  const queueWait = formatDuration(job.scanMetrics?.queueWaitMs);
+
   return (
-    <section aria-labelledby="coverage-title" className="border-y border-[#D4E0E3] py-5">
-      <div className="flex items-baseline justify-between gap-4">
-        <div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Coverage</p><h2 id="coverage-title" className="mt-1 text-base font-bold text-[#17262D]">Scanner evidence</h2></div>
-        {tools.some((tool) => tool.status !== "ran") && <span className="text-xs font-semibold text-[#A05B00]">Partial coverage</span>}
-      </div>
-      <ul className="mt-4 divide-y divide-[#D4E0E3] border-y border-[#D4E0E3]">
-        {tools.map((tool) => {
-          const status = tool.status === "ran" ? "text-[#16754B]" : tool.status === "failed" ? "text-[#B12926]" : "text-[#A05B00]";
-          return <li key={tool.tool} className="grid gap-1 py-3 sm:grid-cols-[150px_100px_1fr_auto] sm:items-center sm:gap-4"><span className="font-mono text-xs font-semibold text-[#17262D]">{tool.tool}</span><span className={`font-mono text-[10px] font-semibold uppercase ${status}`}>{tool.status}</span><span className="text-xs text-[#53656D]">{tool.error || "Completed with recorded evidence."}</span><span className="font-mono text-xs text-[#53656D]">{tool.findingsCount} findings</span></li>;
-        })}
-      </ul>
-    </section>
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex w-full items-center gap-3 rounded-xl border border-[#D4E0E3] bg-[#FCFEFE] px-4 py-2.5 text-left transition hover:border-[#008E9A]/40"
+    >
+      {lifecycle === "completed" ? (
+        <CheckCircle2 className="h-4 w-4 shrink-0 text-[#16754B]" />
+      ) : lifecycle === "failed" ? (
+        <AlertTriangle className="h-4 w-4 shrink-0 text-[#B12926]" />
+      ) : (
+        <X className="h-4 w-4 shrink-0 text-[#53656D]" />
+      )}
+      <span className="min-w-0 flex-1 truncate font-mono text-xs text-[#53656D]">
+        <span className="font-semibold text-[#17262D]">{job.repoFullName}</span>
+        <span className="mx-1.5 text-[#D4E0E3]">·</span>
+        {lifecycle === "completed" ? "Completed" : lifecycle === "failed" ? "Failed" : "Cancelled"}
+        {job.completedAt && <> {formatRelativeTime(job.completedAt)}</>}
+        {queueWait && <><span className="mx-1.5 text-[#D4E0E3]">·</span>Queue {queueWait}</>}
+        {scanDuration && <><span className="mx-1.5 text-[#D4E0E3]">·</span>Scan {scanDuration}</>}
+        {job.scanMetrics?.attemptCount && <><span className="mx-1.5 text-[#D4E0E3]">·</span>{String(job.scanMetrics.attemptCount)} attempt{Number(job.scanMetrics.attemptCount) !== 1 ? "s" : ""}</>}
+      </span>
+      <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#53656D] transition ${expanded ? "rotate-180" : ""}`} />
+    </button>
   );
 };
 
-const PotentialAttackPaths = ({ candidates, completed }: { candidates: AttackPathCandidate[]; completed: boolean }) => {
-  const [showAll, setShowAll] = useState(false);
-  const [expandedFindingId, setExpandedFindingId] = useState<string | null>(null);
-  const candidateGroups = useMemo(() => {
-    const groups = new Map<string, { id: string; findingTitle: string; findingFile: string; severity: Vulnerability["severity"]; note: string; authBoundary: AttackPathCandidate["authBoundary"]; routes: AttackPathCandidate[] }>();
-    for (const candidate of candidates) {
-      const key = candidate.findingId || `${candidate.findingTitle}:${candidate.findingFile || candidate.routeFile}`;
-      const existing = groups.get(key);
-      if (existing) {
-        existing.routes.push(candidate);
-        if (candidate.authBoundary === "not_detected") existing.authBoundary = "not_detected";
-        continue;
-      }
-      groups.set(key, {
-        id: key,
-        findingTitle: candidate.findingTitle,
-        findingFile: candidate.findingFile || candidate.routeFile,
-        severity: candidate.severity,
-        note: candidate.note,
-        authBoundary: candidate.authBoundary,
-        routes: [candidate],
-      });
-    }
-    return [...groups.values()].map((group) => ({
-      ...group,
-      routes: [...new Map(group.routes.map((route) => [`${route.routeFile}:${route.route}`, route])).values()].sort((left, right) => left.route.localeCompare(right.route)),
-    }));
-  }, [candidates]);
-  const initialGroupCount = 6;
-  const visibleGroups = showAll ? candidateGroups : candidateGroups.slice(0, initialGroupCount);
-  const totalRoutes = candidateGroups.reduce((total, group) => total + group.routes.length, 0);
+/* ─── Detail Drawer: shown when a finding is selected ─── */
 
-  if (!completed) return null;
+const FindingDetailDrawer = ({
+  finding,
+  candidates,
+  copiedFinding,
+  onCopy,
+  onClose,
+}: {
+  finding: Vulnerability;
+  candidates: AttackPathCandidate[];
+  copiedFinding: string | null;
+  onCopy: (finding: Vulnerability) => void;
+  onClose: () => void;
+}) => {
+  const [activeTab, setActiveTab] = useState<"evidence" | "routes" | "fix">("evidence");
+
+  // Mapped routes for this specific finding
+  const mappedRoutes = useMemo(() => {
+    return candidates.filter((c) => {
+      // Match by findingId or by title+file
+      if (c.findingId === finding.id) return true;
+      if (c.findingTitle === finding.title && (c.findingFile === finding.file || !finding.file)) return true;
+      return false;
+    });
+  }, [candidates, finding]);
+
+  const uniqueRoutes = useMemo(() => {
+    return [...new Map(mappedRoutes.map((r) => [`${r.routeFile}:${r.route}`, r])).values()].sort((a, b) => a.route.localeCompare(b.route));
+  }, [mappedRoutes]);
+
+  const tabs = [
+    { id: "evidence" as const, label: "Evidence" },
+    { id: "routes" as const, label: `Routes (${uniqueRoutes.length})` },
+    { id: "fix" as const, label: "Fix" },
+  ];
+
   return (
-    <section aria-labelledby="candidate-paths-title" className="border-b border-[#D4E0E3] py-6">
-      <div className="flex flex-col gap-3 border-b border-[#D4E0E3] pb-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Path candidates</p>
-          <h2 id="candidate-paths-title" className="mt-1 text-lg font-bold tracking-[-0.02em] text-[#17262D]">Potential source paths</h2>
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* Drawer header */}
+      <div className="shrink-0 border-b border-[#D4E0E3] bg-[#FCFEFE] px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <span className={`inline-flex rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase ${severityClass(finding.severity)}`}>
+              {finding.severity}
+            </span>
+            <h3 className="mt-1.5 text-sm font-bold text-[#17262D]">{finding.title}</h3>
+            <p className="mt-1 font-mono text-[10px] text-[#53656D]">{sourceLabel(finding.source)}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded p-1 text-[#53656D] outline-none transition hover:text-[#17262D] focus-visible:ring-2 focus-visible:ring-[#008E9A]"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-        <span className="w-fit rounded-full border border-[#E8CE9C] bg-[#FFF9EA] px-2.5 py-1 font-mono text-[10px] font-semibold text-[#A05B00]">Not exploit-verified</span>
+        {/* Drawer tabs */}
+        <div className="mt-3 flex gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-md px-2.5 py-1.5 text-xs font-semibold transition ${
+                activeTab === tab.id
+                  ? "bg-[#008E9A]/10 text-[#008E9A]"
+                  : "text-[#53656D] hover:bg-[#EDF4F5] hover:text-[#17262D]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <p className="mt-3 max-w-3xl text-xs leading-relaxed text-[#53656D]">Each row connects a detected route to a source-security finding in the same file. It is useful triage evidence, not a claim that an attacker can reach or exploit the sink.</p>
-      {candidateGroups.length === 0 ? <div className="mt-4 border-y border-dashed border-[#D4E0E3] py-6 text-sm text-[#53656D]">No source-local route-to-sink candidates were detected in this scan. This does not prove that the repository has no attack paths.</div> : <>
-        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.13em] text-[#53656D]">{candidateGroups.length} source finding{candidateGroups.length === 1 ? "" : "s"} · {totalRoutes} mapped route{totalRoutes === 1 ? "" : "s"}</p>
-        <ul className="mt-3 divide-y divide-[#D4E0E3] border-y border-[#D4E0E3]">
-          {visibleGroups.map((group) => {
-            const isExpanded = expandedFindingId === group.id;
-            const routeListId = `attack-path-routes-${group.id}`;
-            return <li key={group.id} className="px-1 py-4">
-              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-5">
-                <div className="min-w-0 border-l-2 border-[#008E9A] pl-3">
-                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#53656D]">Source evidence</p>
-                  <p className="mt-1 text-sm font-semibold text-[#17262D]">{group.findingTitle}</p>
-                  <p className="mt-1 break-all font-mono text-[11px] text-[#53656D]">{group.findingFile}</p>
-                </div>
-                <div className="flex flex-wrap gap-2 md:justify-end">
-                  <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold ${severityClass(group.severity)}`}>{group.severity}</span>
-                  <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold ${group.authBoundary === "present" ? "border-[#B9DCC7] bg-[#F2FAF5] text-[#16754B]" : "border-[#E8CE9C] bg-[#FFF9EA] text-[#A05B00]"}`}>{group.authBoundary === "present" ? "auth referenced" : "auth not detected"}</span>
-                </div>
+
+      {/* Drawer body (scrolls internally) */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {activeTab === "evidence" && (
+          <div className="space-y-4">
+            {finding.file && (
+              <div>
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#53656D]">Location</p>
+                <p className="mt-1 break-all font-mono text-xs text-[#17262D]">{finding.file}</p>
               </div>
-              <div className="mt-4 flex flex-col gap-3 border-t border-dashed border-[#D4E0E3] pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
-                <div>
-                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#53656D]">Mapped entry routes</p>
-                  <p className="mt-1 text-xs text-[#53656D]">{group.routes.length} route{group.routes.length === 1 ? "" : "s"} in the same source file.</p>
-                </div>
-                <button type="button" aria-expanded={isExpanded} aria-controls={routeListId} onClick={() => setExpandedFindingId((current) => current === group.id ? null : group.id)} className="inline-flex min-h-9 shrink-0 items-center gap-2 self-start rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] hover:text-[#17262D] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2">{isExpanded ? "Hide routes" : "Show routes"}<ChevronDown className={`h-3.5 w-3.5 transition ${isExpanded ? "rotate-180" : ""}`} /></button>
+            )}
+            <div>
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#53656D]">Evidence detail</p>
+              <p className="mt-1 text-sm leading-relaxed text-[#53656D]">{finding.detail}</p>
+            </div>
+            {mappedRoutes.length > 0 && mappedRoutes[0].authBoundary && (
+              <div>
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#53656D]">Auth boundary</p>
+                <span className={`mt-1 inline-flex rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold ${
+                  mappedRoutes[0].authBoundary === "present"
+                    ? "border-[#B9DCC7] bg-[#F2FAF5] text-[#16754B]"
+                    : "border-[#E8CE9C] bg-[#FFF9EA] text-[#A05B00]"
+                }`}>
+                  {mappedRoutes[0].authBoundary === "present" ? "Auth referenced" : "Auth not detected"}
+                </span>
               </div>
-              {isExpanded && <ul id={routeListId} className="mt-3 grid gap-2 border-l border-[#D4E0E3] pl-3 sm:grid-cols-2">
-                {group.routes.map((route) => <li key={`${route.routeFile}:${route.route}`} className="min-w-0"><p className="break-all font-mono text-xs font-semibold text-[#17262D]">{route.route}</p><p className="mt-0.5 break-all font-mono text-[10px] text-[#53656D]">{route.routeFile}</p></li>)}
-              </ul>}
-              <p className="mt-3 text-xs leading-relaxed text-[#53656D]">{group.note}</p>
-            </li>;
-          })}
-        </ul>
-        {candidateGroups.length > initialGroupCount && <button type="button" onClick={() => setShowAll((current) => !current)} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] hover:text-[#17262D] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2">{showAll ? "Show fewer source findings" : `Show ${candidateGroups.length - initialGroupCount} more source finding${candidateGroups.length - initialGroupCount === 1 ? "" : "s"}`}<ChevronDown className={`h-3.5 w-3.5 transition ${showAll ? "rotate-180" : ""}`} /></button>}
-      </>}
-    </section>
+            )}
+          </div>
+        )}
+
+        {activeTab === "routes" && (
+          <div>
+            {uniqueRoutes.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[#D4E0E3] px-4 py-8 text-center">
+                <Route className="mx-auto h-6 w-6 text-[#839198]" />
+                <p className="mt-2 text-sm font-semibold text-[#17262D]">No mapped routes</p>
+                <p className="mt-1 text-xs text-[#53656D]">No source-local route-to-sink candidates detected for this finding.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#53656D]">
+                  {uniqueRoutes.length} entry route{uniqueRoutes.length !== 1 ? "s" : ""} mapped to this finding
+                </p>
+                <ul className="space-y-1.5">
+                  {uniqueRoutes.map((route) => (
+                    <li key={`${route.routeFile}:${route.route}`} className="rounded-lg border border-[#D4E0E3] bg-[#F4F8F9] px-3 py-2.5">
+                      <p className="break-all font-mono text-xs font-semibold text-[#17262D]">{route.route}</p>
+                      <p className="mt-0.5 break-all font-mono text-[10px] text-[#53656D]">{route.routeFile}</p>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-xs leading-relaxed text-[#53656D]">Each route connects a detected endpoint to this source-security finding. This is triage evidence, not a claim that an attacker can reach or exploit the sink.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "fix" && (
+          <div className="space-y-4">
+            <div>
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#53656D]">Suggested remediation</p>
+              <div className="mt-2 border-l-2 border-[#008E9A] pl-3">
+                <p className="text-sm leading-relaxed text-[#17262D]">{remediationFor(finding)}</p>
+              </div>
+            </div>
+            {finding.file && (
+              <div>
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#53656D]">Affected file</p>
+                <p className="mt-1 break-all font-mono text-xs text-[#17262D]">{finding.file}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Drawer footer actions */}
+      <div className="shrink-0 border-t border-[#D4E0E3] bg-[#FCFEFE] px-4 py-3">
+        <button
+          type="button"
+          onClick={() => onCopy(finding)}
+          className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] hover:text-[#17262D] focus-visible:ring-2 focus-visible:ring-[#008E9A]"
+        >
+          {copiedFinding === finding.id ? <ClipboardCopy className="h-3.5 w-3.5 text-[#16754B]" /> : <Copy className="h-3.5 w-3.5" />}
+          {copiedFinding === finding.id ? "Copied finding" : "Copy finding"}
+        </button>
+      </div>
+    </div>
   );
 };
+
+/* ─── Footer status bar for scanner coverage ─── */
+
+const CoverageFooter = ({ tools, scanMetrics, lifecycle }: { tools: ToolStatus[]; scanMetrics?: Record<string, unknown>; lifecycle: ScanLifecycle }) => {
+  const [expanded, setExpanded] = useState(false);
+  if (tools.length === 0 && !scanMetrics) return null;
+
+  const hasPartial = tools.some((t) => t.status !== "ran");
+  const scanDuration = formatDuration(scanMetrics?.durationMs);
+  const attempts = scanMetrics?.attemptCount ? String(scanMetrics.attemptCount) : null;
+
+  return (
+    <div className="shrink-0">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-2 border-t border-[#D4E0E3] bg-[#FCFEFE] px-4 py-2 text-left transition hover:bg-[#F4F8F9]"
+      >
+        <span className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] text-[#53656D]">
+          {tools.map((tool) => (
+            <span key={tool.tool} className="inline-flex items-center gap-1">
+              {tool.status === "ran" ? (
+                <CheckCircle2 className="h-2.5 w-2.5 text-[#16754B]" />
+              ) : tool.status === "failed" ? (
+                <X className="h-2.5 w-2.5 text-[#B12926]" />
+              ) : (
+                <span className="h-2.5 w-2.5 rounded-full border border-[#E8CE9C] bg-[#FFF9EA]" />
+              )}
+              <span className="font-semibold">{tool.tool}</span>
+              <span>{tool.findingsCount}</span>
+            </span>
+          ))}
+          {scanDuration && <><span className="text-[#D4E0E3]">│</span><span>{scanDuration}</span></>}
+          {attempts && <><span className="text-[#D4E0E3]">│</span><span>{attempts} attempt{attempts !== "1" ? "s" : ""}</span></>}
+          {hasPartial && <span className="font-semibold text-[#A05B00]">Partial coverage</span>}
+        </span>
+        <ChevronDown className={`h-3 w-3 shrink-0 text-[#53656D] transition ${expanded ? "rotate-180" : ""}`} />
+      </button>
+      {expanded && (
+        <div className="border-t border-[#D4E0E3] bg-[#FCFEFE] px-4 py-3">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Scanner evidence</p>
+          <ul className="mt-2 divide-y divide-[#D4E0E3]">
+            {tools.map((tool) => {
+              const status = tool.status === "ran" ? "text-[#16754B]" : tool.status === "failed" ? "text-[#B12926]" : "text-[#A05B00]";
+              return (
+                <li key={tool.tool} className="grid gap-1 py-2 sm:grid-cols-[140px_80px_1fr_auto] sm:items-center sm:gap-3">
+                  <span className="font-mono text-xs font-semibold text-[#17262D]">{tool.tool}</span>
+                  <span className={`font-mono text-[10px] font-semibold uppercase ${status}`}>{tool.status}</span>
+                  <span className="text-xs text-[#53656D]">{tool.error || "Completed with recorded evidence."}</span>
+                  <span className="font-mono text-xs text-[#53656D]">{tool.findingsCount} findings</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+   ═══════════════════════════════════════════════════════════════════ */
 
 const AttackPath = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  /* ─── Core state ─── */
   const [repos, setRepos] = useState<RepoSummary[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<RepoSummary | null>(null);
   const [repoLoading, setRepoLoading] = useState(false);
@@ -601,15 +837,18 @@ const AttackPath = () => {
   const [attackPathCandidates, setAttackPathCandidates] = useState<AttackPathCandidate[]>([]);
   const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
   const [severityFilter, setSeverityFilter] = useState<"all" | Vulnerability["severity"]>("all");
-  const [sourceFilter, setSourceFilter] = useState("all");
+  const [domainTab, setDomainTab] = useState("all");
   const [copiedFinding, setCopiedFinding] = useState<string | null>(null);
   const [copiedReport, setCopiedReport] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [actionError, setActionError] = useState("");
   const [quota, setQuota] = useState<ScanAllowance | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(true);
+  const [ribbonExpanded, setRibbonExpanded] = useState(false);
+  const [groupByRule, setGroupByRule] = useState(true);
   const streamRef = useRef<AbortController | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const deviceId = useMemo(() => {
     const existing = localStorage.getItem("servx_device_uuid");
     if (existing) return existing;
@@ -617,6 +856,50 @@ const AttackPath = () => {
     localStorage.setItem("servx_device_uuid", next);
     return next;
   }, []);
+
+  /* ─── Derived state ─── */
+  const activeScan = ["warming", "queued", "running"].includes(lifecycle);
+  const allowanceExhausted = quota?.remaining === 0;
+  const isEvidenceMode = lifecycle === "completed" && findings.length > 0;
+
+  const domainCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const f of findings) {
+      const d = sourceDomain(f.source);
+      counts[d] = (counts[d] || 0) + 1;
+    }
+    return counts;
+  }, [findings]);
+
+  const domainTabs = useMemo(() => {
+    const tabs: { id: string; label: string; count: number }[] = [
+      { id: "all", label: "All", count: findings.length },
+    ];
+    for (const [key, count] of Object.entries(domainCounts)) {
+      tabs.push({ id: key, label: DOMAIN_LABELS[key] || key, count });
+    }
+    return tabs;
+  }, [domainCounts, findings.length]);
+
+  const filteredFindings = useMemo(() => {
+    return findings.filter((f) => {
+      if (severityFilter !== "all" && f.severity !== severityFilter) return false;
+      if (domainTab !== "all" && sourceDomain(f.source) !== domainTab) return false;
+      return true;
+    });
+  }, [findings, severityFilter, domainTab]);
+
+  const findingGroups = useMemo(() => groupFindingsByRule(filteredFindings), [filteredFindings]);
+
+  const severityTotals = useMemo(() => ({
+    critical: findings.filter((f) => f.severity === "critical").length,
+    medium: findings.filter((f) => f.severity === "medium").length,
+    low: findings.filter((f) => f.severity === "low").length,
+  }), [findings]);
+
+  const selectedFinding = findings.find((f) => f.id === selectedFindingId) || null;
+
+  /* ─── API callbacks ─── */
 
   const loadQuota = useCallback(async () => {
     setQuotaLoading(true);
@@ -727,6 +1010,8 @@ const AttackPath = () => {
     }
   }, [loadJob]);
 
+  /* ─── Effects ─── */
+
   useEffect(() => {
     if (!user) return;
     const loadRepos = async () => {
@@ -775,6 +1060,36 @@ const AttackPath = () => {
 
   useEffect(() => () => { streamRef.current?.abort(); if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current); }, []);
 
+  const loadJobForRepo = useCallback(async (repoFullName: string) => {
+    setActionError("");
+    setSelectedFindingId(null);
+    streamRef.current?.abort();
+    try {
+      const response = await apiClient.get(`/attack-paths/jobs/latest?repoFullName=${encodeURIComponent(repoFullName)}`);
+      const restored = applyJobPayload(response.data);
+      sessionStorage.setItem(LAST_JOB_STORAGE_KEY, restored.jobId);
+      if (isTerminal(restored.status)) {
+        sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+      } else {
+        sessionStorage.setItem(ACTIVE_JOB_STORAGE_KEY, restored.jobId);
+        void startStream(restored.jobId);
+      }
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        setJob(null);
+        setFindings([]);
+        setTools([]);
+        setAttackPathCandidates([]);
+        setLifecycle("idle");
+        sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+      } else {
+        setActionError("Unable to load scan results for this repository.");
+      }
+    }
+  }, [applyJobPayload, startStream]);
+
+  /* ─── Actions ─── */
+
   const queueScan = useCallback(async () => {
     if (!selectedRepo || ["warming", "queued", "running"].includes(lifecycle)) return;
     setActionError("");
@@ -809,14 +1124,6 @@ const AttackPath = () => {
       setActionError(error?.response?.data?.message || "Unable to cancel this scan.");
     }
   }, [job, loadJob]);
-
-  const filteredFindings = useMemo(() => findings.filter((finding) => (severityFilter === "all" || finding.severity === severityFilter) && (sourceFilter === "all" || finding.source === sourceFilter)), [findings, severityFilter, sourceFilter]);
-  const sourceOptions = useMemo(() => Array.from(new Set(findings.map((finding) => finding.source).filter(Boolean))) as string[], [findings]);
-  const selectedFinding = findings.find((finding) => finding.id === selectedFindingId) || null;
-  const severityTotals = useMemo(() => ({ critical: findings.filter((finding) => finding.severity === "critical").length, medium: findings.filter((finding) => finding.severity === "medium").length, low: findings.filter((finding) => finding.severity === "low").length }), [findings]);
-  const coverageIsPartial = tools.some((tool) => tool.status !== "ran");
-  const activeScan = ["warming", "queued", "running"].includes(lifecycle);
-  const allowanceExhausted = quota?.remaining === 0;
 
   const copyFinding = async (finding: Vulnerability) => {
     const text = [
@@ -859,176 +1166,401 @@ const AttackPath = () => {
     setTimeout(() => setCopiedReport(false), 1_500);
   };
 
-  return (
-    <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#F4F8F9] px-4 py-5 text-[#17262D] sm:px-6 sm:py-8">
-      <div className="mx-auto w-full max-w-6xl">
-        <header className="flex flex-col gap-5 border-b border-[#D4E0E3] pb-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="max-w-2xl"><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Security evidence workspace</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.03em] text-[#17262D] sm:text-4xl">Attack Paths</h1><p className="mt-3 text-sm leading-relaxed text-[#53656D]">Queue a deep scan for a connected repository. ServX keeps the job state while the isolated executor collects evidence.</p></div>
-          <LifecycleBadge lifecycle={lifecycle} />
-        </header>
+  /* ═══════════════════════════════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════════════════════════════ */
 
-        <section aria-labelledby="command-title" className="grid gap-4 border-b border-[#D4E0E3] py-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_190px]">
-            <div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Owned repository</p><h2 id="command-title" className="mt-1 text-base font-bold text-[#17262D]">Choose what ServX may inspect</h2><div className="mt-3"><RepoSelect repos={repos} selectedRepo={selectedRepo} disabled={activeScan} onSelect={setSelectedRepo} /></div>{repoLoading && <p className="mt-2 text-xs text-[#53656D]">Loading connected repositories.</p>}{repoError && <p className="mt-2 text-xs text-[#B12926]">{repoError}</p>}</div>
-            <div className="border-l-2 border-[#D4E0E3] pl-4">
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Allowance</p>
-              <p className="mt-2 text-2xl font-bold tracking-[-0.03em] text-[#17262D]">
-                {quotaLoading ? "…" : quota?.remaining ?? "—"}
-                <span className="ml-1 text-xs font-medium text-[#53656D]">remaining</span>
-              </p>
-              <p className="mt-1 text-xs text-[#53656D]">
-                {quota ? `${quota.used} of ${quota.limit} scans used in last 24h` : "Checking server allowance"}
-              </p>
-              {quota?.resetAt && (
-                <p className="mt-1 font-mono text-[10px] text-[#008E9A]">
-                  Resets {formatTimeUntil(quota.resetAt)}
-                </p>
-              )}
+  return (
+    <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#F4F8F9] text-[#17262D]">
+
+      {/* ─── Top Bar: Header + repo + quota + scan button ─── */}
+      <div className="shrink-0 border-b border-[#D4E0E3] bg-[#F4F8F9] px-4 py-4 sm:px-6">
+        <div className="mx-auto w-full max-w-7xl">
+
+          {/* Title row */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold tracking-[-0.03em] text-[#17262D] sm:text-2xl">Attack Paths</h1>
+              <LifecycleBadge lifecycle={lifecycle} />
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Quota compact */}
+              <div className="hidden items-center gap-2 sm:flex">
+                <span className="font-mono text-xs text-[#53656D]">
+                  {quotaLoading ? "…" : quota ? `${quota.remaining}/${quota.limit} scans` : "—"}
+                </span>
+                {quota?.resetAt && (
+                  <span className="font-mono text-[10px] text-[#008E9A]">Resets {formatTimeUntil(quota.resetAt)}</span>
+                )}
+              </div>
             </div>
           </div>
-          <div className="lg:text-right"><button type="button" onClick={() => void queueScan()} disabled={!selectedRepo || activeScan || allowanceExhausted} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#008E9A] px-5 text-sm font-semibold text-white outline-none transition hover:bg-[#007A84] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#839198] sm:w-auto"><Scan className="h-4 w-4" />{activeScan ? "Scan active" : allowanceExhausted ? "Daily limit reached" : "Queue scan"}</button><p className="mt-2 max-w-64 text-left text-[11px] leading-relaxed text-[#53656D] lg:ml-auto">{allowanceExhausted ? `Quota will refresh ${formatTimeUntil(quota?.resetAt)}.` : "Runs asynchronously in background — safe to leave page or close browser."}</p></div>
-        </section>
 
-        {actionError && <div role="alert" className="mt-5 flex items-start gap-3 border-l-2 border-[#B12926] bg-[#FFF4F3] px-4 py-3 text-sm text-[#B12926]"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{actionError}</span><button type="button" onClick={() => setActionError("")} className="ml-auto rounded p-1 outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><X className="h-4 w-4" /></button></div>}
-
-        {selectedRepo && job?.repoFullName && selectedRepo.full_name !== job.repoFullName && (
-          <div role="status" className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-[#E8CE9C] bg-[#FFF9EA] px-4 py-3 text-xs text-[#A05B00]">
-            <span className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-[#A05B00]" />
-              Showing scan evidence for <strong className="font-mono">{job.repoFullName}</strong>. You have selected <strong className="font-mono">{selectedRepo.full_name}</strong> in the dropdown.
-            </span>
-            <button type="button" onClick={() => void queueScan()} disabled={activeScan || allowanceExhausted} className="font-semibold underline outline-none hover:text-[#17262D]">
-              Queue scan for {selectedRepo.name}
+          {/* Command row: repo select + scan button */}
+          <div className="mt-3 flex items-center gap-3">
+            <div className="w-full max-w-sm">
+              <RepoSelect
+                repos={repos}
+                selectedRepo={selectedRepo}
+                disabled={activeScan}
+                onSelect={(repo) => {
+                  setSelectedRepo(repo);
+                  void loadJobForRepo(repo.full_name);
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void queueScan()}
+              disabled={!selectedRepo || activeScan || allowanceExhausted}
+              className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg bg-[#008E9A] px-4 text-sm font-semibold text-white outline-none transition hover:bg-[#007A84] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[#839198]"
+            >
+              <Scan className="h-3.5 w-3.5" />
+              {activeScan ? "Scanning" : allowanceExhausted ? "Limit reached" : "Queue scan"}
             </button>
           </div>
-        )}
 
-        {job && lifecycle !== "idle" && <EvidenceRail job={job} lifecycle={lifecycle} onCancel={() => setCancelOpen(true)} />}
-
-        <section aria-labelledby="results-title" className="py-7 sm:py-9">
-          <div className="flex flex-col gap-4 border-b border-[#D4E0E3] pb-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">
-                Results desk {job?.completedAt || job?.updatedAt ? `· ${formatRelativeTime(job.completedAt || job.updatedAt)}` : ""}
-              </p>
-              <h2 id="results-title" className="mt-1 text-2xl font-bold tracking-[-0.025em] text-[#17262D]">{lifecycle === "completed" ? "Review the evidence" : "Findings"}</h2>
-              <p className="mt-2 text-sm text-[#53656D]">
-                {findings.length ? `${findings.length} findings across completed repository evidence for ${job?.repoFullName || selectedRepo?.full_name || "repository"}.` : lifecycle === "completed" ? "No findings were returned by the completed scan. This does not prove the repository is secure." : "Results appear here after a repository scan completes."}
-              </p>
-              {(job?.completedAt || job?.updatedAt) && (
-                <p className="mt-1 font-mono text-[11px] text-[#53656D]">
-                  Evidence timestamp: {formatTimestamp(job.completedAt || job.updatedAt)}
-                </p>
-              )}
-            </div>
-            {findings.length > 0 && <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void copyReport()} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2">{copiedReport ? <ClipboardCopy className="h-3.5 w-3.5 text-[#16754B]" /> : <Copy className="h-3.5 w-3.5" />}{copiedReport ? "Copied" : "Copy report"}</button><button type="button" onClick={() => navigate(`/automedic?${new URLSearchParams({ source: "attack-path", repo: selectedRepo?.full_name || job?.repoFullName || "", vulns: JSON.stringify(findings.map((finding) => ({ severity: finding.severity, title: finding.title, file: finding.file }))) }).toString()}`)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2"><Zap className="h-3.5 w-3.5" />Open Auto-Medic<ArrowRight className="h-3.5 w-3.5" /></button></div>}
-          </div>
-
-          {findings.length > 0 && <div className="grid grid-cols-3 divide-x divide-[#D4E0E3] border-b border-[#D4E0E3] py-4"><div className="pr-3"><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Critical</p><p className="mt-1 text-2xl font-bold text-[#B12926]">{severityTotals.critical}</p></div><div className="px-3"><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Medium</p><p className="mt-1 text-2xl font-bold text-[#A05B00]">{severityTotals.medium}</p></div><div className="pl-3"><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Low</p><p className="mt-1 text-2xl font-bold text-[#286778]">{severityTotals.low}</p></div></div>}
-
-          {findings.length > 0 && <div className="mt-5 grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold text-[#53656D]">Severity<select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as typeof severityFilter)} className="mt-1 min-h-11 w-full rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-sm text-[#17262D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><option value="all">All severities</option><option value="critical">Critical</option><option value="medium">Medium</option><option value="low">Low</option></select></label><label className="text-xs font-semibold text-[#53656D]">Evidence source<select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-sm text-[#17262D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><option value="all">All sources</option>{sourceOptions.map((source) => <option key={source} value={source}>{sourceLabel(source)}</option>)}</select></label></div>}
-
-          {findings.length > 0 ? (
-            filteredFindings.length > 0 ? (
-              <div className="mt-5 overflow-hidden border-y border-[#D4E0E3]">
-                <div className="hidden grid-cols-[100px_minmax(0,1fr)_160px_180px_28px] gap-4 bg-[#EDF4F5] px-4 py-3 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[#53656D] md:grid">
-                  <span>Severity</span>
-                  <span>Finding</span>
-                  <span>Source</span>
-                  <span>Location</span>
-                  <span />
-                </div>
-                {filteredFindings.map((finding) => (
-                  <div key={finding.id} className="border-t border-[#D4E0E3] first:border-t-0">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedFindingId((current) => current === finding.id ? null : finding.id)}
-                      className="grid w-full gap-2 px-4 py-4 text-left outline-none transition hover:bg-[#EDF4F5] focus-visible:bg-[#EDF4F5] md:grid-cols-[100px_minmax(0,1fr)_160px_180px_28px] md:gap-4"
-                    >
-                      <span className={`w-fit rounded-full border px-2 py-1 font-mono text-[10px] font-semibold uppercase ${severityClass(finding.severity)}`}>{finding.severity}</span>
-                      <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-[#17262D]">{finding.title}</span>
-                        <span className="mt-1 block text-xs text-[#53656D] md:hidden">{sourceLabel(finding.source)}{finding.file ? ` · ${finding.file}` : ""}</span>
-                      </span>
-                      <span className="hidden truncate font-mono text-[10px] text-[#53656D] md:block">{sourceLabel(finding.source)}</span>
-                      <span className="hidden truncate font-mono text-[10px] text-[#53656D] md:block">{finding.file || "Repository"}</span>
-                      <ChevronRight className={`h-4 w-4 text-[#53656D] transition ${selectedFindingId === finding.id ? "rotate-90" : ""}`} />
-                    </button>
-                    {selectedFindingId === finding.id && (
-                      <div className="border-t border-[#D4E0E3] bg-[#EDF4F5] px-4 py-4">
-                        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_230px]">
-                          <div>
-                            <p className="text-sm leading-relaxed text-[#53656D]">{finding.detail}</p>
-                            <p className="mt-4 border-l-2 border-[#008E9A] pl-3 text-sm leading-relaxed text-[#17262D]">
-                              <span className="font-semibold">Suggested fix. </span>{remediationFor(finding)}
-                            </p>
-                          </div>
-                          <div className="flex items-start justify-between gap-4 border-t border-[#D4E0E3] pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-                            <div>
-                              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#53656D]">Evidence location</p>
-                              <p className="mt-2 break-all font-mono text-xs text-[#17262D]">{finding.file || "Repository-wide evidence"}</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => void copyFinding(finding)}
-                              className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#53656D] outline-none hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A]"
-                            >
-                              {copiedFinding === finding.id ? <ClipboardCopy className="h-3.5 w-3.5 text-[#16754B]" /> : <Copy className="h-3.5 w-3.5" />}
-                              {copiedFinding === finding.id ? "Copied" : "Copy"}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-5 border-y border-dashed border-[#D4E0E3] py-10 text-center">
-                <FileWarning className="mx-auto h-7 w-7 text-[#839198]" />
-                <p className="mt-2 text-sm font-semibold text-[#17262D]">No findings match selected filters</p>
-                <p className="mt-1 text-xs text-[#53656D]">Adjust your severity or evidence source filter to view results.</p>
-                <button
-                  type="button"
-                  onClick={() => { setSeverityFilter("all"); setSourceFilter("all"); }}
-                  className="mt-3 inline-flex min-h-9 items-center rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#008E9A] outline-none hover:border-[#008E9A]"
-                >
-                  Reset filters
-                </button>
-              </div>
-            )
-          ) : (
-            <div className="mt-5 border-y border-dashed border-[#D4E0E3] py-12 text-center">
-              <Shield className="mx-auto h-8 w-8 text-[#839198]" />
-              <p className="mt-3 text-sm font-semibold text-[#17262D]">{lifecycle === "completed" ? "No findings returned" : "No scan evidence yet"}</p>
-              <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-[#53656D]">{lifecycle === "completed" ? "Review scanner coverage below before treating this as a clean result." : "Select an owned repository and queue one deep scan to begin collecting evidence."}</p>
+          {/* Error & mismatch banners */}
+          {repoLoading && <p className="mt-2 text-xs text-[#53656D]">Loading connected repositories.</p>}
+          {repoError && <p className="mt-2 text-xs text-[#B12926]">{repoError}</p>}
+          {actionError && (
+            <div role="alert" className="mt-3 flex items-start gap-3 rounded-lg border border-[#E5B6B4] bg-[#FFF4F3] px-3 py-2 text-xs text-[#B12926]">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1">{actionError}</span>
+              <button type="button" onClick={() => setActionError("")} className="rounded p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><X className="h-3.5 w-3.5" /></button>
             </div>
           )}
-        </section>
-
-        <PotentialAttackPaths candidates={attackPathCandidates} completed={lifecycle === "completed"} />
-
-        <CoverageList tools={tools} />
-
-        {job?.scanMetrics && lifecycle === "completed" && (
-          <section className="border-b border-[#D4E0E3] py-5">
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Run record</p>
-            <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 font-mono text-xs text-[#53656D]">
-              {job.startedAt && <span>Started: {formatTimestamp(job.startedAt)}</span>}
-              {job.completedAt && <span>Completed: {formatTimestamp(job.completedAt)}</span>}
-              <span>Queue wait: {formatDuration(job.scanMetrics.queueWaitMs) || "not recorded"}</span>
-              <span>Scanner time: {formatDuration(job.scanMetrics.durationMs) || "not recorded"}</span>
-              <span>Attempts: {String(job.scanMetrics.attemptCount || 1)}</span>
-              {coverageIsPartial && <span className="font-semibold text-[#A05B00]">Partial scanner coverage</span>}
+          {selectedRepo && job?.repoFullName && selectedRepo.full_name !== job.repoFullName && (
+            <div role="status" className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-[#E8CE9C] bg-[#FFF9EA] px-3 py-2 text-xs text-[#A05B00]">
+              <span className="flex items-center gap-2">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                Showing evidence for <strong className="font-mono">{job.repoFullName}</strong>.
+              </span>
+              <button type="button" onClick={() => void queueScan()} disabled={activeScan || allowanceExhausted} className="font-semibold underline outline-none hover:text-[#17262D]">
+                Scan {selectedRepo.name}
+              </button>
             </div>
-          </section>
-        )}
-
-        <footer className="flex flex-col gap-3 py-6 text-xs text-[#53656D] sm:flex-row sm:items-center sm:justify-between"><span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#008E9A]" />The browser never connects to the scanner directly.</span>{selectedRepo && <span className="flex items-center gap-2 font-mono"><ExternalLink className="h-3.5 w-3.5" />{selectedRepo.full_name}</span>}</footer>
+          )}
+        </div>
       </div>
 
-      {cancelOpen && <div role="dialog" aria-modal="true" aria-labelledby="cancel-scan-title" className="fixed inset-0 z-50 grid place-items-center bg-[#17262D]/35 p-4"><div className="w-full max-w-md rounded-xl border border-[#D4E0E3] bg-[#FCFEFE] p-5 shadow-[0_12px_32px_rgb(23_38_45_/_0.18)]"><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Cancel scan</p><h2 id="cancel-scan-title" className="mt-1 text-lg font-bold text-[#17262D]">Stop this repository scan?</h2></div><button type="button" onClick={() => setCancelOpen(false)} aria-label="Close cancellation dialog" className="rounded p-1 text-[#53656D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><X className="h-5 w-5" /></button></div><p className="mt-4 text-sm leading-relaxed text-[#53656D]">ServX will stop the queued or active scan and remove the worker’s temporary files. Existing completed findings are not changed.</p><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setCancelOpen(false)} className="min-h-11 rounded-lg border border-[#D4E0E3] px-4 text-sm font-semibold text-[#53656D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]">Keep scanning</button><button type="button" onClick={() => void confirmCancel()} className="min-h-11 rounded-lg bg-[#B12926] px-4 text-sm font-semibold text-white outline-none hover:bg-[#92211F] focus-visible:ring-2 focus-visible:ring-[#B12926] focus-visible:ring-offset-2">Cancel scan</button></div></div></div>}
+      {/* ─── Body: either Scan Command Mode or Evidence Workspace ─── */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col overflow-hidden px-4 sm:px-6">
+
+          {/* Active scan: show full stepper */}
+          {activeScan && job && (
+            <div className="shrink-0 py-4">
+              <ScanCommandMode job={job} lifecycle={lifecycle} onCancel={() => setCancelOpen(true)} />
+            </div>
+          )}
+
+          {/* Completed/failed/cancelled scan ribbon */}
+          {!activeScan && job && lifecycle !== "idle" && (
+            <div className="shrink-0 pt-4 pb-2">
+              <CompletedScanRibbon
+                job={job}
+                lifecycle={lifecycle}
+                expanded={ribbonExpanded}
+                onToggle={() => setRibbonExpanded(!ribbonExpanded)}
+              />
+              {ribbonExpanded && (
+                <div className="mt-2 rounded-xl border border-[#D4E0E3] bg-[#FCFEFE] p-4">
+                  <ScanCommandMode job={job} lifecycle={lifecycle} onCancel={() => {}} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Evidence workspace: master-detail layout */}
+          {isEvidenceMode ? (
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden pb-0">
+
+              {/* Summary bar */}
+              <div className="shrink-0 pb-3 pt-2">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  {/* Severity counters */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[#53656D]">Critical</span>
+                      <span className="text-lg font-bold text-[#B12926]">{severityTotals.critical}</span>
+                    </div>
+                    <span className="h-4 w-px bg-[#D4E0E3]" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[#53656D]">Medium</span>
+                      <span className="text-lg font-bold text-[#A05B00]">{severityTotals.medium}</span>
+                    </div>
+                    <span className="h-4 w-px bg-[#D4E0E3]" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[#53656D]">Low</span>
+                      <span className="text-lg font-bold text-[#286778]">{severityTotals.low}</span>
+                    </div>
+                  </div>
+                  {/* Actions */}
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => void copyReport()} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-2.5 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2">
+                      {copiedReport ? <ClipboardCopy className="h-3 w-3 text-[#16754B]" /> : <Copy className="h-3 w-3" />}
+                      {copiedReport ? "Copied" : "Copy report"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/automedic?${new URLSearchParams({ source: "attack-path", repo: selectedRepo?.full_name || job?.repoFullName || "", vulns: JSON.stringify(findings.map((f) => ({ severity: f.severity, title: f.title, file: f.file }))) }).toString()}`)}
+                      className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-2.5 text-xs font-semibold text-[#53656D] outline-none transition hover:border-[#008E9A] focus-visible:ring-2 focus-visible:ring-[#008E9A] focus-visible:ring-offset-2"
+                    >
+                      <Zap className="h-3 w-3" />Auto-Medic<ArrowRight className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Domain tabs */}
+              <div className="shrink-0 border-b border-[#D4E0E3]">
+                <div className="flex items-center gap-1 overflow-x-auto">
+                  {domainTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => { setDomainTab(tab.id); setSelectedFindingId(null); }}
+                      className={`shrink-0 border-b-2 px-3 py-2 text-xs font-semibold transition ${
+                        domainTab === tab.id
+                          ? "border-[#008E9A] text-[#008E9A]"
+                          : "border-transparent text-[#53656D] hover:text-[#17262D]"
+                      }`}
+                    >
+                      {tab.label} <span className="ml-1 font-mono text-[10px]">({tab.count})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Filter row */}
+              <div className="shrink-0 flex items-center gap-3 border-b border-[#D4E0E3] py-2">
+                <select
+                  value={severityFilter}
+                  onChange={(e) => { setSeverityFilter(e.target.value as typeof severityFilter); setSelectedFindingId(null); }}
+                  className="rounded-md border border-[#D4E0E3] bg-[#FCFEFE] px-2 py-1.5 text-xs text-[#17262D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"
+                >
+                  <option value="all">All severities</option>
+                  <option value="critical">Critical</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setGroupByRule(!groupByRule)}
+                  className={`rounded-md border px-2.5 py-1.5 text-xs font-semibold transition ${
+                    groupByRule
+                      ? "border-[#008E9A]/30 bg-[#008E9A]/10 text-[#008E9A]"
+                      : "border-[#D4E0E3] text-[#53656D] hover:border-[#008E9A]/30"
+                  }`}
+                >
+                  Group by rule
+                </button>
+                <span className="ml-auto font-mono text-[10px] text-[#53656D]">
+                  {filteredFindings.length} finding{filteredFindings.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+
+              {/* Master-detail split */}
+              <div className="flex min-h-0 flex-1 overflow-hidden">
+
+                {/* Master list */}
+                <div className={`min-h-0 overflow-y-auto border-r border-[#D4E0E3] ${selectedFinding ? "w-[45%] shrink-0" : "w-full"}`}>
+                  {filteredFindings.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                      <FileWarning className="h-7 w-7 text-[#839198]" />
+                      <p className="mt-2 text-sm font-semibold text-[#17262D]">No findings match filters</p>
+                      <button
+                        type="button"
+                        onClick={() => { setSeverityFilter("all"); setDomainTab("all"); }}
+                        className="mt-3 inline-flex min-h-8 items-center rounded-lg border border-[#D4E0E3] bg-[#FCFEFE] px-3 text-xs font-semibold text-[#008E9A] outline-none hover:border-[#008E9A]"
+                      >
+                        Reset filters
+                      </button>
+                    </div>
+                  ) : groupByRule ? (
+                    /* Grouped view */
+                    findingGroups.map((group) => (
+                      <div key={`${group.ruleTitle}::${group.severity}::${group.source}`} className="border-b border-[#D4E0E3]">
+                        {group.instances.length === 1 ? (
+                          /* Single instance — render directly */
+                          <button
+                            type="button"
+                            onClick={() => setSelectedFindingId((c) => c === group.instances[0].id ? null : group.instances[0].id)}
+                            className={`flex w-full items-center gap-3 px-4 py-3 text-left outline-none transition hover:bg-[#EDF4F5] ${
+                              selectedFindingId === group.instances[0].id ? "bg-[#EDF4F5] border-l-2 border-l-[#008E9A]" : ""
+                            }`}
+                          >
+                            <span className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase ${severityClass(group.severity)}`}>
+                              {group.severity}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-semibold text-[#17262D]">{group.ruleTitle}</span>
+                              <span className="mt-0.5 block truncate font-mono text-[10px] text-[#53656D]">
+                                {sourceLabel(group.source)}{group.instances[0].file ? ` · ${group.instances[0].file}` : ""}
+                              </span>
+                            </span>
+                            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#53656D]" />
+                          </button>
+                        ) : (
+                          /* Multiple instances — collapsible group */
+                          <GroupedFindingRow
+                            group={group}
+                            selectedFindingId={selectedFindingId}
+                            onSelectInstance={(id) => setSelectedFindingId((c) => c === id ? null : id)}
+                          />
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    /* Flat list */
+                    filteredFindings.map((finding) => (
+                      <button
+                        key={finding.id}
+                        type="button"
+                        onClick={() => setSelectedFindingId((c) => c === finding.id ? null : finding.id)}
+                        className={`flex w-full items-center gap-3 border-b border-[#D4E0E3] px-4 py-3 text-left outline-none transition hover:bg-[#EDF4F5] ${
+                          selectedFindingId === finding.id ? "bg-[#EDF4F5] border-l-2 border-l-[#008E9A]" : ""
+                        }`}
+                      >
+                        <span className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase ${severityClass(finding.severity)}`}>
+                          {finding.severity}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-[#17262D]">{finding.title}</span>
+                          <span className="mt-0.5 block truncate font-mono text-[10px] text-[#53656D]">
+                            {sourceLabel(finding.source)}{finding.file ? ` · ${finding.file}` : ""}
+                          </span>
+                        </span>
+                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#53656D]" />
+                      </button>
+                    ))
+                  )}
+                </div>
+
+                {/* Detail drawer */}
+                {selectedFinding && (
+                  <div className="min-h-0 flex-1 overflow-hidden border-l border-[#D4E0E3] bg-[#FCFEFE]">
+                    <FindingDetailDrawer
+                      finding={selectedFinding}
+                      candidates={attackPathCandidates}
+                      copiedFinding={copiedFinding}
+                      onCopy={copyFinding}
+                      onClose={() => setSelectedFindingId(null)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Footer status bar */}
+              <CoverageFooter tools={tools} scanMetrics={job?.scanMetrics} lifecycle={lifecycle} />
+            </div>
+          ) : (
+            /* No evidence yet: empty state */
+            !activeScan && (
+              <div className="flex flex-1 flex-col items-center justify-center py-16">
+                <Shield className="h-10 w-10 text-[#839198]" />
+                <p className="mt-4 text-base font-semibold text-[#17262D]">
+                  {lifecycle === "completed" ? "No findings returned" : lifecycle === "failed" ? "Scan failed" : lifecycle === "cancelled" ? "Scan cancelled" : "No scan evidence yet"}
+                </p>
+                <p className="mx-auto mt-2 max-w-md text-center text-sm leading-relaxed text-[#53656D]">
+                  {lifecycle === "completed"
+                    ? "The completed scan returned no findings. This does not prove the repository is secure."
+                    : lifecycle === "failed"
+                    ? `The scan encountered an error. ${job?.lastError || "Check the scan record for details."}`
+                    : lifecycle === "cancelled"
+                    ? "The scan was cancelled before completion."
+                    : "Select an owned repository and queue one deep scan to begin collecting evidence."}
+                </p>
+                {lifecycle !== "idle" && tools.length > 0 && (
+                  <div className="mt-6 w-full max-w-lg">
+                    <CoverageFooter tools={tools} scanMetrics={job?.scanMetrics} lifecycle={lifecycle} />
+                  </div>
+                )}
+              </div>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* ─── Cancel dialog ─── */}
+      {cancelOpen && (
+        <div role="dialog" aria-modal="true" aria-labelledby="cancel-scan-title" className="fixed inset-0 z-50 grid place-items-center bg-[#17262D]/35 p-4">
+          <div className="w-full max-w-md rounded-xl border border-[#D4E0E3] bg-[#FCFEFE] p-5 shadow-[0_12px_32px_rgb(23_38_45_/_0.18)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#53656D]">Cancel scan</p>
+                <h2 id="cancel-scan-title" className="mt-1 text-lg font-bold text-[#17262D]">Stop this repository scan?</h2>
+              </div>
+              <button type="button" onClick={() => setCancelOpen(false)} aria-label="Close cancellation dialog" className="rounded p-1 text-[#53656D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]"><X className="h-5 w-5" /></button>
+            </div>
+            <p className="mt-4 text-sm leading-relaxed text-[#53656D]">ServX will stop the queued or active scan and remove the worker's temporary files. Existing completed findings are not changed.</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setCancelOpen(false)} className="min-h-9 rounded-lg border border-[#D4E0E3] px-4 text-sm font-semibold text-[#53656D] outline-none focus-visible:ring-2 focus-visible:ring-[#008E9A]">Keep scanning</button>
+              <button type="button" onClick={() => void confirmCancel()} className="min-h-9 rounded-lg bg-[#B12926] px-4 text-sm font-semibold text-white outline-none hover:bg-[#92211F] focus-visible:ring-2 focus-visible:ring-[#B12926] focus-visible:ring-offset-2">Cancel scan</button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
+  );
+};
+
+/* ─── Grouped finding row component ─── */
+
+const GroupedFindingRow = ({
+  group,
+  selectedFindingId,
+  onSelectInstance,
+}: {
+  group: FindingGroup;
+  selectedFindingId: string | null;
+  onSelectInstance: (id: string) => void;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const hasSelected = group.instances.some((i) => i.id === selectedFindingId);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className={`flex w-full items-center gap-3 px-4 py-3 text-left outline-none transition hover:bg-[#EDF4F5] ${hasSelected ? "bg-[#EDF4F5]" : ""}`}
+      >
+        <span className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase ${severityClass(group.severity)}`}>
+          {group.severity}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-[#17262D]">{group.ruleTitle}</span>
+          <span className="mt-0.5 block font-mono text-[10px] text-[#53656D]">
+            {sourceLabel(group.source)} · {group.instances.length} instance{group.instances.length !== 1 ? "s" : ""}
+          </span>
+        </span>
+        <span className="shrink-0 rounded-full bg-[#EDF4F5] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#53656D]">
+          {group.instances.length}
+        </span>
+        <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#53656D] transition ${expanded ? "rotate-180" : ""}`} />
+      </button>
+      {expanded && (
+        <div className="border-t border-[#D4E0E3] bg-[#F4F8F9]">
+          {group.instances.map((instance) => (
+            <button
+              key={instance.id}
+              type="button"
+              onClick={() => onSelectInstance(instance.id)}
+              className={`flex w-full items-center gap-3 border-b border-[#D4E0E3] px-4 py-2.5 pl-10 text-left outline-none transition hover:bg-[#EDF4F5] last:border-b-0 ${
+                selectedFindingId === instance.id ? "bg-[#EDF4F5] border-l-2 border-l-[#008E9A]" : ""
+              }`}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-semibold text-[#17262D]">{instance.file || "Repository-wide"}</span>
+              </span>
+              <ChevronRight className="h-3 w-3 shrink-0 text-[#53656D]" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
