@@ -86,11 +86,17 @@ async function main() {
       return;
     }
 
-    console.log('--- Step 1: Generating Expert Cache ---');
-    await generateExpertCache();
-
-    console.log('\n--- Step 2: Seeding Cache ---');
-    await seedCache();
+    console.log('--- Running Expert Cache generation and Supabase seed in parallel ---');
+    await Promise.all([
+      generateExpertCache().catch((err) => {
+        console.error('Expert cache generation failed:', err);
+        throw err;
+      }),
+      seedCache().catch((err) => {
+        console.error('Supabase seed failed:', err);
+        throw err;
+      }),
+    ]);
 
     console.log('\n✅ All worker jobs completed successfully');
   } catch (error) {
