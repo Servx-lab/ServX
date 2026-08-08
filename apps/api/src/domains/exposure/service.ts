@@ -3,7 +3,7 @@ import { promises as dns } from 'dns';
 import axios from 'axios';
 
 import { decrypt } from '@servx/crypto';
-import { HOSTING_PROVIDERS } from '@servx/config';
+import { HOSTING_PROVIDERS, HOSTING_DB_NAME_TO_KEY } from '@servx/config';
 import type { HostingProviderKey } from '@servx/config';
 
 import { supabaseAdmin } from '../../utils/supabaseAdmin';
@@ -35,7 +35,45 @@ export interface Finding {
 }
 
 const HTTP_TIMEOUT = 8000;
+const DNS_TIMEOUT = 5000;
+const SCAN_CONCURRENCY = 5;
 const SHODAN_API_KEY = process.env.SHODAN_API_KEY;
+
+/**
+ * Races a promise against a timeout so a single slow/hanging DNS lookup
+ * (Node's default DNS timeout can exceed 30s) cannot stall the whole scan.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
+/**
+ * Runs an async mapper over `items` with a bounded number of in-flight
+ * requests at a time, to avoid opening dozens of concurrent outbound
+ * connections when a user has many domains/IPs to scan.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let index = 0;
+
+  async function worker(): Promise<void> {
+    while (index < items.length) {
+      const current = index++;
+      results[current] = await mapper(items[current]);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
 
 // Weight each severity contributes to the deducted score.
 const SEVERITY_WEIGHT: Record<ExposureSeverity, number> = {
@@ -80,7 +118,7 @@ export async function enumerateDns(domain: string): Promise<DiscoveredAsset[]> {
 
   // Root domain A/AAAA
   try {
-    const addresses = await dns.resolve(domain, 'A').catch(() => [] as string[]);
+    const addresses = await withTimeout(dns.resolve(domain, 'A').catch(() => [] as string[]), DNS_TIMEOUT, [] as string[]);
     push({ asset_type: 'DOMAIN', value: domain, source: 'dns', parent_domain: domain });
     for (const ip of addresses) {
       push({ asset_type: 'IP', value: ip, source: 'dns', parent_domain: domain, metadata: { record: 'A' } });
@@ -91,29 +129,28 @@ export async function enumerateDns(domain: string): Promise<DiscoveredAsset[]> {
 
   // MX / TXT / NS records (informational surface)
   const [mx, txt, ns] = await Promise.all([
-    dns.resolveMx(domain).catch(() => []),
-    dns.resolveTxt(domain).catch(() => []),
-    dns.resolveNs(domain).catch(() => []),
+    withTimeout(dns.resolveMx(domain).catch(() => []), DNS_TIMEOUT, []),
+    withTimeout(dns.resolveTxt(domain).catch(() => []), DNS_TIMEOUT, []),
+    withTimeout(dns.resolveNs(domain).catch(() => []), DNS_TIMEOUT, []),
   ]);
   if (mx.length) push({ asset_type: 'DOMAIN', value: domain, source: 'dns', metadata: { mx } });
 
-  // Probe common subdomains
-  await Promise.all(
-    COMMON_SUBDOMAINS.map(async (sub) => {
-      const fqdn = `${sub}.${domain}`;
-      try {
-        const addrs = await dns.resolve(fqdn, 'A');
-        if (addrs.length > 0) {
-          push({ asset_type: 'SUBDOMAIN', value: fqdn, source: 'dns', parent_domain: domain });
-          for (const ip of addrs) {
-            push({ asset_type: 'IP', value: ip, source: 'dns', parent_domain: domain, metadata: { subdomain: fqdn } });
-          }
+  // Probe common subdomains (bounded concurrency + per-lookup timeout so a
+  // single hanging resolver request cannot stall discovery for minutes).
+  await mapWithConcurrency(COMMON_SUBDOMAINS, SCAN_CONCURRENCY, async (sub) => {
+    const fqdn = `${sub}.${domain}`;
+    try {
+      const addrs = await withTimeout(dns.resolve(fqdn, 'A'), DNS_TIMEOUT, [] as string[]);
+      if (addrs.length > 0) {
+        push({ asset_type: 'SUBDOMAIN', value: fqdn, source: 'dns', parent_domain: domain });
+        for (const ip of addrs) {
+          push({ asset_type: 'IP', value: ip, source: 'dns', parent_domain: domain, metadata: { subdomain: fqdn } });
         }
-      } catch {
-        // NXDOMAIN — subdomain does not exist, skip silently
       }
-    })
-  );
+    } catch {
+      // NXDOMAIN — subdomain does not exist, skip silently
+    }
+  });
 
   return assets;
 }
@@ -142,9 +179,7 @@ export async function discoverCloudAssets(userId: string): Promise<DiscoveredAss
       const token = parsed.token ?? parsed.apiKey;
       if (!token) continue;
 
-      const providerKey = (Object.keys(HOSTING_PROVIDERS) as HostingProviderKey[]).find(
-        (k) => HOSTING_PROVIDERS[k].dbName === conn.provider
-      );
+      const providerKey = HOSTING_DB_NAME_TO_KEY[String(conn.provider)];
 
       if (providerKey === 'vercel') {
         const res = await axios
@@ -389,8 +424,10 @@ export async function runScan(userId: string, userEmail: string, domain: string)
     .map((a) => a.value);
   const ipTargets = assets.filter((a) => a.asset_type === 'IP').map((a) => a.value);
 
-  const headerResults = await Promise.all(hostTargets.map((h) => checkSecurityHeaders(h)));
-  const portResults = await Promise.all(ipTargets.map((ip) => scanPortsShodan(ip)));
+  // Bounded concurrency prevents opening dozens of simultaneous outbound
+  // connections when a user has many domains/IPs registered.
+  const headerResults = await mapWithConcurrency(hostTargets, SCAN_CONCURRENCY, (h) => checkSecurityHeaders(h));
+  const portResults = await mapWithConcurrency(ipTargets, SCAN_CONCURRENCY, (ip) => scanPortsShodan(ip));
   const findings = [...headerResults.flat(), ...portResults.flat()];
 
   const newFindings = await persistFindings(userId, findings);
