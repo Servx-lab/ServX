@@ -2,7 +2,6 @@
   "name": "servx-web-app",
   "version": "1.0.0",
   "dependencies": {
-    "browser-image-compression": "^2.0.2",
-    "recharts": "^3.9.0"
+    "browser-image-compression": "^2.0.2"
   }
 }

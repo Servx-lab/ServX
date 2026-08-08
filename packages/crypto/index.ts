@@ -11,6 +11,12 @@ export interface EncryptedPayload {
 
 export const ENCRYPTION_KEY_RAW = () => process.env.ENCRYPTION_KEY;
 
+// The raw env var is parsed into a Buffer on the first call and reused for
+// every subsequent encrypt/decrypt operation. ENCRYPTION_KEY does not change
+// during a process's lifetime, so re-parsing it on every single call (which
+// happens on the hot path for every connection/config decrypt) is wasted work.
+let cachedKey: { raw: string; buffer: Buffer } | null = null;
+
 export function resolveEncryptionKey(): Buffer {
 	const rawKey = ENCRYPTION_KEY_RAW();
 
@@ -18,15 +24,20 @@ export function resolveEncryptionKey(): Buffer {
 		throw new Error('ENCRYPTION_KEY is required');
 	}
 
+	if (cachedKey && cachedKey.raw === rawKey) {
+		return cachedKey.buffer;
+	}
+
 	const trimmedKey = rawKey.trim();
 
 	// Support legacy hex keys (64 hex chars => 32-byte key).
-	if (/^[0-9a-fA-F]{64}$/.test(trimmedKey)) {
-		return Buffer.from(trimmedKey, 'hex');
-	}
+	const buffer = /^[0-9a-fA-F]{64}$/.test(trimmedKey)
+		? Buffer.from(trimmedKey, 'hex')
+		// Support legacy plain-string keys by normalizing to 32 bytes.
+		: Buffer.from(trimmedKey.padEnd(KEY_LENGTH, '0').slice(0, KEY_LENGTH), 'utf8');
 
-	// Support legacy plain-string keys by normalizing to 32 bytes.
-	return Buffer.from(trimmedKey.padEnd(KEY_LENGTH, '0').slice(0, KEY_LENGTH), 'utf8');
+	cachedKey = { raw: rawKey, buffer };
+	return buffer;
 }
 
 export function encrypt(text: string): EncryptedPayload {

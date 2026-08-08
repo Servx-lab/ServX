@@ -15,11 +15,11 @@
     "dev:worker": "npm run dev --workspace servx-worker",
     "build": "npm run build --workspace @servx/react && npm run build --workspace @servx/cli && vite build apps/web --config apps/web/vite.config.ts",
     "render-build": "npm install && npm run build",
-    "start": "cross-env NODE_ENV=production NODE_OPTIONS='--max-old-space-size=400' tsx apps/api/server.js",
+    "start": "cross-env NODE_ENV=production NODE_OPTIONS='--max-old-space-size=768' tsx apps/api/server.js",
     "lint": "eslint .",
     "preview": "vite preview apps/web --config apps/web/vite.config.ts",
-    "test": "vitest run --config vitest.config.ts --root apps/web",
-    "test:watch": "vitest --config vitest.config.ts --root apps/web",
+    "test": "vitest run --config apps/web/vitest.config.ts --root apps/web",
+    "test:watch": "vitest --config apps/web/vitest.config.ts --root apps/web",
     "sync-users": "npm run sync-users --workspace servx-api"
   },
   "overrides": {

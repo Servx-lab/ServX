@@ -10,6 +10,39 @@ declare global {
   }
 }
 
+// In-memory short-lived cache of verified tokens to avoid a Supabase network
+// round-trip on every single authenticated request. Entries are keyed by the
+// raw JWT string and expire quickly so revocations/DEFCON lockdowns still
+// take effect within a bounded window.
+interface CachedAuthEntry {
+  user: { id: string; uid: string; email: string };
+  expiresAt: number;
+}
+
+const AUTH_CACHE_TTL_MS = 30_000; // 30 seconds
+const authCache = new Map<string, CachedAuthEntry>();
+
+function getCachedAuth(token: string): CachedAuthEntry['user'] | null {
+  const entry = authCache.get(token);
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) {
+    authCache.delete(token);
+    return null;
+  }
+  return entry.user;
+}
+
+function setCachedAuth(token: string, user: CachedAuthEntry['user']): void {
+  authCache.set(token, { user, expiresAt: Date.now() + AUTH_CACHE_TTL_MS });
+  // Opportunistic cleanup so the map doesn't grow unbounded under heavy traffic.
+  if (authCache.size > 5000) {
+    const now = Date.now();
+    for (const [key, value] of authCache) {
+      if (value.expiresAt < now) authCache.delete(key);
+    }
+  }
+}
+
 const requireAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   let token: string | undefined;
 
@@ -29,14 +62,25 @@ const requireAuth = async (req: Request, res: Response, next: NextFunction): Pro
   }
 
   try {
-    if (!supabaseAdmin) {
-        throw new Error('Supabase Admin client not initialized');
-    }
+    let user = getCachedAuth(token);
 
-    const { data: { user }, error: supabaseError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (supabaseError || !user) {
-        throw new Error(supabaseError?.message || 'Invalid session');
+    if (!user) {
+      if (!supabaseAdmin) {
+          throw new Error('Supabase Admin client not initialized');
+      }
+
+      const { data: { user: supabaseUser }, error: supabaseError } = await supabaseAdmin.auth.getUser(token);
+
+      if (supabaseError || !supabaseUser) {
+          throw new Error(supabaseError?.message || 'Invalid session');
+      }
+
+      user = {
+        id: supabaseUser.id,
+        uid: supabaseUser.id,
+        email: (supabaseUser.email ?? '') as string,
+      };
+      setCachedAuth(token, user);
     }
 
     // --- JWT Invalidation check for DEFCON Lockdown ---
@@ -48,6 +92,7 @@ const requireAuth = async (req: Request, res: Response, next: NextFunction): Pro
           const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf8'));
           const iatMs = (payload.iat || 0) * 1000;
           if (iatMs < localJwtValidAfter) {
+            authCache.delete(token);
             console.warn(
               `[Auth] Rejected token for ${user.email} - issued at ${new Date(iatMs).toISOString()} before lockdown threshold ${new Date(localJwtValidAfter).toISOString()}`
             );

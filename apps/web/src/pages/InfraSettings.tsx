@@ -84,6 +84,9 @@ const InfraSettings = () => {
   const [omdUrl, setOmdUrl] = useState('');
   const [omdToken, setOmdToken] = useState('');
   const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  const [llmKey, setLlmKey] = useState('');
+  const [llmProvider, setLlmProvider] = useState('gemini');
   
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -558,6 +561,52 @@ const InfraSettings = () => {
                                 <Zap size={14} className="mr-2 fill-current" />
                             )}
                             Test Connection & Save
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </div>
+        </section>
+
+        {/* Large Language Models (BYOK) Section */}
+        <section className="space-y-4 pt-4 pb-12">
+            <div className="flex items-center gap-2 text-purple-500">
+                <Box className="w-5 h-5" />
+                <h2 className="text-xl font-semibold tracking-tight text-black">LLM Provider (AutoMedic BYOK)</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-all duration-300">
+                    <CardHeader>
+                        <CardTitle className="text-lg text-black">Bring Your Own Key</CardTitle>
+                        <CardDescription>Provide your API key for the Auto-Medic LLM reasoning engine.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-2">
+                            <Label>Provider</Label>
+                            <select 
+                                className="w-full bg-gray-50 border border-gray-200 text-black p-2 rounded-md"
+                                value={llmProvider}
+                                onChange={(e) => setLlmProvider(e.target.value)}
+                            >
+                                <option value="gemini">Google Gemini (Recommended)</option>
+                                <option value="groq">Groq (Ultra-Fast)</option>
+                                <option value="openai">OpenAI</option>
+                                <option value="claude">Anthropic Claude</option>
+                            </select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>API Key</Label>
+                            <Input 
+                                type="password" 
+                                placeholder="Enter API Key"
+                                value={llmKey}
+                                onChange={(e) => setLlmKey(e.target.value)}
+                            />
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        <Button className="w-full bg-purple-600 hover:bg-purple-500 text-white">
+                            Save LLM Configuration
                         </Button>
                     </CardFooter>
                 </Card>

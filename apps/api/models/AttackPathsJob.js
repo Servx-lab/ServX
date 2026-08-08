@@ -94,6 +94,14 @@ const attackPathsJobSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Compound indexes for the query patterns used across attackPathsJobService:
+// - Queue position counts filter by status and order by createdAt.
+// - Manual scan quota checks filter by requestedBy + profile within a time window.
+// - "Latest job for user" lookups filter by requestedBy and sort by createdAt desc.
+attackPathsJobSchema.index({ status: 1, createdAt: 1 });
+attackPathsJobSchema.index({ requestedBy: 1, profile: 1, createdAt: -1 });
+attackPathsJobSchema.index({ requestedBy: 1, createdAt: -1 });
+
 // Mongoose model safety for hot-reload
 module.exports =
   mongoose.models.AttackPathsJob ||

@@ -2,7 +2,7 @@ import axios from 'axios';
 import crypto from 'crypto';
 
 
-import { HOSTING_PROVIDERS } from '@servx/config';
+import { HOSTING_PROVIDERS, HOSTING_DB_NAME_TO_KEY } from '@servx/config';
 import type { HostingProviderKey } from '@servx/config';
 import type {
   ConnectionResponse,
@@ -519,20 +519,20 @@ export async function prefetchHostingStatuses(ownerUid: string): Promise<void> {
 
     const uniqueProviders = [...new Set(connections.map(c => c.provider))];
 
-    // For each provider, map the dbName back to the HostingProviderKey and fetch
-    for (const dbName of uniqueProviders) {
-      const providerKey = (Object.keys(HOSTING_PROVIDERS) as HostingProviderKey[]).find(
-        key => HOSTING_PROVIDERS[key].dbName === dbName
-      );
-
-      if (providerKey) {
+    // For each provider, map the dbName back to the HostingProviderKey and fetch.
+    // These are independent per-provider lookups, so run them in parallel
+    // instead of sequentially awaiting each one.
+    await Promise.allSettled(
+      uniqueProviders.map((dbName) => {
+        const providerKey = HOSTING_DB_NAME_TO_KEY[String(dbName)];
+        if (!providerKey) return Promise.resolve();
         // This will call getHostingProviderStatus which will fetch and cache
-        await getHostingProviderStatus(ownerUid, providerKey).catch(err => {
+        return getHostingProviderStatus(ownerUid, providerKey).catch(err => {
           console.error(`[Hosting] Pre-fetch failed for ${providerKey}:`, err.message);
         });
-      }
-    }
-    
+      })
+    );
+
     console.log(`[Hosting] Pre-fetch complete for ${ownerUid}.`);
   } catch (err: any) {
     console.error(`[Hosting] Global pre-fetch failed for ${ownerUid}:`, err.message);
