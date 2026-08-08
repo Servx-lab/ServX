@@ -90,8 +90,26 @@ export function ServXProvider({
     // Setup polling for dynamic live-updates
     intervalId = setInterval(checkStatus, pollingIntervalMs);
 
+    // Pause polling while the tab is hidden/backgrounded to save bandwidth
+    // and battery, and immediately re-check when it becomes visible again so
+    // the maintenance state is never stale for longer than necessary.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        if (intervalId) clearInterval(intervalId);
+      } else {
+        checkStatus();
+        intervalId = setInterval(checkStatus, pollingIntervalMs);
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
     return () => {
       if (intervalId) clearInterval(intervalId);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
     };
   }, [projectKey, baseUrl, pollingIntervalMs]);
 

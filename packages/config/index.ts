@@ -15,6 +15,15 @@ export const HOSTING_PROVIDERS: Record<string, HostingProviderInfo> = {
 
 export type HostingProviderKey = keyof typeof HOSTING_PROVIDERS;
 
+/**
+ * Reverse lookup from a stored dbName (e.g. "Vercel") back to its
+ * HostingProviderKey (e.g. "vercel"). Built once at module load instead of
+ * repeating `Object.keys(HOSTING_PROVIDERS).find(...)` on every request.
+ */
+export const HOSTING_DB_NAME_TO_KEY: Record<string, HostingProviderKey> = Object.fromEntries(
+	(Object.keys(HOSTING_PROVIDERS) as HostingProviderKey[]).map((key) => [HOSTING_PROVIDERS[key].dbName, key])
+);
+
 export const DB_PROVIDERS = [
 	'Vercel',
 	'Render',
