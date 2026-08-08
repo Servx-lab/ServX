@@ -158,7 +158,8 @@ export async function warmAttackPaths(req: Request, res: Response): Promise<void
     await warmAttackPathsExecutor();
     res.status(202).json({ status: 'warming' });
   } catch (error: any) {
-    res.status(503).json({ error: 'ExecutorUnavailable', message: error?.message || 'Scan executor is unavailable.' });
+    console.warn(`[attackPaths] Executor warmup failed: ${error?.message || 'Executor unavailable.'}`);
+    res.status(202).json({ status: 'warming', warning: 'Executor unavailable.' });
   }
 }
 
@@ -218,7 +219,9 @@ export async function streamAttackPathsJobProgress(req: Request, res: Response):
   };
 
   // Send a single snapshot and keep-alive polling until completed/failed.
-  const pollMs = 1500;
+  // Polling every 3s (rather than 1.5s) roughly halves MongoDB load for
+  // long-running scans without a noticeable UX difference.
+  const pollMs = 3000;
   const started = Date.now();
 
   while (!closed) {
@@ -228,7 +231,10 @@ export async function streamAttackPathsJobProgress(req: Request, res: Response):
       break;
     }
 
-    const queuePosition = await getAttackPathsQueuePosition(job);
+    // Queue position only matters while the job is still queued/warming; once
+    // it starts running there's no need to keep querying for it on every tick.
+    const needsQueuePosition = ['queued', 'warming'].includes(String(job.status));
+    const queuePosition = needsQueuePosition ? await getAttackPathsQueuePosition(job) : 0;
     send('progress', {
       jobId,
       phase: job.status,
