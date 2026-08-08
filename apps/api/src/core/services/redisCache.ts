@@ -95,8 +95,10 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
   if (inRam && inRam.expires > now) {
     const end = performance.now();
     console.log(`[Redis] 🟢 L1 HIT (RAM) for ${key} (${(end - start).toFixed(2)}ms)`);
-    // Return a clone to prevent mutation of the cached entry
-    return JSON.parse(JSON.stringify(inRam.data)) as T;
+    // Return a clone to prevent mutation of the cached entry.
+    // structuredClone is a native V8 API and is significantly faster than a
+    // JSON.stringify/parse round-trip for typical cached payload shapes.
+    return structuredClone(inRam.data) as T;
   } else if (inRam) {
     ramCache.delete(key);
   }

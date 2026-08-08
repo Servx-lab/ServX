@@ -1,14 +1,38 @@
 import axios from 'axios';
 import { supabaseAdmin } from '../utils/supabaseAdmin';
-import { HOSTING_PROVIDERS } from '@servx/config';
-import type { HostingProviderKey } from '@servx/config';
+import { HOSTING_DB_NAME_TO_KEY } from '@servx/config';
 import { decrypt } from '@servx/crypto';
 import { auditEmitter } from '../domains/operations/auditEmitter';
 import { syncDeploymentIncidents } from '../domains/connections/service';
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const AXIOS_TIMEOUT = 5000;
+const POLL_CONCURRENCY = 5;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Runs an async mapper over `items` with a bounded number of in-flight
+ * operations at a time.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let index = 0;
+
+  async function worker(): Promise<void> {
+    while (index < items.length) {
+      const current = index++;
+      results[current] = await mapper(items[current]);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
 
 /**
  * Fetches deployments from Render for a given token and returns failed ones.
@@ -106,9 +130,16 @@ async function pollAllConnections(): Promise<void> {
       return;
     }
 
-    let totalSynced = 0;
+    // Process connections with bounded concurrency instead of one-at-a-time,
+    // since each connection's decrypt + provider API call + Supabase upsert
+    // is fully independent of the others.
+    interface PollOutcome {
+      userId: string;
+      providerKey: string;
+      newCount: number;
+    }
 
-    for (const conn of connections) {
+    const outcomes = await mapWithConcurrency(connections as any[], POLL_CONCURRENCY, async (conn): Promise<PollOutcome | null> => {
       try {
         // Decrypt the API token
         let rawConfig = conn.encrypted_config;
@@ -117,13 +148,11 @@ async function pollAllConnections(): Promise<void> {
         }
         const parsedConfig = JSON.parse(rawConfig) as { token?: string; apiKey?: string };
         const token = (parsedConfig.token ?? parsedConfig.apiKey) as string;
-        if (!token) continue;
+        if (!token) return null;
 
-        // Determine provider key from dbName
-        const providerKey = (Object.keys(HOSTING_PROVIDERS) as HostingProviderKey[]).find(
-          key => HOSTING_PROVIDERS[key].dbName === conn.provider
-        );
-        if (!providerKey) continue;
+        // Determine provider key from dbName via the precomputed reverse lookup map
+        const providerKey = HOSTING_DB_NAME_TO_KEY[String(conn.provider)];
+        if (!providerKey) return null;
 
         let failedDeploys: any[] = [];
 
@@ -134,33 +163,43 @@ async function pollAllConnections(): Promise<void> {
         }
         // Skip other providers (railway, digitalocean, coolify) for now
 
-        if (failedDeploys.length > 0) {
-          const newCount = await syncDeploymentIncidents(
-            conn.user_id,
-            conn.id,
-            providerKey,
-            failedDeploys
-          );
-          totalSynced += newCount;
+        if (failedDeploys.length === 0) return null;
 
-          // Emit real-time alert if new incidents were discovered
-          if (newCount > 0) {
-            const { data: profile } = await supabaseAdmin
-              .from('user_profiles')
-              .select('email')
-              .eq('id', conn.user_id)
-              .single();
+        const newCount = await syncDeploymentIncidents(
+          conn.user_id,
+          conn.id,
+          providerKey,
+          failedDeploys
+        );
 
-            const userEmail = profile?.email || 'system@servx.dev';
-            auditEmitter.log(
-              userEmail,
-              'incident',
-              `🔍 Poller detected ${newCount} new deployment failure(s) on ${providerKey}`
-            );
-          }
-        }
+        return newCount > 0 ? { userId: conn.user_id, providerKey, newCount } : null;
       } catch (connErr: any) {
         console.warn(`[Poller] Failed to poll connection ${conn.id}:`, connErr.message);
+        return null;
+      }
+    });
+
+    const withNewIncidents = outcomes.filter((o): o is PollOutcome => o !== null);
+    const totalSynced = withNewIncidents.reduce((sum, o) => sum + o.newCount, 0);
+
+    if (withNewIncidents.length > 0) {
+      // Batch-fetch all needed profiles in a single query instead of one
+      // Supabase call per connection with new incidents.
+      const uniqueUserIds = [...new Set(withNewIncidents.map((o) => o.userId))];
+      const { data: profiles } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, email')
+        .in('id', uniqueUserIds);
+
+      const emailByUserId = new Map<string, string>((profiles || []).map((p: any) => [String(p.id), String(p.email)]));
+
+      for (const outcome of withNewIncidents) {
+        const userEmail = emailByUserId.get(outcome.userId) || 'system@servx.dev';
+        auditEmitter.log(
+          userEmail,
+          'incident',
+          `🔍 Poller detected ${outcome.newCount} new deployment failure(s) on ${outcome.providerKey}`
+        );
       }
     }
 

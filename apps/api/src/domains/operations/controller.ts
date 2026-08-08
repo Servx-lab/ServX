@@ -260,9 +260,6 @@ export async function assessTask(
       description = 'Executing operational script. Minimal impact expected on production workloads.';
     }
 
-    // High fidelity deliberate delay for Command Center "evaluating metrics..." realism
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
     res.json({
       success: true,
       task,
