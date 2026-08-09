@@ -26,6 +26,7 @@ import { defconMiddleware } from './domains/operations/defconMiddleware';
 import { streamController } from './controllers/streamController';
 import attackPathsRouter from './domains/attack-paths/router';
 import attackPathsInternalRouter from './domains/attack-paths/internal/router';
+import internalRouter from './domains/internal/router';
 
 export function createApp(): Express {
   const app = express();
@@ -143,6 +144,7 @@ export function registerApiRoutes(app: Express): void {
 
   app.use('/api/attack-paths', attackPathsRouter);
   app.use('/api/internal/attack-paths', attackPathsInternalRouter);
+  app.use('/api/internal', internalRouter);
 }
 
 
