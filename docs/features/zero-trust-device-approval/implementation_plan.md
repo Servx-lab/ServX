@@ -1,7 +1,7 @@
 # Implementation Plan: Zero-Trust Device Approval System
 
 ## Goal Description
-We are establishing a **Zero-Trust Device Approval System** across the ServX monorepo. In a modern decentralized cloud architecture, user credentials (Firebase Auth JWTs) are not enough; a compromised session token can leak sensitive repository secrets, database credentials, and production server controls. 
+We are establishing a **Zero-Trust Device Approval System** across the ServX monorepo. In a modern decentralized cloud architecture, user credentials (Supabase Auth JWTs) are not enough; a compromised session token can leak sensitive repository secrets, database credentials, and production server controls. 
 
 This system enforces device-level authentication by registering every device’s hardware-locked browser fingerprint (`orizon_device_uuid`) on first login and requiring explicit administrative approval before allowing the device to execute API actions on sensitive resources.
 
@@ -57,7 +57,7 @@ Establish the `user_devices` table to persist hardware fingerprints, user associ
 
 *   Define table `public.user_devices`:
     *   `id` (UUID, Primary Key)
-    *   `user_uuid` (TEXT, links to Firebase UID)
+    *   `user_uuid` (TEXT, links to Supabase UID)
     *   `device_fingerprint` (TEXT, unique SHA-256 fingerprint hash)
     *   `device_name` (TEXT, e.g. "Safari on iOS", "Chrome on Windows")
     *   `is_approved` (BOOLEAN, default `false`)

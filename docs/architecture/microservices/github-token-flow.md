@@ -32,7 +32,7 @@ ServX never asks users to manually paste GitHub tokens. Instead, users authentic
 - Refresh flow: POST to `https://github.com/login/oauth/access_token` with `grant_type=refresh_token`
 - New tokens encrypted and stored back in `github_vault`
 
-### 2. GitHub App Installation Token (MongoDB `User` collection)
+### 2. GitHub App Installation Token (Supabase `github_vault` collection)
 
 **When:** User installs the ServX GitHub App
 
@@ -50,17 +50,14 @@ ServX never asks users to manually paste GitHub tokens. Instead, users authentic
    )
    ```
 7. Frontend calls `saveGitHubInstallationToken(token, installationId)` → POST `/api/security/installation-token`
-8. Main-UI encrypts the installation token and stores in MongoDB:
+8. Main-UI encrypts the installation token and stores in Supabase `github_vault`:
    ```javascript
-   User.findOneAndUpdate(
-     { id: userId },
-     {
-       githubInstallationTokenEncrypted: encrypted.content,
-       githubInstallationTokenIv: encrypted.iv,
-       githubInstallationId: installationId,
-       githubInstallationTokenUpdatedAt: new Date(),
-     }
-   )
+   supabaseAdmin.from('github_vault').upsert({
+     user_id: userId,
+     installation_id: installationId,
+     encrypted_access_token: encrypted.content,
+     iv: encrypted.iv,
+   })
    ```
 
 **Advantages of GitHub App tokens:**
@@ -80,8 +77,8 @@ Main-UI has direct access to both token stores:
 import { getGithubToken } from './domains/github/service';
 const { accessToken } = await getGithubToken(uid);
 
-// From MongoDB User collection (App installation token)
-import { getUserInstallationToken } from './services/githubInstallationTokenStore';
+// From Supabase github_vault (App installation token)
+import { getUserInstallationToken } from './domains/github/service';
 const installationToken = await getUserInstallationToken(uid);
 ```
 
@@ -133,7 +130,6 @@ AutoMedic does NOT need GitHub tokens. It only:
 | Storage | Encryption | Key |
 |---------|-----------|-----|
 | Supabase `github_vault` | AES-256-CBC (if IV present) or plaintext (legacy) | `ENCRYPTION_KEY` env var |
-| MongoDB `User.githubInstallationTokenEncrypted` | AES-256-CBC | `ENCRYPTION_KEY` env var |
 
 **Decryption flow (Supabase):**
 ```typescript
@@ -142,13 +138,7 @@ if (vaultData.iv && vaultData.iv !== '') {
 }
 ```
 
-**Decryption flow (MongoDB):**
-```typescript
-return decrypt({
-  content: user.githubInstallationTokenEncrypted,
-  iv: user.githubInstallationTokenIv,
-});
-```
+
 
 ## Redis Caching
 
@@ -169,7 +159,7 @@ When a user uninstalls the ServX GitHub App:
 1. GitHub sends a webhook to `POST /api/webhooks/github`
 2. Main-UI verifies GitHub signature
 3. If `event === 'installation'` and `action === 'deleted'`:
-   - Removes `installationId` from MongoDB `UserConnection` records
+   - Removes `installationId` from Supabase `github_vault` records
    - Sets connection status to `pending`
 
 ## Related Files

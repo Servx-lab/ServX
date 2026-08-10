@@ -1,28 +1,28 @@
-# Shared web utilities and components
+# Shared Web Utilities & Components
 
-## API client
+## API Client Orchestration
 
 **File:** `apps/web/src/lib/apiClient.ts`
 
-- Axios instance with `baseURL` derived from `VITE_API_BASE_URL` / `VITE_API_URL`, defaulting to `/api` for Vite proxy to the API in development.
-- **Request interceptor:** reads Firebase `getAuth().currentUser`, calls `getIdToken()`, sets `Authorization: Bearer <token>`.
-- **Response interceptor:** logs 401 responses (unless `skipAuthErrorLog` on config).
+- The core Axios instance derives its `baseURL` from `VITE_API_BASE_URL` (defaulting to `/api` for local Vite proxying).
+- **Request Interceptor:** Dynamically reads the active **Supabase session** (via `supabase.auth.getSession()`) and injects the `Authorization: Bearer <token>` header to ensure cryptographic trust on every outbound request.
+- **Response Interceptor:** Automatically intercepts 401 Unauthorized responses to handle session expiration (unless explicitly bypassed via `skipAuthErrorLog`).
 
 ## `ProfilePhoto`
 
 **File:** `apps/web/src/components/ProfilePhoto.tsx`
 
-Renders user avatars from URLs (e.g. Google `lh3.googleusercontent.com`) with **`referrerPolicy="no-referrer"`** to avoid broken images when referrers are sent, and falls back to initials on **`onError`**.
+Renders user avatars from remote OAuth URLs (e.g., Google or GitHub). Crucially, it enforces **`referrerPolicy="no-referrer"`** to prevent broken images caused by restrictive cross-origin referrer policies. It degrades gracefully to initials via **`onError`**.
 
-## UI primitives
+## UI Primitives
 
 **Folder:** `apps/web/src/components/ui/`
 
-shadcn/Radix-based components (`button`, `dialog`, `table`, `avatar`, etc.). **`AvatarImage`** defaults to `referrerPolicy="no-referrer"` for external profile URLs.
+A robust library of highly-customized, accessible primitives built on top of shadcn/Radix (`button`, `dialog`, `table`, `avatar`). Similar to `ProfilePhoto`, the **`AvatarImage`** primitive defaults to `referrerPolicy="no-referrer"`.
 
-## Other shared
+## Ecosystem References
 
-- **`ServXLogo`** — branding.
-- **`MetricCards`**, **`DatabaseViewer`** — reused widgets where imported.
-- **Firebase** — [lib/firebase-client.md](./lib/firebase-client.md)
-- **Device ID** — `lib/deviceUtils.ts` (used by `SecurityInfo`)
+- **`ServXLogo`** — Primary branding component.
+- **`MetricCards`**, **`DatabaseViewer`** — Reusable, high-density data widgets.
+- **Supabase Client** — Initialization details found in [lib/supabase-client.md](./lib/supabase-client.md).
+- **Device Fingerprinting** — `lib/deviceUtils.ts` (Feeds the zero-trust `SecurityInfo` widget).

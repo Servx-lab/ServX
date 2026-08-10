@@ -1,20 +1,19 @@
-# Authentication (web)
+# Authentication (Web)
 
-The web app uses **Firebase Authentication** for sign-in. The API trusts **Firebase ID tokens** verified server-side.
+The ServX web application utilizes **Supabase Authentication** for secure identity management. The Main-UI API explicitly trusts **Supabase JWTs (JSON Web Tokens)**, cryptographically verifying them server-side on every protected request.
 
-## Documents in this folder
+## Documentation Directory
 
-| Doc | Topic |
-|-----|--------|
-| [auth-context.md](./auth-context.md) | `AuthProvider`, user state, GitHub linking hints |
-| [require-auth.md](./require-auth.md) | Route guard component |
-| [landing.md](./landing.md) | Public landing page |
-| [auth-page.md](./auth-page.md) | `/auth` sign-in UI |
-| [bridge.md](./bridge.md) | `/bridge` GitHub linking flow |
-| [onboarding.md](./onboarding.md) | `/onboarding` first-run experience |
+| Document | Purpose |
+|----------|---------|
+| [auth-context.md](./auth-context.md) | Details the `AuthProvider`, global user state, and API hydration logic. |
+| [require-auth.md](./require-auth.md) | Explains the highly restrictive route guard component. |
+| [landing.md](./landing.md) | Overview of the public unauthenticated marketing surface. |
+| [auth-page.md](./auth-page.md) | Details the `/auth` sign-in UI and OAuth providers. |
+| [bridge.md](./bridge.md) | Details the `/bridge` route handling mandatory GitHub linking. |
 
-## Typical flow
+## Authentication Lifecycle
 
-1. User opens `/auth` or lands from marketing.
-2. Firebase session is established; `AuthContext` syncs profile to backend via `/api/auth/sync` where applicable.
-3. **`RequireAuth`** protects dashboard routes; optional GitHub requirement can force `/bridge`.
+1. **Entry:** User navigates to `/auth` or clicks a CTA on the marketing landing page.
+2. **Session Initialization:** A secure Supabase session is established locally. The `AuthContext` immediately synchronizes the profile to the backend via `POST /api/auth/sync`, passing zero-trust device headers (`x-device-uuid`).
+3. **Route Protection:** The `<RequireAuth>` guard aggressively protects dashboard routes, enforcing active sessions and optional GitHub OAuth linkages (forcing unlinked users to `/bridge`).

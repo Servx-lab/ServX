@@ -14,7 +14,7 @@ The dashboard is a **React 18** SPA built with **Vite**, **TypeScript**, **Tailw
 
 - **react-router-dom** — routing
 - **@tanstack/react-query** — server state / caching
-- **firebase** — `getAuth()` for ID tokens sent to API
+- **@supabase/supabase-js** — Supabase Auth for JWT tokens sent to API
 - **axios** — via `lib/apiClient.ts`
 
 ## Feature organization

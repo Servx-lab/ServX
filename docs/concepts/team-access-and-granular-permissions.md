@@ -1,36 +1,32 @@
-# Concept: Team access and granular permissions
+# Concept: Team Access & Granular Permissions
 
-This document describes the **administration** model used by `/admin` and related APIs.
+This document outlines the administration and authorization model utilized by `/admin` routes and the internal API access control logic.
 
-## MongoDB collections
+## Supabase Identity & MongoDB Roles
 
 ### `Admin` (`models/Admin.js`)
 
-One document per dashboard **team member** with a global role:
+Maintains one document per dashboard **team member**, determining their global workspace role:
 
-- `uid` — Firebase UID  
-- `email`  
-- `role` — `owner` | `editor` | `viewer`  
-- `addedAt`
+- `uid` — Supabase Auth UID  
+- `email` — Registered email address
+- `role` — Determines privilege (`owner` | `editor` | `viewer`)  
+- `addedAt` — Timestamp
 
-Inviting adds a row after verifying the email exists in **Firebase Auth** (`inviteUserAsAdmin` in admin service).
+Inviting a new member creates a row after verifying the email exists within **Supabase Auth** (`inviteUserAsAdmin` in the admin service).
 
 ### `AccessControl` (`models/AccessControl.js`)
 
-Per **owner** and **target user** (`ownerUid`, `userUid`), stores `permissions` including:
+Maintains strict, per-user permission boundaries based on the `ownerUid` and `userUid`, storing granular `permissions`:
 
-- Legacy/global flags (repos, dbs, `global` flags)  
-- **`granularAllow`** — optional structure limiting visibility to explicit lists:
-  - `repoKeys` — GitHub `full_name` strings  
-  - `serverIds` — hosting `UserConnection` ids  
-  - `databaseIds` — database connection ids  
+- Global/Legacy flags (repos, dbs, `global` flags).
+- **`granularAllow`** — An explicitly defined allowlist limiting visibility:
+  - `repoKeys` — GitHub `full_name` strings.
+  - `serverIds` — Hosting `UserConnection` IDs.
+  - `databaseIds` — Database connection IDs.
 
-When `granularAllow` is **null**, the UI treats access as **full** for available resources (see admin service behavior).
+When `granularAllow` is **null**, the UI correctly defaults to treating access as **full/unrestricted** for available resources.
 
-## User search (`GET /api/users/search`)
+## User Search (`GET /api/users/search`)
 
-Searches **MongoDB `User`** documents by email/username/name for the invite autocomplete. Requires Firebase auth plus **admin membership** or **bootstrap** (no admins yet). See [api/domain-users.md](../api/domain-users.md).
-
-## Profile photos
-
-Google-hosted avatars may fail if the browser sends a `Referer` header; the web app uses **`referrerPolicy="no-referrer"`** on profile images — see [web/shared-components.md](../web/shared-components.md).
+Resolves **Supabase `user_profiles`** documents by email, username, or name for the team invite autocomplete widget. This endpoint strictly requires a validated Supabase JWT plus active **admin membership** (or bootstrap mode if no admins exist). See [api/domain-users.md](../api/domain-users.md).

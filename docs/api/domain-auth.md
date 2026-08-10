@@ -1,20 +1,21 @@
-# API domain: Auth (`/api/auth`)
+# API Domain: Auth (`/api/auth`)
 
 **Router:** `apps/api/src/domains/auth/router.ts`  
 **Controller:** `domains/auth/controller.ts`
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/auth/github/url` | requireAuth | OAuth URL for GitHub |
-| GET | `/api/auth/github` | requireAuth | Redirect to GitHub |
-| GET | `/api/auth/github/callback` | — | OAuth callback |
-| POST | `/api/auth/sync` | requireAuth | Sync Firebase user to Mongo `User` |
-| POST | `/api/auth/github/disconnect` | requireAuth | Clear GitHub tokens on user |
-| GET | `/api/auth/users/search` | — | Lookup Firebase user by email (connection-specific; see controller) |
-| GET | `/api/auth/users/list` | — | List users from configured Firebase app |
+| GET | `/api/auth/github/url` | `requireAuth` | Generates OAuth authorization URL for GitHub. |
+| GET | `/api/auth/github` | `requireAuth` | Triggers a 302 redirect to the GitHub OAuth authorization flow. |
+| GET | `/api/auth/github/callback` | — | Handles OAuth callback, storing encrypted tokens in the Supabase `github_vault`. |
+| POST | `/api/auth/sync` | `requireAuth` | Syncs authenticated identity to the `user_profiles` table and enforces zero-trust device authorization. |
+| POST | `/api/auth/github/disconnect` | `requireAuth` | Revokes GitHub access and purges tokens from the `github_vault`. |
+| GET | `/api/auth/users/search` | — | Look up user by email from `user_profiles` (fall back to Supabase Admin API). |
+| GET | `/api/auth/users/list` | — | Retrieves a paginated list of users from `user_profiles` or Supabase Admin API. |
 
-> Note: `/users/search` on **auth** router differs from **`/api/users/search`** (Mongo user search for admin UI) — see [domain-users.md](./domain-users.md).
+> [!NOTE]  
+> The `/users/search` endpoint on the **auth** router serves distinct identity resolution logic compared to **`/api/users/search`** (which handles localized Mongo-based admin searches) — see [domain-users.md](./domain-users.md).
 
 ## Services
 
-**`domains/auth/service.ts`** — Firebase app resolution for multi-connection scenarios.
+**`domains/auth/service.ts`** — Houses telemetry and alert pipelines, specifically for logging new user registrations to external sheets and triggering administrative notifications.

@@ -1,11 +1,13 @@
-# Bridge (GitHub linking)
+# Authentication Bridge (GitHub OAuth)
 
 **Route:** `/bridge`  
 **File:** `apps/web/src/features/auth/Bridge.tsx`  
 **Guard:** `<RequireAuth requireGitHub={false}>`
 
-Dedicated screen to **link GitHub** when the rest of the app expects a connected GitHub account. Shows Firebase user avatar (via **`ProfilePhoto`**) and a CTA to start GitHub OAuth. Uses **`useAuth().linkGitHub()`** which hits the API’s GitHub OAuth URL flow.
+The `/bridge` route is a dedicated, protected screen designed to enforce mandatory GitHub OAuth linkage. When a user navigates to a feature that requires codebase access, but they have not yet linked a GitHub account, the `<RequireAuth>` guard forcefully routes them here.
 
-## Why a separate route
+The UI displays the user's current Supabase avatar and a prominent CTA to initiate the OAuth flow, leveraging the **`useAuth().linkGitHub()`** method to hit the API's GitHub OAuth URL generator.
 
-Users can be authenticated with Google (or others) but not yet authorized for GitHub-backed features; `/bridge` avoids blocking basic auth while still funneling power users through GitHub connection.
+## Architectural Rationale
+
+Users frequently provision accounts via enterprise SSO or Google, which grants them platform access but no codebase authorization. The `/bridge` route elegantly prevents basic auth blockage while seamlessly funneling power users through the required GitHub connection flow.

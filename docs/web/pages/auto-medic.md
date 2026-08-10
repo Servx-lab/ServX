@@ -15,16 +15,16 @@ The Auto-Medic engine follows a strictly optimized workflow to handle incoming e
 When an error occurs within the operations pipeline or application lifecycle, a unique **signature (hash)** is generated based on the error message and context.
 
 ### 2. Cache Lookup
-Before invoking any AI models, Auto-Medic queries the local cache:
-- **Location:** `apps/api/data/errorCache.json`
+Before invoking any AI models, Auto-Medic queries the high-speed Redis cache layer via the backend:
+- **Location:** Managed by the isolated `Automedic-Pipeline` microservice in Redis.
 - **Logic:** If the generated hash exists in the cache, the system immediately retrieves the pre-stored **Diagnosis** and **Suggested Fix**.
 
 ### 3. AI-Powered Remediation (Fallback)
 If the error is **new** (hash not found):
-1. The error is sent to the remediation model.
-2. The model analyzes the logs and generates a diagnosis and fix.
-3. **Storage:** The result is saved back into `api/data/errorCache.json` with its unique signature.
-4. Future occurrences of the same error will now hit the cache.
+1. The error is sent to the isolated Python remediation model.
+2. The UI subscribes to a real-time SSE stream (`/api/automedic/stream`) to watch the model's progress.
+3. **Storage:** The finalized result is saved back into Redis with its unique signature.
+4. Future occurrences of the same error will now hit the cache instantly.
 
 ---
 
@@ -43,7 +43,7 @@ The more errors the system encounters, the more robust the `errorCache.json` bec
 
 ## 📂 Cache Structure
 
-The cache is stored in a key-value format where the key is the SHA-256 (or similar) hash of the error:
+The cache is stored in Redis using a key-value format where the key is the SHA-256 (or similar) hash of the error:
 
 ```json
 {

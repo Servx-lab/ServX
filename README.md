@@ -1,5 +1,10 @@
 # ServX
 
+> [!IMPORTANT]
+> **Two-Tier Documentation Strategy:** 
+> - **Tier 1 (Macro):** For overarching system architecture, environment registries, and deep-dive Master Guides, visit the [servx-docs](../servx-docs) repository.
+> - **Tier 2 (Micro):** For granular feature explanations, local API specs, and component-level information, browse the local `docs/` directory.
+
 **ServX** is an enterprise-grade infrastructure command center and exposure control plane. It gives developers and DevOps teams a unified, real-time command center to manage servers, multi-provider databases, remote tasks, deployments, threat levels, and third-party integrations.
 
 Designed for security, performance, and operational agility, ServX features a modular monorepo architecture, robust credentials encryption, real-time DEFCON threat monitoring, and a high-performance, code-split frontend.
@@ -26,6 +31,12 @@ ServX/
 ├── supabase/          # Supabase Edge Functions assets
 └── package.json       # Workspace commands and shared scripts
 ```
+
+### 🔗 Microservice Integrations
+The ServX monorepo operates as a distributed mesh. For dedicated integration logic, see:
+- [Attack Paths Executor](../servx-docs/docs/04-attack-paths-engine.md)
+- [Exposure Analysis Service](../servx-docs/docs/01-system-architecture-and-mesh.md)
+- [Auto-Medic Pipeline](../servx-docs/docs/05-automedic-ai-pipeline.md)
 
 ---
 
