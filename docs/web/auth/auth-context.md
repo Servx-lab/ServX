@@ -1,19 +1,20 @@
-# AuthContext
+# AuthContext Integration
 
 **File:** `apps/web/src/contexts/AuthContext.tsx`
 
-React context that exposes:
+The `AuthContext` serves as the global state orchestrator for identity within the React application. It exposes:
 
-- Current **Firebase user** (`User | null`)
-- Derived **display fields** (email, displayName, `photoURL`, etc.)
-- **`linkGitHub()`** — initiates GitHub OAuth via API
-- **`logout()`** — Firebase sign-out
-- **Prefetch / sync** — calls backend to hydrate Mongo user profile and handle GitHub token state
+- **Active Identity:** The current authenticated Supabase user (`User | null`).
+- **Derived Display Fields:** Extracted profile information (e.g., `email`, `displayName`, `avatar_url`).
+- **OAuth Delegation (`linkGitHub()`):** Initiates the GitHub OAuth flow by invoking the backend API URL generator.
+- **Session Termination (`logout()`):** Executes a secure sign-out via the Supabase client.
+- **Zero-Trust Synchronization:** Automatically hydrates the Supabase PostgreSQL user profiles and registers the device fingerprint via the `/api/auth/sync` endpoint.
 
-## API interaction
+## API Interoperability
 
-Uses **`apiClient`** or fetch to `POST /api/auth/sync` and related endpoints so the server’s `User` document stays aligned with Firebase (email, name, GitHub tokens).
+The context leverages the global **`apiClient`** to perform requests. This ensures that the Supabase JWT bearer token and the critical `x-device-uuid` headers are automatically injected into every request, maintaining synchronized state between the client and the Control Plane.
 
-## Consumer hooks
+## Consumer Hooks
 
-**File:** `apps/web/src/features/auth/hooks.ts` — `useAuth()` re-exports context for feature components.
+**File:** `apps/web/src/features/auth/hooks.ts`  
+The `useAuth()` hook re-exports this context, providing a clean, type-safe interface for all downstream feature components to access identity state.

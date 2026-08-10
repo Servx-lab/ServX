@@ -1,18 +1,19 @@
-# Middleware and errors
+# Middleware and Errors Architecture
 
-## Auth middleware
+## Authentication & Authorization Pipelines
 
-| Middleware | File | Behavior |
-|------------|------|----------|
-| `requireAuth` | `src/core/middleware/requireAuth.ts` (and legacy `middleware/requireAuth.js`) | Verifies Firebase ID token, sets `req.user = { uid, email }` |
-| `isAdmin` | `src/core/middleware/isAdmin.ts` | Requires token + MongoDB `Admin` document for `uid` |
-| `requireAdminOrBootstrap` | `src/core/middleware/requireAdminOrBootstrap.ts` | Token + admin row **or** zero admins in DB (bootstrap) |
+| Middleware | File Path | Core Behavior |
+|------------|-----------|---------------|
+| `requireAuth` | `src/core/middleware/requireAuth.ts` | Cryptographically verifies Supabase JWTs, caches validations in-memory to reduce latency, and strictly enforces global DEFCON lockdown invalidations. Hydrates `req.user`. |
+| `isAdmin` | `src/core/middleware/isAdmin.ts` | Enforces administrative access by cross-referencing the verified Supabase JWT against the MongoDB `Admin` collection or `ADMIN_EMAIL` environment variable. |
+| `requireAdminOrBootstrap` | `src/core/middleware/requireAdminOrBootstrap.ts` | Requires administrative privileges, but seamlessly permits initial team bootstrapping if zero admin records exist in the database. |
+| `requireRepoEditorOrAdmin` | `src/core/middleware/requireRepoEditorOrAdmin.ts` | Validates granular repository-level access controls for specific Git resources. |
 
-## Error handling
+## Centralized Error Propagation
 
-- **`@servx/errors`** — typed errors (`ValidationError`, `NotFoundError`, etc.) — see [packages/errors.md](../packages/errors.md)
-- **`errorHandler`** — `src/core/middleware/errorHandler.ts` maps errors to HTTP responses
+- **`@servx/errors`**: A standardized, typed error library (`ValidationError`, `AuthError`, etc.) utilized universally. For implementation details, refer to [packages/errors.md](../packages/errors.md).
+- **`errorHandler`**: Found in `src/core/middleware/errorHandler.ts`, this global pipeline intercepts thrown exceptions and standardizes them into predictable HTTP response payloads.
 
-## CORS
+## Cross-Origin Resource Sharing (CORS)
 
-Configured in `src/app.ts` with allowlist including `FRONTEND_URL` and local dev ports.
+CORS policies are rigorously configured within `src/app.ts`. The allowlist is explicitly restricted to known origins, including the `FRONTEND_URL` environment variable and whitelisted local development ports.

@@ -19,12 +19,11 @@ This folder contains structured documentation for the ServX monorepo: the **web*
 - [Layout shell](./web/layout-shell.md) — `DashboardLayout`, sidebar
 - [Shared UI](./web/shared-components.md) — `apiClient`, `ProfilePhoto`, etc.
 - [SecurityInfo](./web/components/security-info.md) — sidebar device/security widget
-- [Firebase client](./web/lib/firebase-client.md) — web SDK init
+- [Supabase client](./web/lib/supabase-client.md) — web SDK init
 - **Auth:** [overview](./web/auth/README.md), [AuthContext](./web/auth/auth-context.md), [RequireAuth](./web/auth/require-auth.md), [Landing](./web/auth/landing.md), [Auth page](./web/auth/auth-page.md), [Bridge](./web/auth/bridge.md), [Onboarding](./web/auth/onboarding.md)
 - **Pages:** [Dashboard](./web/pages/dashboard.md), [Databases](./web/pages/databases.md), [GitHub](./web/pages/github.md), [Hosting](./web/pages/hosting.md), [Auto Medic](./web/pages/auto-medic.md), [Operations](./web/pages/operations.md), [Administration](./web/pages/administration-team-access.md), [Attack paths](./web/pages/attack-paths.md), [Exposure analysis](./web/pages/exposure-analysis.md), [Coming soon](./web/pages/coming-soon.md), [Emails](./web/pages/emails.md), [Profile settings](./web/pages/profile-settings.md), [Infrastructure settings](./web/pages/infrastructure-settings.md), [Privacy](./web/pages/legal-privacy.md), [Terms](./web/pages/legal-terms.md), [Not found](./web/pages/not-found.md)
 - **Exposure logic docs:** [index](./web/features/security-command/README.md), [data flow](./web/features/security-command/repository-selector-and-data-flow.md), [top cards](./web/features/security-command/top-row-info-cards.md), [network graph](./web/features/security-command/repo-access-network-graph.md), [summary panel](./web/features/security-command/repo-security-profile-panel.md), [insights](./web/features/security-command/bottom-insights-section.md)
 - **Admin & Access logic:** [Access Management](./features/access-management/logic.md), [User Search Optimization](./features/access-management/user-search-optimization.md), [Granular Resource Control](./features/access-management/granular-resource-control.md), [Supabase Permission Architecture](./features/access-management/supabase-permission-architecture.md), [UI Implementation Guide](./features/access-management/ui-implementation-guide.md), [Zero-Trust Device Approval](./features/zero-trust-device-approval.md)
-
 
 ## API documentation index
 

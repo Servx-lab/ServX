@@ -1,131 +1,111 @@
-# Environment Variables Reference — All Services
+p# Environment Variables Reference — Ecosystem Mesh
 
-## Main-UI API (Existing Render)
+The ServX ecosystem is a distributed mesh of four microservices. Because they are deployed independently, their environment variables (`.env`) act as the critical routing topology that securely connects them.
 
-### Existing Variables (do not change)
+---
+
+## 1. Main-UI API (Control Plane)
+
+The Main-UI API acts as the central authority. It requires credentials for databases, third-party OAuth providers, and the specific routing secrets to communicate with the three execution services.
+
+### Core Dependencies (Do Not Change)
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `ADMIN_EMAIL` | `consolemaster.app@gmail.com,...` | Admin alert recipients |
-| `ATTACK_PATHS_EXECUTOR_*` | various | Attack paths executor auth |
-| `CLOUDINARY_*` | various | Avatar image upload |
-| `ENCRYPTION_KEY` | `0ca854fd...` | AES-256-CBC encryption key |
-| `FIREBASE_PROJECT_ID` | `orizon-lab` | Firebase project |
-| `FRONTEND_URL` | `http://localhost:8080` | Frontend URL for CORS |
-| `GITHUB_APP_ID` | `3049771` | GitHub App ID |
-| `GITHUB_APP_NAME` | `ServX-LAB` | GitHub App name |
-| `GITHUB_APP_PRIVATE_KEY` | `-----BEGIN RSA...` | GitHub App private key |
-| `GITHUB_CLIENT_ID` | `Iv23li...` | GitHub OAuth client ID |
-| `GITHUB_CLIENT_SECRET` | `07a9b3...` | GitHub OAuth client secret |
-| `GOOGLE_CLIENT_ID` | `460736...` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | `GOCSPX-...` | Google OAuth client secret |
-| `GOOGLE_SHEETS_*` | various | New user logging to Google Sheets |
-| `MONGODB_URI` | `mongodb+srv://...` | MongoDB connection string |
-| `NODE_ENV` | `production` | Environment |
-| `OPENAI_API_KEY` | `sk-proj-...` | OpenAI API key |
-| `PORT` | `5000` | Server port |
-| `REDIS_URL` | `redis://...` | Redis connection string |
-| `SPREADSHEET_ID` | `1xA8Ek...` | Google Sheets ID for user logging |
-| `SUPABASE_JWT_SECRET` | `sZS3Nr+...` | Supabase JWT verification secret |
-| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbG...` | Supabase service role key |
-| `SUPABASE_URL` | `https://bxmnuz...` | Supabase project URL |
-| `refresh_token` | `1//041Fe...` | Google refresh token |
+| `ADMIN_EMAIL` | `consolemaster.app@gmail.com,...` | Global admin alert recipients. |
+| `ENCRYPTION_KEY` | `0ca854fd...` | AES-256-CBC encryption key for internal vaults. |
+| `FRONTEND_URL` | `http://localhost:8080` | Authorized frontend URL for CORS policies. |
+| `GITHUB_APP_*` | various | Identity variables for the GitHub App integration. |
+| `GITHUB_CLIENT_*` | various | OAuth credentials for GitHub SSO. |
+| `GOOGLE_CLIENT_*` | various | OAuth credentials for Google SSO. |
+| `MONGODB_URI` | `mongodb+srv://...` | Primary document store connection string. |
+| `REDIS_URL` | `redis://...` | In-memory cache and PubSub bus connection string. |
+| `SUPABASE_*` | various | Supabase URL and Service Role Key for identity resolution. |
 
-### New Variables (add these)
+### Mesh Topology Routing (Add These)
 
 | Variable | Example Value | Purpose |
 |----------|---------------|---------|
-| `SERVICE_AUTH_TOKEN` | `ServX_Internal_8f9a2b4c6d8e1f3a` | Shared secret for service-to-service auth |
-| `AUTOMEDIC_SERVICE_URL` | `https://servx-automedic.onrender.com` | AutoMedic service URL |
-| `EXPOSURE_SERVICE_URL` | `https://servx-exposure.onrender.com` | Exposure service URL |
+| `SERVICE_AUTH_TOKEN` | `ServX_Internal_8f9a2b...` | Shared symmetric secret for AutoMedic/Exposure trust. |
+| `AUTOMEDIC_SERVICE_URL` | `https://servx-automedic.onrender.com` | Target URL for the AutoMedic Pipeline. |
+| `EXPOSURE_SERVICE_URL` | `https://servx-exposure.onrender.com` | Target URL for the Exposure Analysis service. |
+| `ATTACK_PATHS_EXECUTOR_INBOUND_HMAC_SECRET` | `long-random-secret-1` | Verifies incoming payloads from the Executor. |
+| `ATTACK_PATHS_EXECUTOR_OUTBOUND_HMAC_SECRET`| `long-random-secret-2` | Signs outgoing dispatch payloads sent to the Executor. |
 
 ---
 
-## AutoMedic Service (Render Account #1)
+## 2. AutoMedic Pipeline
 
 | Variable | Required | Example Value | Purpose |
 |----------|----------|---------------|---------|
-| `NODE_ENV` | Yes | `production` | Environment |
-| `PORT` | Yes | `3001` | Server port |
-| `SUPABASE_URL` | Yes | `https://bxmnuzqujamyuvsomfdj.supabase.co` | Supabase project URL |
-| `SUPABASE_KEY` | Yes | `eyJhbGci...` | Supabase service role key |
-| `FRONTEND_URL` | Yes | `https://servx.vercel.app` | Frontend URL for CORS |
-| `EXPOSURE_SERVICE_URL` | Yes | `https://servx-exposure.onrender.com` | Exposure service for escalations |
-| `SERVICE_AUTH_TOKEN` | Yes | `ServX_Internal_8f9a2b4c6d8e1f3a` | Shared secret (must match all services) |
-| `POLL_INTERVAL_MS` | No | `30000` | Polling interval (default: 30000) |
-| `MAX_CONCURRENT_POLLS` | No | `50` | Max concurrent polls (default: 50) |
+| `SUPABASE_URL` / `SUPABASE_KEY` | Yes | various | Mirrors the Main-UI Supabase credentials. |
+| `EXPOSURE_SERVICE_URL` | Yes | `https://servx-exposure.onrender.com` | Target URL to forward T2 escalations. |
+| `SERVICE_AUTH_TOKEN` | Yes | `ServX_Internal_8f9a2b...` | Symmetric trust token (Must match Main-UI). |
+| `POLL_INTERVAL_MS` | No | `30000` | Custom polling loop interval (ms). |
 
 ---
 
-## Exposure Analysis Service (Render Account #2)
+## 3. Exposure Analysis Service
 
 | Variable | Required | Example Value | Purpose |
 |----------|----------|---------------|---------|
-| `NODE_ENV` | Yes | `production` | Environment |
-| `PORT` | Yes | `3000` | Server port |
-| `SUPABASE_URL` | Yes | `https://bxmnuzqujamyuvsomfdj.supabase.co` | Supabase project URL |
-| `SUPABASE_KEY` | Yes | `eyJhbGci...` | Supabase service role key |
-| `FRONTEND_URL` | Yes | `https://servx.vercel.app` | Frontend URL for CORS |
-| `MAIN_API_URL` | Yes | `https://servx-ofak.onrender.com` | Main-UI API URL for GitHub token fetch |
-| `SERVICE_AUTH_TOKEN` | Yes | `ServX_Internal_8f9a2b4c6d8e1f3a` | Shared secret (must match all services) |
-| `AUTOMEDIC_SERVICE_URL` | No | `https://servx-automedic.onrender.com` | AutoMedic URL (for reference) |
-| `SHODAN_API_KEY` | No | — | Shodan API key (future use) |
+| `SUPABASE_URL` / `SUPABASE_KEY` | Yes | various | Mirrors the Main-UI Supabase credentials. |
+| `MAIN_API_URL` | Yes | `https://servx-api.onrender.com` | Target URL to fetch ephemeral user tokens. |
+| `SERVICE_AUTH_TOKEN` | Yes | `ServX_Internal_8f9a2b...` | Symmetric trust token (Must match Main-UI). |
 
 ---
 
-## Shared Secret Rules
+## 4. Attack Paths Executor (Isolated)
 
-### `SERVICE_AUTH_TOKEN`
+> [!WARNING]  
+> **Strict Isolation:** This service must **never** receive the `MONGODB_URI`, `SUPABASE_KEY`, or `ENCRYPTION_KEY`.
 
-- **You create it** — any string, any length
-- **Must be identical** on all 3 services (Main-UI, AutoMedic, Exposure)
-- **Never commit to git** — only in Render env vars
-- **Never log the value** — services log "configured" / "NOT SET" only
-
-### Example values (do NOT use these in production)
-
-```
-ServX_Internal_8f9a2b4c6d8e1f3a
-MySharedSecret_abc123def456ghi789
-a8f9a2b4c6d8e1f3a5b7c9d2e4f6a8b0c
-```
+| Variable | Required | Example Value | Purpose |
+|----------|----------|---------------|---------|
+| `SERVX_CONTROL_PLANE_URL` | Yes | `https://servx-api.onrender.com` | Target URL for completion callbacks. |
+| `ATTACK_PATHS_EXECUTOR_INBOUND_HMAC_SECRET` | Yes | `long-random-secret-2` | Verifies dispatches. **Must exactly match the Main-UI's OUTBOUND secret.** |
+| `ATTACK_PATHS_EXECUTOR_OUTBOUND_HMAC_SECRET`| Yes | `long-random-secret-1` | Signs callbacks. **Must exactly match the Main-UI's INBOUND secret.** |
 
 ---
 
 ## Environment Variable Flow Diagram
 
-```
+This diagram visually maps how the environment variables dictate the service-to-service routing topology.
+
+```text
                     ┌─────────────────────────┐
-                    │      Main-UI API         │
-                    │                          │
-                    │  SERVICE_AUTH_TOKEN ─────┼──┐
-                    │  AUTOMEDIC_SERVICE_URL   │  │
-                    │  EXPOSURE_SERVICE_URL    │  │
-                    │  SUPABASE_URL            │  │
-                    │  SUPABASE_SERVICE_ROLE_  │  │
-                    │    KEY                   │  │
-                    │  MONGODB_URI             │  │
-                    │  REDIS_URL               │  │
-                    │  ENCRYPTION_KEY          │  │
-                    │  GITHUB_APP_PRIVATE_KEY  │  │
-                    │  GITHUB_CLIENT_ID/SECRET │  │
-                    └───────────┬─────────────┘  │
-                                │                │
-                    ┌───────────▼──────────┐    │
-                    │   Exposure Service    │    │
-                    │                       │    │
-                    │  SERVICE_AUTH_TOKEN ──┼────┘ (must match)
-                    │  MAIN_API_URL ────────┼──→ calls Main-UI
-                    │  SUPABASE_URL         │
-                    │  SUPABASE_KEY         │
-                    └───────────▲──────────┘
-                                │
-                    ┌───────────┴──────────┐
-                    │   AutoMedic Service   │
-                    │                       │
-                    │  SERVICE_AUTH_TOKEN ──┼──→ must match Exposure
-                    │  EXPOSURE_SERVICE_URL ┼──→ calls Exposure
-                    │  SUPABASE_URL         │
-                    │  SUPABASE_KEY         │
-                    └───────────────────────┘
+                    │      Main-UI API        │
+                    │                         │
+                    │  SERVICE_AUTH_TOKEN ────┼──┐ (Symmetric Trust)
+                    │  AUTOMEDIC_SERVICE_URL  │  │
+                    │  EXPOSURE_SERVICE_URL   │  │
+                    │                         │  │
+                    │  ATTACK_PATHS_EXECUTOR_ │  │
+                    │    INBOUND/OUTBOUND_    │  │
+                    │    HMAC_SECRET ─────────┼──┼──┐ (Asymmetric HMAC)
+                    └───────────┬─────────────┘  │  │
+                                │                │  │
+                    ┌───────────▼──────────┐     │  │
+                    │   Exposure Service   │     │  │
+                    │                      │     │  │
+                    │  SERVICE_AUTH_TOKEN ─┼─────┘  │
+                    │  MAIN_API_URL ───────┼──→     │
+                    └───────────▲──────────┘        │
+                                │                   │
+                    ┌───────────┴──────────┐        │
+                    │  AutoMedic Service   │        │
+                    │                      │        │
+                    │  SERVICE_AUTH_TOKEN ─┼──→     │
+                    │  EXPOSURE_SERVICE_URL┼──→     │
+                    └──────────────────────┘        │
+                                                    │
+                    ┌────────────────────────┐      │
+                    │ Attack Paths Executor  │      │
+                    │                        │      │
+                    │  ATTACK_PATHS_EXECUTOR_│      │
+                    │    OUTBOUND/INBOUND_   │      │
+                    │    HMAC_SECRET ────────┼──────┘ (Inverted Match)
+                    │  SERVX_CONTROL_PLANE_  │
+                    │    URL                 │
+                    └────────────────────────┘
 ```

@@ -6,7 +6,7 @@ This document specifies the implementation of granular access and team managemen
 
 The feature follows a full-stack implementation across the monorepo:
 - **Shared Types**: `@servx/types` defines the source of truth for user permissions.
-- **Backend API**: `apps/api/src/domains/admin` manages persistence in MongoDB/Mongoose.
+- **Backend API**: `apps/api/src/domains/admin` manages persistence (migrating from MongoDB to Supabase/PostgreSQL).
 - **Frontend UI**: `apps/web/src/features/admin` provides the administration dashboard.
 
 ## 2. Permission Model
@@ -14,7 +14,7 @@ The feature follows a full-stack implementation across the monorepo:
 ServX uses a **Triple-Layer Permission Model**:
 
 ### Layer 1: Global Roles
-Stored in the `Admin` collection.
+Stored in the relational database (migrating from MongoDB `Admin` collection to PostgreSQL).
 - **Owner**: Full access, can manage other admins.
 - **Editor**: Write access to authorized resources.
 - **Viewer**: Read-only access to authorized resources.
@@ -53,9 +53,9 @@ Stored in the `AccessControl.permissions.granularAllow` object.
 - **Resource Loading**: Uses `getAdminResources` to fetch all system-wide connections (Vaults) to populate the toggle lists.
 - **UI Interaction**: Toggling an **Area Master Switch** dims the associated resource list using conditional CSS classes and `pointer-events-none`.
 
-## 5. Persistence (Mongoose Schema)
+## 5. Persistence (Migration to PostgreSQL)
 
-The `AccessControl` schema defines the structure for these permissions:
+The legacy MongoDB `AccessControl` schema defined the structure for these permissions. Under the Zero-Trust migration playbook, this is being transitioned to relational tables with Row Level Security (RLS) to prevent split-brain latency:
 
 ```javascript
 global: {

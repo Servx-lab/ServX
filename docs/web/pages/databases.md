@@ -1,16 +1,16 @@
-# Databases
+# Database Explorer
 
 **Route:** `/databases`  
 **Feature:** `apps/web/src/features/databases/`
 
-Explores connected databases: list connections, open **DatabaseConnector**, **DatabaseList**, **DatabaseViewer**, **DataGrid**, **QuickViewDrawer**, and optional **FirebaseUserManager** for Firebase-backed user listing/search.
+Provides a powerful, unified explorer for all connected tenant databases. Features include connection management, the **DatabaseViewer**, **DataGrid** layout, **QuickViewDrawer**, and an optional **SupabaseUserManager** for exploring Supabase-backed user schemas.
 
-## APIs (typical)
+## API Surface (Standard Explorer)
 
-- `GET/POST /api/db/*` — explore databases, collections/tables, documents/rows, stats, test connection — see [api/domain-databases.md](../../api/domain-databases.md)
-- `GET /api/auth/users/search` or database-specific search where used in `FirebaseUserManager`
+- `GET/POST /api/db/*` — Explores database connections, tables, and rows, and validates connection strings. See [api/domain-databases.md](../../api/domain-databases.md).
+- `GET /api/auth/users/search` — Dedicated search endpoint utilized within the `SupabaseUserManager` for identity resolution.
 
-## Key files
+## Core Architecture Files
 
-- `index.tsx` — feature shell
-- `api.ts`, `hooks.ts`, `types.ts` — client layer
+- `index.tsx` — The primary feature shell and route entry point.
+- `api.ts`, `hooks.ts`, `types.ts` — The data fetching and type definition layers.

@@ -1,25 +1,29 @@
-# Architecture overview
+# Architectural Overview
 
-ServX is a **monorepo** (npm workspaces) that ships:
+> [!IMPORTANT]  
+> **Architecture Update:** ServX has migrated to a distributed, three-service architecture. For comprehensive documentation regarding the Main-UI API, AutoMedic, and Exposure Analysis services—including service-to-service authentication and secure GitHub token flows—please refer to the [Microservices Architecture Overview](./microservices/overview.md).
 
-1. **`apps/web`** — Vite + React + TypeScript SPA. Uses React Router, TanStack Query, Firebase Auth for identity, and a shared Axios client (`apiClient`) that attaches Firebase ID tokens to `/api/*` requests (see `apps/web/src/lib/apiClient.ts`).
-2. **`apps/api`** — Express 5 API. Verifies Firebase ID tokens via `firebase-admin` (`utils/firebaseAdmin.js`). Persists data in **MongoDB** (Mongoose models under `apps/api/models/` and domain models under `apps/api/src/domains/*/model.ts`). Optional **Redis** for caching where configured.
-3. **`packages/types`**, **`packages/errors`**, **`packages/crypto`** — Shared TypeScript libraries consumed by API and/or web.
-4. **`apps/worker`** — Optional Node worker for background jobs (e.g. cache seeding).
+ServX is engineered as a **monorepo** utilizing npm workspaces. The repository encompasses the following core components:
 
-## Request flow (dashboard)
+1. **`apps/web`** — A Single Page Application (SPA) built with Vite, React, and TypeScript. It leverages React Router for navigation, TanStack Query for state management, and Supabase Auth for identity resolution. A shared Axios client (`apiClient`) automatically attaches Supabase JWTs to all `/api/*` requests.
+2. **`apps/api`** — A robust Express 5 API backend. It handles Supabase JWT verification and manages data persistence. *Note: Data persistence is actively migrating from legacy MongoDB (Mongoose models) exclusively to Supabase/PostgreSQL to resolve split-brain state.* It also utilizes **Redis** for optional caching.
+3. **`packages/*` (`types`, `errors`, `crypto`)** — A collection of shared TypeScript libraries universally consumed by both the API and the web application.
+4. **`apps/worker`** — An optional Node.js worker designated for background processing, such as cache seeding.
+5. **`servx-attackpaths`** — A strictly isolated security scanning executor deployed on a separate infrastructure. It securely receives execution tasks from the main control plane via an HMAC-secured bridge.
 
-1. User signs in with **Firebase Auth** in the browser.
-2. The web app calls `GET/POST https://<api>/api/...` with `Authorization: Bearer <Firebase ID token>`.
-3. API middleware (`requireAuth`, `isAdmin`, etc.) verifies the token and attaches `req.user` or `req.uid`.
-4. Domain controllers call services; services read/write MongoDB, call GitHub, hosting providers, etc.
+## Client Request Lifecycle (Dashboard)
 
-## Frontend shell
+1. The client authenticates using **Supabase Auth** within the browser environment.
+2. The web application issues HTTP requests (`GET`/`POST`) to `https://<api>/api/...`, supplying an `Authorization: Bearer <Supabase JWT>` header.
+3. API-level middleware (e.g., `requireAuth`, `isAdmin`) rigorously verifies the JWT and attaches the resolved `req.user` or `req.uid` context to the request object.
+4. Domain-specific controllers route the request to designated services, which execute business logic (e.g., MongoDB read/write operations, GitHub API interactions, and hosting provider integrations).
 
-Authenticated app routes are wrapped in **`RequireAuth`** and often nested under **`DashboardLayout`** (persistent sidebar + main content) — see [web/layout-shell.md](../web/layout-shell.md).
+## Frontend Shell Architecture
 
-## Security notes (high level)
+All authenticated application routes are strictly wrapped by the **`RequireAuth`** component. These routes are typically nested within the **`DashboardLayout`** (which provisions the persistent sidebar and main content areas). For detailed layout specifications, refer to [web/layout-shell.md](../web/layout-shell.md).
 
-- **Firebase** handles end-user authentication; the API trusts verified ID tokens.
-- **Admin** features (team management, granular permissions for some endpoints) use MongoDB `Admin` records and/or `AccessControl` documents — see [concepts/team-access-and-granular-permissions.md](../concepts/team-access-and-granular-permissions.md).
-- **CORS** is configured in `apps/api/src/app.ts` for known frontend origins.
+## High-Level Security Posture
+
+- **Identity Resolution:** **Supabase** exclusively governs end-user authentication. The API implicitly trusts cryptographically verified JWT tokens.
+- **Administrative Access:** Privileged features (such as team management and granular endpoint permissions) are enforced via database roles. *Note: These are actively migrating from legacy MongoDB `Admin` records to PostgreSQL RLS policies.* Further details are available in [concepts/team-access-and-granular-permissions.md](../concepts/team-access-and-granular-permissions.md).
+- **Cross-Origin Resource Sharing (CORS):** Strict CORS policies are actively enforced within `apps/api/src/app.ts` to permit only whitelisted frontend origins.

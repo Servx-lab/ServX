@@ -76,7 +76,7 @@ AutoMedic detects a T2 error
   → Exposure Service calls Main-UI API for user's GitHub token
      GET /api/internal/github-token?userId=xxx
      Header: X-Service-Token: <SERVICE_AUTH_TOKEN>
-  → Main-UI returns GitHub token (from MongoDB App token or Supabase OAuth)
+  → Main-UI returns GitHub token (from Supabase github_vault App token or OAuth)
   → Exposure fetches repo files from GitHub API
   → Maps error to specific file/line/commit
   → Scans for leaked secrets (17 regex patterns)
@@ -113,7 +113,7 @@ User clicks "Scan Repository" in frontend
 1. User logs in via Supabase GitHub OAuth
    → Supabase stores provider_token (GitHub OAuth access token)
    → AuthContext calls syncUser() → stores token in Supabase `github_vault`
-   → AuthContext calls saveGitHubInstallationToken() → stores in MongoDB `User` collection
+   → AuthContext calls saveGitHubInstallationToken() → stores in Supabase `github_vault` table
 
 2. User installs ServX GitHub App
    → GitHub redirects to /github?installation_id=xxx

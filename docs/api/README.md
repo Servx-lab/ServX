@@ -1,11 +1,11 @@
-# API (`apps/api`)
+# API Documentation (`apps/api`)
 
-Express 5 application created by **`createApp()`** in `src/app.ts`. Registers JSON body parser, CORS, request logging, route mounts, and a global error handler.
+The backend is an Express 5 application initialized via the **`createApp()`** factory in `src/app.ts`. This initialization phase rigorously configures JSON body parsing, CORS policies, request telemetry, domain-specific route mounting, and a centralized error handling pipeline.
 
-## Base URL
+## Base URL Configuration
 
-- Local dev: often `http://localhost:5000` with web proxy sending `/api` from Vite.
-- All documented paths assume prefix **`/api`** as mounted in `registerApiRoutes`.
+- **Local Development:** The API typically runs on `http://localhost:5000`. The Vite development server acts as a reverse proxy, seamlessly forwarding all `/api` requests to this backend.
+- **Path Resolution:** All documented endpoint paths implicitly assume the **`/api`** prefix, as defined by the `registerApiRoutes` configuration.
 
 ## Domain index
 
@@ -15,13 +15,21 @@ Express 5 application created by **`createApp()`** in `src/app.ts`. Registers JS
 | GitHub | `/api/github` | [domain-github.md](./domain-github.md) |
 | Databases | `/api/db` | [domain-databases.md](./domain-databases.md) |
 | Connections | `/api/connections` | [domain-connections.md](./domain-connections.md) |
-| Hosting OAuth | `/api/oauth` | [domain-hosting-oauth.md](./domain-hosting-oauth.md) |
+| Hosting OAuth | `/api/oauth`, `/api/hosting` | [domain-hosting-oauth.md](./domain-hosting-oauth.md) |
 | Gmail | `/api` (gmail routes) | [domain-gmail.md](./domain-gmail.md) |
 | Admin | `/api/admin` | [domain-admin.md](./domain-admin.md) |
 | Users | `/api/users` | [domain-users.md](./domain-users.md) |
 | Operations | `/api/operations`, `/api/tasks` | [domain-operations.md](./domain-operations.md) |
 | Profile | `/api/profile` | [domain-profile.md](./domain-profile.md) |
+| Security | `/api/security` | - |
+| Webhooks | `/api/webhooks` | - |
+| Feed | `/api/feed` | - |
+| Repositories | `/api/repositories` | - |
+| Verify | `/api/verify` | - |
+| Devices | `/api/devices` | - |
+| Attack Paths | `/api/attack-paths`, `/api/internal/attack-paths` | - |
+| Internal Services | `/api/internal` | - |
 
-## Cross-cutting
+## Cross-Cutting Concerns
 
-- [middleware-and-errors.md](./middleware-and-errors.md)
+- For detailed information regarding middleware pipelines and error propagation standardizations, please refer to [middleware-and-errors.md](./middleware-and-errors.md).
