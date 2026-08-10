@@ -87,9 +87,9 @@ const Administrator = () => {
                   </TableRow>
                 ) : (
                   admins.map((admin: AdminRecord) => {
-                    const isExpanded = expandedUserUid === admin.uid;
+                    const isExpanded = expandedUserUid === admin.id;
                     return (
-                      <React.Fragment key={admin.uid}>
+                      <React.Fragment key={admin.id}>
                         <TableRow className="group border-gray-100 hover:bg-gray-50/50">
                           <TableCell className="font-medium text-gray-900">
                             <div className="flex items-center gap-3">
@@ -115,7 +115,7 @@ const Administrator = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setExpandedUserUid(isExpanded ? null : admin.uid)}
+                                onClick={() => setExpandedUserUid(isExpanded ? null : admin.id)}
                                 className={`text-gray-600 hover:text-black border-gray-200 ${isExpanded ? "bg-gray-100" : ""}`}
                               >
                                 <Settings className="mr-2 h-3.5 w-3.5" />
@@ -124,7 +124,7 @@ const Administrator = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleRevoke(admin.uid)}
+                                onClick={() => handleRevoke(admin.id)}
                                 disabled={revokeMutation.isPending}
                                 className="text-red-500 hover:bg-red-50 hover:text-red-600"
                               >
@@ -138,7 +138,7 @@ const Administrator = () => {
                           <TableRow className="border-gray-100 bg-gray-50/30 hover:bg-gray-50/30">
                             <TableCell colSpan={3} className="p-0">
                               <div className="animate-in slide-in-from-top-2 fade-in duration-200">
-                                <GranularAccessPanel uid={admin.uid} userEmail={admin.email} />
+                                <GranularAccessPanel uid={admin.id} userEmail={admin.email} />
                               </div>
                             </TableCell>
                           </TableRow>

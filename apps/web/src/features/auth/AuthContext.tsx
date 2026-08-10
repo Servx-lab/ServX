@@ -232,6 +232,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         bio: session.user.user_metadata.bio || null,
                         location: session.user.user_metadata.location || null,
                         website: session.user.user_metadata.website || null,
+                        linkedin: session.user.user_metadata.linkedin || null,
+                        github: session.user.user_metadata.github || null,
                     };
                     setUser(mappedUser);
                     
@@ -274,6 +276,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     bio: currentUser.user_metadata?.bio || null,
                     location: currentUser.user_metadata?.location || null,
                     website: currentUser.user_metadata?.website || null,
+                    linkedin: currentUser.user_metadata?.linkedin || null,
+                    github: currentUser.user_metadata?.github || null,
                 };
                 setUser(mappedUser);
                 const identities = currentUser.identities || [];

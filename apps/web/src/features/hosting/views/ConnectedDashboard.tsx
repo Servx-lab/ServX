@@ -71,12 +71,11 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white min-h-[calc(100vh-12rem)] animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">{config.logo}</div>
+    <div className="relative overflow-hidden rounded-xl bg-white min-h-[calc(100vh-12rem)] animate-in fade-in slide-in-from-bottom-2 duration-500">
 
       <div className="flex flex-col h-full min-h-[calc(100vh-12rem)]">
         {/* Header Bar */}
-        <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="relative h-12 w-12 shrink-0">
               <div className="w-full h-full rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center overflow-hidden">
@@ -171,7 +170,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
                   { label: 'Healthy Nodes', value: readyCount, icon: Activity, color: 'text-green-500', bg: 'bg-green-50' },
               { label: 'Uptime Score', value: '100%', icon: Shield, color: 'text-purple-500', bg: 'bg-purple-50' },
             ].map((stat, i) => (
-              <div key={i} className="p-4 rounded-xl border border-gray-100 bg-white shadow-sm flex items-center gap-4">
+              <div key={i} className="p-4 rounded-xl bg-white flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-lg ${stat.bg} ${stat.color} flex items-center justify-center`}>
                   <stat.icon size={20} />
                 </div>
@@ -227,7 +226,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
         </div>
 
         {/* Footer info */}
-        <div className="px-8 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
+        <div className="px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
               <Clock size={12} /> Last synced: Just now

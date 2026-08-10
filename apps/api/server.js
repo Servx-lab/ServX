@@ -27,23 +27,32 @@ async function startServer() {
     const app = createApp();
     console.log('🚀 App created successfully');
 
-    // Connections
-    await connectDB();
-    await connectRedis();
-
-    try {
-      const { startAttackPathsRecovery } = require('./src/workers/attackPathsRecovery');
-      startAttackPathsRecovery();
-    } catch (err) {
-      console.error('❌ Failed to boot Attack Paths recovery worker:', err.message);
-    }
-
     const host = '0.0.0.0';
     console.log(`📡 Attempting to listen on ${host}:${PORT}...`);
     
-    app.listen(PORT, host, () => {
+    app.listen(PORT, host, async () => {
       console.log(`✅ Server is LIVE at http://${host}:${PORT}`);
       console.log(`   Mode: ${process.env.NODE_ENV || 'development'}`);
+
+      // Connections (established in the background after port binding is successful)
+      try {
+        await connectDB();
+      } catch (err) {
+        console.error('❌ MongoDB Connection failed during async boot:', err.stack || err);
+      }
+
+      try {
+        await connectRedis();
+      } catch (err) {
+        console.error('❌ Redis Connection failed during async boot:', err.stack || err);
+      }
+
+      try {
+        const { startAttackPathsRecovery } = require('./src/workers/attackPathsRecovery');
+        startAttackPathsRecovery();
+      } catch (err) {
+        console.error('❌ Failed to boot Attack Paths recovery worker:', err.message);
+      }
     });
 
   } catch (err) {
@@ -59,7 +68,9 @@ async function connectDB() {
   if (!uri) {
     throw new Error('MONGODB_URI is not defined in environment');
   }
-  await mongoose.connect(uri);
+  await mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 5000
+  });
   console.log('✅ MongoDB connected');
 }
 

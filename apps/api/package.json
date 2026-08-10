@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "tsx server.js",
-    "dev": "tsx --watch server.js",
+    "dev": "tsx watch --exclude \"data/**\" --exclude \"scratch/**\" server.js",
     "sync-users": "tsx scripts/syncUsersToSheets.js"
   },
   "overrides": {

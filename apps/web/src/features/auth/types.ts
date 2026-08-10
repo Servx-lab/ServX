@@ -9,6 +9,8 @@ export interface AuthUser {
   bio?: string | null;
   location?: string | null;
   website?: string | null;
+  linkedin?: string | null;
+  github?: string | null;
 }
 
 

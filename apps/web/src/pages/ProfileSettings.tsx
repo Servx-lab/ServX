@@ -101,32 +101,14 @@ const SettingsPage = () => {
 
   useEffect(() => {
     const loadProfile = async () => {
-      if (user?.id) {
-        // Try fetching from public.profiles
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (data && !error) {
-          setFullName(data.full_name || user.displayName || '');
-          setEmail(user.email || '');
-          setHeadline(data.headline || user.headline || '');
-          setBio(data.bio || user.bio || '');
-          setLocation(data.location || user.location || '');
-          setLinkedin(data.linkedin || user.user_metadata?.linkedin || '');
-          setGithub(data.github || user.user_metadata?.github || '');
-        } else {
-          // Fallback
-          setFullName(user.displayName || '');
-          setEmail(user.email || '');
-          setHeadline(user.headline || '');
-          setBio(user.bio || '');
-          setLocation(user.location || '');
-          setLinkedin(user.user_metadata?.linkedin || user.linkedin || '');
-          setGithub(user.user_metadata?.github || user.github || '');
-        }
+      if (user) {
+        setFullName(user.displayName || '');
+        setEmail(user.email || '');
+        setHeadline(user.headline || '');
+        setBio(user.bio || '');
+        setLocation(user.location || '');
+        setLinkedin(user.linkedin || '');
+        setGithub(user.github || '');
         setLoading(false);
       }
     };
@@ -168,27 +150,9 @@ const SettingsPage = () => {
     }
   };
 
-  // Profile Handlers
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      // 1. Update public.profiles
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-            id: user?.id,
-            full_name: fullName.trim(),
-            headline: headline.trim(),
-            bio: bio.trim(),
-            location: location.trim(),
-            linkedin: linkedin.trim(),
-            github: github.trim(),
-            updated_at: new Date().toISOString()
-        });
-        
-      if (profileError) throw profileError;
-
-      // 2. Also keep auth.users metadata in sync for legacy compatibility
       const { error } = await supabase.auth.updateUser({
         data: {
             displayName: fullName.trim(),
