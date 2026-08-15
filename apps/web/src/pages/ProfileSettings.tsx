@@ -311,31 +311,31 @@ const SettingsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F1F1F1] flex items-center justify-center">
+      <div className="flex min-h-full items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
       </div>
     );
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-[#F1F1F1] text-black px-6 pt-4 pb-12 md:px-12 md:pt-6 md:pb-20 animate-in fade-in duration-500 no-scrollbar rounded-xl">
-      
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-background p-5 text-slate-900 no-scrollbar md:p-7 animate-in fade-in duration-300">
+
       {/* Settings Inline Navbar */}
-      <div className="w-full mb-8 flex justify-start border-b border-gray-200">
+      <div className="mb-6 flex w-full justify-start border-b border-border/70">
           <div className="flex gap-8">
-              <button 
+              <button
                   onClick={() => setActiveTab('profile')}
                   className={`pb-4 text-sm font-bold transition-all ${activeTab === 'profile' ? 'border-b-2 border-black text-black' : 'text-gray-400 hover:text-gray-600'}`}
               >
                   Profile Details
               </button>
-              <button 
+              <button
                   onClick={() => setActiveTab('integrations')}
                   className={`pb-4 text-sm font-bold transition-all ${activeTab === 'integrations' ? 'border-b-2 border-black text-black' : 'text-gray-400 hover:text-gray-600'}`}
               >
                   Integrations
               </button>
-              <button 
+              <button
                   onClick={() => setActiveTab('security')}
                   className={`pb-4 text-sm font-bold transition-all ${activeTab === 'security' ? 'border-b-2 border-black text-black' : 'text-gray-400 hover:text-gray-600'}`}
               >
@@ -344,11 +344,11 @@ const SettingsPage = () => {
           </div>
       </div>
 
-      <div className="max-w-5xl mx-auto space-y-12 pb-10">
+      <div className="mx-auto w-full max-w-5xl space-y-6 pb-10">
 
         {/* --- PROFILE TAB --- */}
         {activeTab === 'profile' && (
-            <div className="bg-white rounded-3xl p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-white/50 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="animate-in slide-in-from-bottom-4 duration-500">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     
                     {/* Basic Information Block */}
@@ -555,7 +555,7 @@ const SettingsPage = () => {
 
         {/* --- INTEGRATIONS TAB --- */}
         {activeTab === 'integrations' && (
-            <div className="bg-white rounded-3xl p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-white/50 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="animate-in slide-in-from-bottom-4 duration-500">
                 <div className="mb-8">
                     <h2 className="text-xl font-bold text-black mb-1">Infrastructure Connections</h2>
                     <p className="text-xs text-gray-500">Manage your cloud provider integrations. Connect your infrastructure to enable automated deployments, monitoring, and scaling.</p>
@@ -775,7 +775,7 @@ const SettingsPage = () => {
 
         {/* --- SECURITY & DEVICES TAB --- */}
         {activeTab === 'security' && (
-            <div className="bg-white rounded-3xl p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-white/50 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="animate-in slide-in-from-bottom-4 duration-500">
                 {!hasMainDevice && (
                     <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-6 rounded-2xl flex items-center justify-between mb-8 shadow-lg shadow-indigo-900/20">
                         <div className="flex items-center gap-4">

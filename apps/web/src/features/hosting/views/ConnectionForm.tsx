@@ -62,7 +62,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   };
 
   return (
-    <div className="relative overflow-hidden rounded-xl bg-white min-h-[calc(100vh-12rem)] flex flex-col justify-between">
+    <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white flex flex-col justify-between">
       {/* Decorative Blur Blobs */}
       <div className="absolute -top-32 -right-32 h-64 w-64 rounded-full bg-blue-500/10 blur-[100px] pointer-events-none" />
       <div className="absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-blue-500/5 blur-[100px] pointer-events-none" />
