@@ -371,7 +371,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     // If we have cached data, show a skeleton that matches the dashboard layout
     if (cachedData?.hostingStatuses?.[config.key]) {
         return (
-            <div className="p-8 space-y-8 min-h-[calc(100vh-12rem)] rounded-xl border border-gray-100 bg-white/50 animate-in fade-in duration-500">
+            <div className="p-8 space-y-8 rounded-xl border border-gray-100 bg-white animate-in fade-in duration-500">
                 <div className="flex items-center gap-4 mb-8">
                     <Skeleton className="h-12 w-12 rounded-xl" />
                     <div className="space-y-2">
@@ -396,7 +396,7 @@ const HostingIntegrationCard: React.FC<HostingIntegrationCardProps> = ({
     }
 
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-12rem)] rounded-xl border border-gray-100 bg-white/50 animate-in fade-in duration-500">
+      <div className="flex flex-col items-center justify-center rounded-xl border border-gray-100 bg-white animate-in fade-in duration-500">
         <Loader2 className="h-8 w-8 text-blue-500 animate-spin mb-4" />
         <p className="text-sm text-gray-500 font-medium">Communicating with {config.label}...</p>
       </div>

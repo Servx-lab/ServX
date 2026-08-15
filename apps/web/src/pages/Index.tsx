@@ -10,16 +10,16 @@ const Index = () => {
       subtitle="Dashboard › Exposure Command Center"
       fullWidth={true}
     >
-      <div className="flex-1 flex items-start gap-8 w-full">
+      <div className="flex flex-1 items-stretch gap-8 w-full">
         {/* Sources label */}
         <motion.div
-          className="relative flex-1"
+          className="relative flex-1 min-h-0 flex flex-col"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
           <p className="text-sm text-gray-500 font-bold mb-4 tracking-widest uppercase">Sources</p>
-          <div className="w-full bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden" style={{ height: "600px" }}>
+          <div className="flex-1 w-full bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden min-h-[400px]">
             <FlowVisualization />
           </div>
         </motion.div>
