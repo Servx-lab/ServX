@@ -22,6 +22,7 @@ import feedRouter from './domains/feed/router';
 import repositoriesRouter from './domains/repositories/router';
 import verifyRouter from './domains/verify/router';
 import devicesRouter from './domains/devices/router';
+import exposureRouter from './domains/exposure/router';
 import { defconMiddleware } from './domains/operations/defconMiddleware';
 import { streamController } from './controllers/streamController';
 import attackPathsRouter from './domains/attack-paths/router';
@@ -139,6 +140,7 @@ export function registerApiRoutes(app: Express): void {
   app.use('/api/repositories', repositoriesRouter);
   app.use('/api/verify', verifyRouter);
   app.use('/api/devices', devicesRouter);
+  app.use('/api/exposure', exposureRouter);
   // TDD SSE Endpoints
   app.get('/api/v1/medic/stream', streamController);
 
