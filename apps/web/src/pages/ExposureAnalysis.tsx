@@ -487,7 +487,7 @@ const ExposureAnalysis = () => {
               findings={trendData.map((d) => d.findings)}
               calloutValue="Illustrative"
             />
-            <p className="text-center text-[10px] font-semibold text-slate-300 uppercase tracking-wide -mt-2">
+            <p className="text-center text-[10px] font-medium text-slate-400 uppercase tracking-wide mt-4">
               Illustrative trend — historical scoring coming soon
             </p>
           </div>
