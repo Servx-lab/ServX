@@ -58,8 +58,9 @@ export const FloatingNav: React.FC = () => {
 
   return (
     <>
-      <div 
-        className="fixed z-[9999]"
+      {/* Hover-to-expand rail: no hover on touch, and at phone widths it sits on top of the hero copy */}
+      <div
+        className="fixed z-[9999] hidden md:block"
         style={{
           left: 24,
           top: 'calc(50% + 23px)'

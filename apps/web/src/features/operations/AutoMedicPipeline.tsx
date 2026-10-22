@@ -170,7 +170,7 @@ export const AutoMedicPipeline = ({ onCheck, deploymentId }: { onCheck?: () => v
 
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full max-h-[800px] pb-6">
                          {/* Column 1: Live Log Stream */}
-                        <div className={`col-span-1 rounded-xl border bg-white shadow-sm flex flex-col overflow-hidden transition-all duration-500 ${activeStep >= 1 ? 'border-red-200 bg-red-50/10' : 'border-gray-200'}`}>
+                        <div className={`col-span-1 min-w-0 rounded-xl border bg-white shadow-sm flex flex-col overflow-hidden transition-all duration-500 ${activeStep >= 1 ? 'border-red-200 bg-red-50/10' : 'border-gray-200'}`}>
                             <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
                                 <div className="flex items-center gap-2 text-black">
                                     <Terminal className="w-4 h-4 text-gray-500" />
@@ -178,14 +178,14 @@ export const AutoMedicPipeline = ({ onCheck, deploymentId }: { onCheck?: () => v
                                 </div>
                             </div>
                             <ScrollArea className="flex-1 p-4 font-mono text-xs leading-relaxed">
-                                <div className="space-y-1 text-gray-500">
+                                <div className="space-y-1 text-gray-500 break-words [overflow-wrap:anywhere]">
                                     <p>[{new Date(activeIncident.timestamp).toLocaleTimeString()}] INFO Processing Request...</p>
                                     {(activeStep >= 1) && (
                                         <div className="animate-in fade-in slide-in-from-left-4 duration-300">
-                                            <p className="text-red-500 font-bold mt-4 border-l-2 border-red-500 pl-2">
+                                            <p className="text-red-500 font-bold mt-4 border-l-2 border-red-500 pl-2 break-words [overflow-wrap:anywhere]">
                                                 ERROR {activeIncident.error_code} - {activeIncident.error_message}
                                             </p>
-                                            <p className="text-red-500/80 pl-2 whitespace-pre-wrap">{activeIncident.error_stack?.substring(0, 300)}...</p>
+                                            <p className="text-red-500/80 pl-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{activeIncident.error_stack?.substring(0, 300)}...</p>
                                         </div>
                                     )}
                                 </div>
@@ -193,7 +193,7 @@ export const AutoMedicPipeline = ({ onCheck, deploymentId }: { onCheck?: () => v
                         </div>
 
                          {/* Column 2: AI Diagnostics */}
-                        <div className={`col-span-1 rounded-xl border bg-white shadow-sm flex flex-col overflow-hidden transition-all duration-700 delay-300 ${activeStep >= 2 ? 'border-purple-200' : 'border-gray-200 opacity-50 grayscale'}`}>
+                        <div className={`col-span-1 min-w-0 rounded-xl border bg-white shadow-sm flex flex-col overflow-hidden transition-all duration-700 delay-300 ${activeStep >= 2 ? 'border-purple-200' : 'border-gray-200 opacity-50 grayscale'}`}>
                             <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center gap-2">
                                 <Ghost className={`w-4 h-4 ${activeStep >= 2 ? 'text-[#6C63FF]' : 'text-gray-400'}`} />
                                 <span className="text-sm font-semibold tracking-wide text-black">AI Diagnostics</span>
@@ -205,7 +205,7 @@ export const AutoMedicPipeline = ({ onCheck, deploymentId }: { onCheck?: () => v
                                             <h3 className="text-lg font-bold text-black">Analysis Report</h3>
                                             <p className="text-xs font-mono text-[#6C63FF]">SEVERITY: {activeIncident.severity}</p>
                                         </div>
-                                        <div className="p-4 rounded-lg bg-purple-50 border border-purple-100 text-sm text-purple-900 leading-relaxed animate-in slide-in-from-bottom-4 duration-700">
+                                        <div className="p-4 rounded-lg bg-purple-50 border border-purple-100 text-sm text-purple-900 leading-relaxed animate-in slide-in-from-bottom-4 duration-700 break-words [overflow-wrap:anywhere]">
                                             {activeIncident.diagnosis}
                                         </div>
                                     </>
@@ -219,7 +219,7 @@ export const AutoMedicPipeline = ({ onCheck, deploymentId }: { onCheck?: () => v
                         </div>
 
                          {/* Column 3: Request Payload */}
-                        <div className={`col-span-1 rounded-xl border bg-white shadow-sm flex flex-col overflow-hidden transition-all duration-700 delay-500 ${activeStep >= 3 ? 'border-blue-200' : 'border-gray-200 opacity-50 grayscale'}`}>
+                        <div className={`col-span-1 min-w-0 rounded-xl border bg-white shadow-sm flex flex-col overflow-hidden transition-all duration-700 delay-500 ${activeStep >= 3 ? 'border-blue-200' : 'border-gray-200 opacity-50 grayscale'}`}>
                             <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center gap-2">
                                 <Database className={`w-4 h-4 ${activeStep >= 3 ? 'text-blue-500' : 'text-gray-400'}`} />
                                 <span className="text-sm font-semibold tracking-wide text-black">Context</span>
@@ -227,7 +227,7 @@ export const AutoMedicPipeline = ({ onCheck, deploymentId }: { onCheck?: () => v
                             <div className="flex-1 p-0 flex flex-col bg-gray-50/50">
                                 {activeStep >= 3 ? (
                                     <ScrollArea className="flex-1 p-4">
-                                        <pre className="text-xs font-mono text-gray-700 leading-relaxed">
+                                        <pre className="text-xs font-mono text-gray-700 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
 {`{
   "incident_id": "${activeIncident.id}",
   "request": {
@@ -248,7 +248,7 @@ export const AutoMedicPipeline = ({ onCheck, deploymentId }: { onCheck?: () => v
                         </div>
 
                          {/* Column 4: Automated Resolution */}
-                        <div className={`col-span-1 rounded-xl border bg-white shadow-sm flex flex-col overflow-hidden transition-all duration-700 delay-700 ${activeStep >= 4 ? 'border-green-200' : 'border-gray-200 opacity-50 grayscale'}`}>
+                        <div className={`col-span-1 min-w-0 rounded-xl border bg-white shadow-sm flex flex-col overflow-hidden transition-all duration-700 delay-700 ${activeStep >= 4 ? 'border-green-200' : 'border-gray-200 opacity-50 grayscale'}`}>
                             <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <Code2 className={`w-4 h-4 ${activeStep >= 4 ? 'text-green-500' : 'text-gray-400'}`} />
@@ -259,7 +259,7 @@ export const AutoMedicPipeline = ({ onCheck, deploymentId }: { onCheck?: () => v
                                 {activeStep >= 4 ? (
                                     <>
                                         <ScrollArea className="flex-1 p-4">
-                                            <div className="bg-green-50 border-l-2 border-green-500/50 p-2 text-green-800 whitespace-pre-wrap">
+                                            <div className="bg-green-50 border-l-2 border-green-500/50 p-2 text-green-800 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                                                 {activeIncident.suggested_fix}
                                             </div>
                                         </ScrollArea>
