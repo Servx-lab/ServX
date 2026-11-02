@@ -208,7 +208,7 @@ const RepositoryControl: React.FC<RepositoryControlProps> = ({
     const registeredData = filteredRegisteredRepos.find(r => r.github_repo_full_name === selectedRepoFullName);
 
     return (
-        <div className="bg-white border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] rounded-2xl p-6 md:p-8 flex flex-col w-full h-fit flex-shrink-0">
+        <div className="bg-white border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] rounded-2xl p-6 md:p-8 flex flex-col w-full h-fit min-w-0">
              {impersonatingUser && (
                 <div className="mb-6 flex items-center justify-between gap-4 rounded-xl bg-purple-50 border border-purple-100/60 px-4 py-3 text-purple-700 animate-pulse">
                     <div className="flex items-center gap-3">
@@ -946,7 +946,7 @@ const IntegrationHelpCenter = () => {
     };
 
     return (
-        <div className="bg-white border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition-all duration-300 relative overflow-hidden rounded-2xl p-6 flex flex-col gap-5 flex-shrink-0 h-fit">
+        <div className="bg-white border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition-all duration-300 relative overflow-hidden rounded-2xl p-6 flex flex-col gap-5 min-w-0 h-fit">
             <div className="flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-indigo-50 text-indigo-500 border border-indigo-100/50">
                     <HelpCircle className="w-5 h-5" />
@@ -1087,9 +1087,9 @@ const OperationsContent = () => {
 
     return (
         <PageLayout title="Global Operations & Security" fullWidth={true}>
-            <div className="flex flex-col lg:flex-row gap-8 w-full">
+            <div className="flex flex-col xl:flex-row gap-6 xl:gap-8 w-full min-w-0">
                 {/* Main Dashboard Area */}
-                <div className="flex-1 flex flex-col gap-6 w-full">
+                <div className="flex-1 min-w-0 flex flex-col gap-6">
                     <RepositoryControl 
                         impersonatingUser={impersonatingUser} 
                         onStopImpersonating={() => setImpersonatingUser(null)}
@@ -1099,7 +1099,7 @@ const OperationsContent = () => {
                 </div>
 
                 {/* Right Sidebar (Ghost Mode CRM) */}
-                <aside className="w-full lg:w-96 shrink-0 border border-gray-100 rounded-3xl overflow-hidden bg-gray-50/50 flex flex-col">
+                <aside className="w-full xl:w-80 2xl:w-96 shrink-0 border border-gray-100 rounded-3xl overflow-hidden bg-gray-50/50 flex flex-col">
                     <UserCRM 
                         impersonatingUser={impersonatingUser}
                         onStartImpersonate={(u) => setImpersonatingUser(u)}

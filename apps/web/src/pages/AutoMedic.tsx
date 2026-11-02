@@ -91,10 +91,25 @@ const AutoMedic = () => {
     );
   }
 
+  const getDisplayId = (id: string | null): string => {
+    if (!id) return 'INC-2024-8972';
+    // If it's a full incident id like DEP-<uuid>-<deploymentId>, extract the deploymentId part
+    const match = id.match(/^(?:DEP-)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}-(.+)$/);
+    if (match) return match[1];
+    return id;
+  };
+
+  const displayId = getDisplayId(deploymentId);
+  const fullIncidentId = deploymentId ? (deploymentId.startsWith('DEP-') ? deploymentId : `DEP-${deploymentId}`) : 'INC-2024-8972';
+
   return (
     <PageLayout 
       title="Auto-Medic Pipeline" 
-      subtitle={`ID: ${deploymentId ? `DEP-${deploymentId.substring(0,8)}` : 'INC-2024-8972'} • SEV-1`}
+      subtitle={
+        <span title={fullIncidentId}>
+          ID: {displayId} • SEV-1
+        </span>
+      }
       fullWidth={true}
       headerContent={
         <div className="flex items-center gap-4">

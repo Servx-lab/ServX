@@ -307,7 +307,7 @@ const SettingsPage = () => {
       }
   };
 
-  const hasMainDevice = devices.some(d => d.is_main);
+  const hasMainDevice = devices.some(d => d.is_main_device);
 
   if (loading) {
     return (
@@ -805,13 +805,13 @@ const SettingsPage = () => {
                         return (
                             <div key={device.id} className="flex items-center justify-between p-5 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${device.is_main ? 'bg-indigo-100 text-indigo-600 shadow-inner' : 'bg-white border border-gray-200 text-gray-600'}`}>
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${device.is_main_device ? 'bg-indigo-100 text-indigo-600 shadow-inner' : 'bg-white border border-gray-200 text-gray-600'}`}>
                                         {isMobile ? <Smartphone className="w-6 h-6" /> : <Laptop className="w-6 h-6" />}
                                     </div>
                                     <div>
                                         <p className="font-bold text-sm text-gray-900 flex items-center gap-2 mb-1">
                                             {device.device_name || 'Unknown Device'}
-                                            {device.is_main && (
+                                            {device.is_main_device && (
                                             <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold tracking-wide uppercase">Main Authenticator</span>
                                             )}
                                         </p>
@@ -819,7 +819,7 @@ const SettingsPage = () => {
                                     </div>
                                 </div>
                                 
-                                {!device.is_main && (
+                                {!device.is_main_device && (
                                     <Button 
                                         variant="outline" 
                                         size="sm"

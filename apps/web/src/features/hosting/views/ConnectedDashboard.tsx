@@ -48,13 +48,22 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
     return ['ERROR', 'FAILED', 'CRASHED'].includes(s) || s.includes('FAIL') || s.includes('ERR');
   }).length;
 
-  // Process timeline data for charts
-  const timelineMap: Record<string, number> = {};
+  // Process timeline data for charts (sorted ascending by date so time runs left -> right)
+  const timelineMap: Record<string, { date: string; count: number; timestamp: number }> = {};
   deployments.forEach(d => {
-    const dStr = new Date(d.created).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    timelineMap[dStr] = (timelineMap[dStr] || 0) + 1;
+    const createdDate = new Date(d.created);
+    const dStr = createdDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const dayTimestamp = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate()).getTime();
+    if (!timelineMap[dStr]) {
+      timelineMap[dStr] = { date: dStr, count: 1, timestamp: dayTimestamp };
+    } else {
+      timelineMap[dStr].count += 1;
+    }
   });
-  const deploymentTimeline = Object.entries(timelineMap).map(([date, count]) => ({ date, count })).slice(-7);
+  const deploymentTimeline = Object.values(timelineMap)
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .slice(-7)
+    .map(({ date, count }) => ({ date, count }));
 
   const statusMap: Record<string, number> = {};
   services.forEach(s => {
@@ -76,7 +85,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
 
       <div className="flex flex-col h-full">
         {/* Header Bar */}
-        <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
             <div className="relative h-12 w-12 shrink-0">
               <div className="w-full h-full rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center overflow-hidden">
@@ -102,7 +111,7 @@ export const ConnectedDashboard: React.FC<ConnectedDashboardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             
             <Button
               variant="outline"

@@ -272,7 +272,7 @@ export async function revokeDevice(req: Request, res: Response, next: NextFuncti
 
 /**
  * Action Endpoint: POST /api/devices/set-main
- * Marks a specific device as the Main Device (is_main: true) and all others as false.
+ * Marks a specific device as the Main Device (is_main_device: true) and all others as false.
  */
 export async function setMainDevice(req: Request, res: Response, next: NextFunction): Promise<void> {
   const userId = req.user?.id;
@@ -288,27 +288,18 @@ export async function setMainDevice(req: Request, res: Response, next: NextFunct
   }
 
   try {
-    // 1. Reset all devices for this user to is_main = false
+    // 1. Reset all devices for this user to is_main_device = false
     const { error: resetError } = await supabaseAdmin
       .from('user_devices')
-      .update({ is_main: false })
+      .update({ is_main_device: false })
       .eq('user_uuid', userId);
       
-    if (resetError) {
-      if (resetError.message.includes('column "is_main"')) {
-        res.status(400).json({ 
-          error: 'SUPABASE_SCHEMA_ERROR', 
-          message: 'Please add a boolean column named "is_main" (default false) to your user_devices table in Supabase.'
-        });
-        return;
-      }
-      throw resetError;
-    }
+    if (resetError) throw resetError;
 
-    // 2. Set the target device to is_main = true
+    // 2. Set the target device to is_main_device = true
     const { data: updatedDevice, error: updateError } = await supabaseAdmin
       .from('user_devices')
-      .update({ is_main: true })
+      .update({ is_main_device: true })
       .eq('user_uuid', userId)
       .eq('device_fingerprint', device_fingerprint)
       .select()

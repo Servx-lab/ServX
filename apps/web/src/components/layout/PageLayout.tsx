@@ -2,7 +2,7 @@ import React from 'react';
 
 interface PageLayoutProps {
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   children: React.ReactNode;
   headerContent?: React.ReactNode;
   fullWidth?: boolean;
@@ -30,7 +30,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
             {title}
           </h1>
           {subtitle && (
-            <p className="mt-0.5 truncate text-sm text-slate-500">{subtitle}</p>
+            <div className="mt-0.5 truncate text-sm text-slate-500">{subtitle}</div>
           )}
         </div>
         {headerContent && (
